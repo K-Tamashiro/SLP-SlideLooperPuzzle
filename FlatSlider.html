@@ -37,14 +37,14 @@
 
     <div class="header">
         <div class="mode-selector">
-            <button id="btn-easy" onclick="changeMode(2, 2)">初級 (4x4)</button>
-            <button id="btn-mid" onclick="changeMode(2, 3)">中級 (6x6)</button>
-            <button id="btn-hard" onclick="changeMode(3, 3)">上級 (9x9)</button>
+            <button id="btn-easy" onclick="changeMode(2, 2)">Easy (4x4)</button>
+            <button id="btn-mid" onclick="changeMode(2, 3)">Medium (6x6)</button>
+            <button id="btn-hard" onclick="changeMode(3, 3)">Hard (9x9)</button>
         </div>
                <div style="display:flex; gap:5px; align-items:center;">
                <input type="number" id="scramble-count" value="5" min="1" max="200" style="width: 50px; background: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px;">
-               <button id="shuffle-btn" onclick="shuffle()">シャッフル</button>
-               <button onclick="initBoard()">リセット</button>
+               <button id="shuffle-btn" onclick="shuffle()">Scramble</button>
+               <button onclick="initBoard()">Reset</button>
                </div>
     </div>
 
@@ -60,8 +60,8 @@
     <div id="status" class="status"></div>
 
     <div class="hint">
-        通常ドラッグ: <b>ブロック分移動</b><br>
-        <b>任意のキー (Ctrl/Shift/Alt)</b> + ドラッグ: <b>1マス微調整</b><br>
+        Drag: <b> Move by block units</b><br>
+        <b>Hold any modifier key (Ctrl, Shift, or Alt) </b> + Drag: <b>Move by 1 cell</b><br>
 	    <span style="font-size:11px; color:#666;">
 	        © 2025 Tamayan / ZEBRASOFT
 	    </span>
