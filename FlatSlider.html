@@ -152,9 +152,10 @@
 		                cell.ontouchstart = (e) => {
 		                    // スクロールを防止
 		                    e.preventDefault();
+							const isCheat = e.touches.length >= 2; // 指が2本以上ならチートモード
 		                    const touch = e.touches[0];
-		                    // スマホではキー同時押しができないため、基本は通常（ブロック）移動
-		                    handleStart(touch.clientX, touch.clientY, false);
+							// handleStartにチートフラグを渡す
+						    handleStart(touch.clientX, touch.clientY, isCheat);
 		                };
 		                cell.ontouchmove = (e) => {
 		                    if (isDragging) {
