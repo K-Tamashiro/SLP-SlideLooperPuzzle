@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Ultimate Slide Puzzle - Unified Edition</title>
+    <style>
+        body { background: #121212; display: flex; flex-direction: column; align-items: center; color: white; font-family: sans-serif; margin: 0; padding: 10px; user-select: none; }
+        .header { display: flex; align-items: center; gap: 20px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center; }
+        .mode-selector { display: flex; gap: 5px; }
+        button { padding: 8px 12px; font-size: 13px; cursor: pointer; border: none; border-radius: 4px; background: #333; color: white; transition: 0.2s; }
+        .active-mode { background: #d35400 !important; font-weight: bold; }
+        #shuffle-btn { background: #27ae60; font-weight: bold; }
+
+        /* レイアウト構造 */
+        .main-layout { display: flex; gap: 30px; align-items: flex-start; }
+        .grid-container { display: grid; gap: 10px; background: #000; padding: 10px; border-radius: 8px; }
+        .face { display: grid; gap: 2px; }
+        .cell { border-radius: 3px; cursor: crosshair; }
+
+        /* ターゲット見本のスタイル */
+        .preview-area { text-align: center; background: #222; padding: 15px; border-radius: 8px; border: 1px solid #444; }
+        #preview { margin: 0 auto; }
+        .p-cell { border-radius: 1px; }
+
+        /* 9色配色 */
+        .c0 { background: #FFD700; } .c1 { background: #1E90FF; } .c2 { background: #800080; }
+        .c3 { background: #FF8C00; } .c4 { background: #FFFFFF; } .c5 { background: #FF0000; }
+        .c6 { background: #00FFFF; } .c7 { background: #008000; } .c8 { background: #FF69B4; }
+
+        .status { margin-top: 10px; font-size: 22px; font-weight: bold; color: #2ecc71; min-height: 28px; }
+        .hint { margin-top: 15px; color: #888; font-size: 13px; text-align: center; border: 1px dashed #444; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="mode-selector">
+            <button id="btn-easy" onclick="changeMode(2, 2)">初級 (4x4)</button>
+            <button id="btn-mid" onclick="changeMode(2, 3)">中級 (6x6)</button>
+            <button id="btn-hard" onclick="changeMode(3, 3)">上級 (9x9)</button>
+        </div>
+               <div style="display:flex; gap:5px; align-items:center;">
+               <input type="number" id="scramble-count" value="5" min="1" max="200" style="width: 50px; background: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px;">
+               <button id="shuffle-btn" onclick="shuffle()">シャッフル</button>
+               <button onclick="initBoard()">リセット</button>
+               </div>
+    </div>
+
+    <div class="main-layout">
+        <div id="board" class="grid-container"></div>
+
+        <div class="preview-area">
+            <div style="font-size: 12px; color: #aaa; margin-bottom: 10px;">TARGET VIEW</div>
+            <div id="preview"></div>
+        </div>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div class="hint">
+        通常ドラッグ: <b>ブロック分移動</b><br>
+        <b>任意のキー (Ctrl/Shift/Alt)</b> + ドラッグ: <b>1マス微調整</b>
+    </div>
+
+    <script>
+        let subSize = 3;   
+        let gridNum = 3;   
+        let board = [];
+        let startX, startY, isDragging = false, currentMode1Cell = false;
+
+        // モード変更時のトリガー
+        function changeMode(sSize, gNum) {
+            subSize = sSize;
+            gridNum = gNum;
+            document.getElementById('btn-easy').className = (sSize===2 && gNum===2) ? 'active-mode' : '';
+            document.getElementById('btn-mid').className = (sSize===2 && gNum===3) ? 'active-mode' : '';
+            document.getElementById('btn-hard').className = (sSize===3 && gNum===3) ? 'active-mode' : '';
+            initBoard();
+        }
+
+        // 初期化トリガー
+        function initBoard() {
+            const totalSize = subSize * gridNum;
+            board = Array.from({length: totalSize}, () => Array(totalSize).fill(0));
+            document.getElementById('status').innerText = "";
+            for (let r = 0; r < totalSize; r++) {
+                for (let c = 0; c < totalSize; c++) {
+                    board[r][c] = Math.floor(r / subSize) * gridNum + Math.floor(c / subSize);
+                }
+            }
+            renderPreview(); // 見本を生成
+            render();        // 盤面を生成
+        }
+
+        function renderPreview() {
+            const preview = document.getElementById('preview');
+            preview.style.display = 'grid';
+            preview.style.gridTemplateColumns = `repeat(${gridNum}, 1fr)`;
+            preview.style.gap = '6px';
+            preview.innerHTML = '';
+
+            const pCellSize = (gridNum === 3) ? 10 : 15;
+
+            for (let f = 0; f < gridNum * gridNum; f++) {
+                const pFace = document.createElement('div');
+                pFace.style.display = 'grid';
+                pFace.style.gridTemplateColumns = `repeat(${subSize}, ${pCellSize}px)`;
+                pFace.style.gap = '1px';
+                
+                for (let i = 0; i < subSize * subSize; i++) {
+                    const div = document.createElement('div');
+                    div.className = `p-cell c${f}`;
+                    div.style.width = `${pCellSize}px`;
+                    div.style.height = `${pCellSize}px`;
+                    pFace.appendChild(div);
+                }
+                preview.appendChild(pFace);
+            }
+        }
+
+		// render関数内のセル生成部分に、タッチイベントを追加します
+		function render() {
+		    const container = document.getElementById('board');
+		    const totalSize = subSize * gridNum;
+		    const cellSize = (totalSize <= 6) ? 55 : 42;
+
+		    container.style.gridTemplateColumns = `repeat(${gridNum}, 1fr)`;
+		    container.innerHTML = '';
+
+		    for (let f = 0; f < gridNum * gridNum; f++) {
+		        const faceEl = document.createElement('div');
+		        faceEl.className = 'face';
+		        faceEl.style.gridTemplateColumns = `repeat(${subSize}, ${cellSize}px)`;
+		        const fr = Math.floor(f / gridNum) * subSize, fc = (f % gridNum) * subSize;
+
+		        for (let r = 0; r < subSize; r++) {
+		            for (let c = 0; c < subSize; c++) {
+		                const cell = document.createElement('div');
+		                const row = fr + r, col = fc + c;
+		                cell.className = `cell c${board[row][col]}`;
+		                cell.style.width = `${cellSize}px`; cell.style.height = `${cellSize}px`;
+		                
+		                // --- マウス操作 ---
+		                cell.onmousedown = (e) => { 
+		                    handleStart(e.clientX, e.clientY, e.ctrlKey || e.shiftKey || e.altKey || e.metaKey);
+		                };
+		                cell.onmousemove = (e) => { 
+		                    if (isDragging) handleSwipe(row, col, e.clientX, e.clientY); 
+		                };
+
+		                // --- スマホ・タブレット操作 (Touch対応) ---
+		                cell.ontouchstart = (e) => {
+		                    // スクロールを防止
+		                    e.preventDefault();
+		                    const touch = e.touches[0];
+		                    // スマホではキー同時押しができないため、基本は通常（ブロック）移動
+		                    handleStart(touch.clientX, touch.clientY, false);
+		                };
+		                cell.ontouchmove = (e) => {
+		                    if (isDragging) {
+		                        e.preventDefault();
+		                        const touch = e.touches[0];
+		                        handleSwipe(row, col, touch.clientX, touch.clientY);
+		                    }
+		                };
+
+		                faceEl.appendChild(cell);
+		            }
+		        }
+		        container.appendChild(faceEl);
+		    }
+		}
+
+		// 共通の開始処理を分離
+		function handleStart(x, y, isModifier) {
+		    startX = x;
+		    startY = y;
+		    isDragging = true;
+		    currentMode1Cell = isModifier;
+		}
+
+		// 終了処理（グローバル）
+		window.onmouseup = () => { isDragging = false; };
+		window.ontouchend = () => { isDragging = false; };
+
+        function handleSwipe(r, c, curX, curY) {
+            const diffX = curX - startX, diffY = curY - startY;
+            const threshold = 10;
+            if (Math.abs(diffX) > threshold || Math.abs(diffY) > threshold) {
+                const moveCount = currentMode1Cell ? 1 : subSize;
+                for(let i=0; i<moveCount; i++) {
+                    moveLogic(r, c, Math.abs(diffY) > Math.abs(diffX), (Math.abs(diffX) > Math.abs(diffY) ? diffX < 0 : diffY < 0));
+                }
+                isDragging = false; render();
+                if (checkWin()) document.getElementById('status').innerText = "COMPLETE!";
+            }
+        }
+
+        function moveLogic(r, c, isVertical, isReverse) {
+            const totalSize = subSize * gridNum;
+            if (isVertical) {
+                if (isReverse) {
+                    let temp = board[0][c];
+                    for (let i = 0; i < totalSize - 1; i++) board[i][c] = board[i+1][c];
+                    board[totalSize - 1][c] = temp;
+                } else {
+                    let temp = board[totalSize - 1][c];
+                    for (let i = totalSize - 1; i > 0; i--) board[i][c] = board[i-1][c];
+                    board[0][c] = temp;
+                }
+            } else {
+                if (isReverse) board[r].push(board[r].shift());
+                else board[r].unshift(board[r].pop());
+            }
+        }
+
+		function shuffle() {
+		    const totalSize = subSize * gridNum;
+		    const count = parseInt(document.getElementById('scramble-count').value) || 20;
+		    document.getElementById('status').innerText = "";
+		    
+		    for (let i = 0; i < count; i++) {
+		        // ランダムな行または列を選択
+		        const r = Math.floor(Math.random() * totalSize);
+		        const c = Math.floor(Math.random() * totalSize);
+		        const isVertical = Math.random() > 0.5;
+		        const isReverse = Math.random() > 0.5;
+
+		        // 【ここが重要】1コマではなく、ブロックのサイズ分だけ一気に動かす
+		        // これにより、パズルが「ブロック（面）」の単位を保ったまま崩れる
+		        for(let j = 0; j < subSize; j++) {
+		            moveLogic(r, c, isVertical, isReverse);
+		        }
+		    }
+		    render();
+		}
+        function checkWin() {
+            for (let f = 0; f < gridNum * gridNum; f++) {
+                const fr = Math.floor(f / gridNum) * subSize, fc = (f % gridNum) * subSize;
+                const colorId = board[fr][fc];
+                if (colorId !== f) return false;
+                for (let r = 0; r < subSize; r++) 
+                    for (let c = 0; c < subSize; c++) 
+                        if (board[fr + r][fc + c] !== colorId) return false;
+            }
+            return true;
+        }
+
+        changeMode(2, 3);
+    </script>
+</body>
+</html>
