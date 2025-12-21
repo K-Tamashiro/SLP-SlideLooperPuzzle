@@ -15,3 +15,9 @@ Standard Color Scheme: スピードパズル界で親しみのある配色（Yel
 
 開発の背景 / Context
 このプロジェクトは、物理的な「キューブ」の制約を超え、2次元平面上でいかに複雑な「位置の入れ替え（置換）」を実現するかという試みから生まれました。 （※本プロジェクトは「Rubik's Cube」とは無関係であり、独自のSLPアルゴリズムに基づいています）
+
+# SlideLooperPuzzle (SLP)
+
+### [Live Demo / 動作デモはこちら](https://blog.zebrasoft.co.jp/game/FlatSlider.html)
+
+---
