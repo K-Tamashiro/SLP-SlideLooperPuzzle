@@ -1,75 +1,47 @@
-----------------------------------------------------------------------------
-【タイトル】SLP - Slide Looper Puzzle
-【ブランド名】ZebraSoft
-【著 作 者】Tamayan
-【Version 】0.9 (Pre-release)
-----------------------------------------------------------------------------
+SLP - Slide Looper Puzzle
+Version: 0.9 (Pre-release)
 
-----------------
-## ゲーム概要
-----------------
-SLP (Slide Looper Puzzle) は、
-ブロック単位のスライド操作によって
-ターゲットパターンを再構成するロジックパズルです。
+Author: Tamayan
 
-すべての問題は、正当な操作のみで生成されており、
-必ず解くことが可能です。
+Brand: ZebraSoft
 
-----------------
-## 遊び方
-----------------
-・ドラッグ：
-　行または列をブロック単位でスライドします。
+Overview
+SLP (Slide Looper Puzzle) is a logic puzzle game where you reconstruct a target pattern by sliding blocks.
 
-・任意のキー (Ctrl / Shift / Alt) を押しながらドラッグ：
-　1マス単位での微調整ができます（解析用操作）。
+Every puzzle is algorithmically generated using only valid operations, ensuring that a solution always exists for every problem.
 
-・画面右側の「TARGET VIEW」と同じ配置に揃えるとクリアです。
+How to Play
+Drag Slide rows or columns by block units.
 
--------------------------
-## 動作環境
--------------------------
-・対応OS：Windows / macOS / Linux
-・対応ブラウザ：Google Chrome / Edge / Firefox
-・本作は HTML5 対応ブラウザ上で動作します。
+Drag + Modifier Key (Ctrl / Shift / Alt) Perform fine adjustments by 1 unit (useful for analysis).
 
--------------------------
-## クレジット
--------------------------
-企画・制作：
-　Tamayan / ZebraSoft
+Clear Condition The game is cleared when your board matches the configuration shown in the "TARGET VIEW" on the right side of the screen.
 
--------------------------------
-## 下記の行為はご遠慮ください
--------------------------------
-1. 本ゲームファイルの無断転載・再配布
-2. 本ゲームを構成するプログラムの無断利用
+System Requirements
+This game runs on HTML5-compatible browsers.
 
--------------------------------
-## Q&A
--------------------------------
-Q. 実況・配信・レビューをしてもいいですか？
-A. 問題ありません。事前連絡は不要です。
+Supported OS: Windows / macOS / Linux
 
-Q. 攻略方法を公開してもいいですか？
-A. 問題ありません。
+Supported Browsers: Google Chrome / Edge / Firefox
 
-Q. 二次創作は可能ですか？
-A. 非営利・趣味の範囲であれば問題ありません。
+Q&A
+Q. Can I stream, broadcast, or review this game? A. Yes, you are free to do so. No prior contact is required.
 
--------------------------------
-## 免責
--------------------------------
-本ソフトウェアの使用によって発生したいかなる損害についても、
-作者は一切の責任を負いません。
-すべて自己責任でご利用ください。
+Q. Can I publish walkthroughs or solutions? A. Yes, that is allowed.
 
-----------------------------------------------------
+Q. Are fan works (derivative works) allowed? A. Yes, as long as they are for non-profit or hobby purposes.
+
+Prohibitions
+Please refrain from the following actions:
+
+Unauthorized reproduction or redistribution of the game files.
+
+Unauthorized use of the program code or assets comprising this game.
+
+Credits
+Planning & Production: Tamayan / ZebraSoft
+
+Disclaimer
+The author assumes no responsibility for any damages or issues that may arise from the use of this software. Please use it at your own risk.
+
 Copyright (C) 2025 ZebraSoft All Rights Reserved.
-
-
-# SlideLooperPuzzle (SLP)
-
-### [Live Demo / 動作デモはこちら](https://blog.zebrasoft.co.jp/game/)
-
----
