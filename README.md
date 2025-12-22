@@ -1,47 +1,46 @@
-SLP - Slide Looper Puzzle
-Version: 0.9 (Pre-release)
+<h1 align="center">SLP - Slide Looper Puzzle</h1>
 
-Author: Tamayan
+<p align="center">
+  <b>A logic puzzle to reconstruct patterns by sliding blocks.</b><br>
+  <br>
+  <img src="https://img.shields.io/badge/Version-0.9_(Pre--release)-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Brand-ZebraSoft-black?style=flat-square" alt="Brand">
+  <img src="https://img.shields.io/badge/Author-Tamayan-green?style=flat-square" alt="Author">
+</p>
 
-Brand: ZebraSoft
+<br>
 
-Overview
-SLP (Slide Looper Puzzle) is a logic puzzle game where you reconstruct a target pattern by sliding blocks.
+## 🧩 Overview
 
-Every puzzle is algorithmically generated using only valid operations, ensuring that a solution always exists for every problem.
+**SLP (Slide Looper Puzzle)** is a logic puzzle game where you reconstruct a target pattern by sliding blocks.
 
-How to Play
-Drag Slide rows or columns by block units.
+Every puzzle is algorithmically generated using only valid operations, ensuring that **a solution always exists** for every problem.
 
-Drag + Modifier Key (Ctrl / Shift / Alt) Perform fine adjustments by 1 unit (useful for analysis).
+<br>
 
-Clear Condition The game is cleared when your board matches the configuration shown in the "TARGET VIEW" on the right side of the screen.
+## 🎮 How to Play
 
-System Requirements
+### Basic Controls
+* **Drag** Slide rows or columns by block units.
+
+### Advanced Controls (For Analysis)
+* **Drag + Modifier Key** `Ctrl` / `Shift` / `Alt`  
+    Perform fine adjustments by 1 unit.
+
+### Clear Condition
+* The game is cleared when your board matches the configuration shown in the **"TARGET VIEW"** on the right side of the screen.
+
+<br>
+
+## 💻 System Requirements
+
 This game runs on HTML5-compatible browsers.
 
-Supported OS: Windows / macOS / Linux
+| Category | Details |
+| :--- | :--- |
+| **OS** | Windows / macOS / Linux |
+| **Browsers** | Google Chrome / Edge / Firefox |
 
-Supported Browsers: Google Chrome / Edge / Firefox
+<br>
 
-Q&A
-Q. Can I stream, broadcast, or review this game? A. Yes, you are free to do so. No prior contact is required.
-
-Q. Can I publish walkthroughs or solutions? A. Yes, that is allowed.
-
-Q. Are fan works (derivative works) allowed? A. Yes, as long as they are for non-profit or hobby purposes.
-
-Prohibitions
-Please refrain from the following actions:
-
-Unauthorized reproduction or redistribution of the game files.
-
-Unauthorized use of the program code or assets comprising this game.
-
-Credits
-Planning & Production: Tamayan / ZebraSoft
-
-Disclaimer
-The author assumes no responsibility for any damages or issues that may arise from the use of this software. Please use it at your own risk.
-
-Copyright (C) 2025 ZebraSoft All Rights Reserved.
+##
