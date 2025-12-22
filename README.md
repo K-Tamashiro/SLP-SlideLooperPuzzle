@@ -1,23 +1,46 @@
-# SLP-SlideLooperPuzzle
-SlideLooperPuzzle (SLP)
-A high-difficulty torus-structured grid puzzle.
+<h1 align="center">SLP - Slide Looper Puzzle</h1>
 
-SLPは、循環するトーラス構造（上下左右がつながった盤面）を持つ、グリッドベースのスライドパズルです。
+<p align="center">
+  <b>A logic puzzle to reconstruct patterns by sliding blocks.</b><br>
+  <br>
+  <img src="https://img.shields.io/badge/Version-0.9_(Pre--release)-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Brand-ZebraSoft-black?style=flat-square" alt="Brand">
+  <img src="https://img.shields.io/badge/Author-Tamayan-green?style=flat-square" alt="Author">
+</p>
 
-特徴 / Features
-Torus Structure: 行や列をスライドさせると、反対側から戻ってくる非ユークリッド的なループ構造。
+<br>
 
-Hybrid Scramble: 3x3ブロック（Speed Cubeスタイル）の整合性を維持したスクランブル。
+## 🧩 Overview
 
-Dual-Mode Control: デフォルトは「ブロック単位移動」、Key（Ctrl等）押下で「1マス微調整」が可能。
+**SLP (Slide Looper Puzzle)** is a logic puzzle game where you reconstruct a target pattern by sliding blocks.
 
-Standard Color Scheme: スピードパズル界で親しみのある配色（Yellow, White, Blue, Red, Green, Orange）に、多面体パズルで使われる3色（Purple, Pink, Cyan）を加えた9色構成。
+Every puzzle is algorithmically generated using only valid operations, ensuring that **a solution always exists** for every problem.
 
-開発の背景 / Context
-このプロジェクトは、物理的な「キューブ」の制約を超え、2次元平面上でいかに複雑な「位置の入れ替え（置換）」を実現するかという試みから生まれました。 （※本プロジェクトは「Rubik's Cube」とは無関係であり、独自のSLPアルゴリズムに基づいています）
+<br>
 
-# SlideLooperPuzzle (SLP)
+## 🎮 How to Play
 
-### [Live Demo / 動作デモはこちら](https://blog.zebrasoft.co.jp/game/FlatSlider.html)
+### Basic Controls
+* **Drag** Slide rows or columns by block units.
 
----
+### Advanced Controls (For Analysis)
+* **Drag + Modifier Key** `Ctrl` / `Shift` / `Alt`  
+    Perform fine adjustments by 1 unit.
+
+### Clear Condition
+* The game is cleared when your board matches the configuration shown in the **"TARGET VIEW"** on the right side of the screen.
+
+<br>
+
+## 💻 System Requirements
+
+This game runs on HTML5-compatible browsers.
+
+| Category | Details |
+| :--- | :--- |
+| **OS** | Windows / macOS / Linux |
+| **Browsers** | Google Chrome / Edge / Firefox |
+
+<br>
+
+##
