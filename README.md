@@ -18,6 +18,6 @@ Standard Color Scheme: スピードパズル界で親しみのある配色（Yel
 
 # SlideLooperPuzzle (SLP)
 
-### [Live Demo / 動作デモはこちら](https://blog.zebrasoft.co.jp/game/FlatSlider.html)
+### [Live Demo / 動作デモはこちら](https://blog.zebrasoft.co.jp/game/)
 
 ---
