@@ -3,6 +3,8 @@
 <p align="center">
   <b>A logic puzzle to reconstruct patterns by sliding blocks.</b><br>
   <br>
+  <b>🔴 Play Demo: <a href="https://blog.zebrasoft.co.jp/game/">https://blog.zebrasoft.co.jp/game/</a></b>
+  <br><br>
   <img src="https://img.shields.io/badge/Version-0.9_(Pre--release)-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Brand-ZebraSoft-black?style=flat-square" alt="Brand">
   <img src="https://img.shields.io/badge/Author-Tamayan-green?style=flat-square" alt="Author">
@@ -23,9 +25,12 @@ Every puzzle is algorithmically generated using only valid operations, ensuring 
 ### Basic Controls
 * **Drag** Slide rows or columns by block units.
 
-### Advanced Controls (For Analysis)
-* **Drag + Modifier Key** `Ctrl` / `Shift` / `Alt`  
-    Perform fine adjustments by 1 unit.
+### Frame Controls
+* **Shift + Drag (PC)** Move the frame position.
+* **Long Press (Smartphone)** Move the frame position.
+
+### Advanced Controls (PC Only)
+* **Ctrl + Drag** Perform fine adjustments by 1 unit.
 
 ### Clear Condition
 * The game is cleared when your board matches the configuration shown in the **"TARGET VIEW"** on the right side of the screen.
@@ -42,5 +47,3 @@ This game runs on HTML5-compatible browsers.
 | **Browsers** | Google Chrome / Edge / Firefox |
 
 <br>
-
-##
