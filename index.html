@@ -2,212 +2,533 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-	<meta name="author" content="Tamayan / ZebraSoft">
-	<meta name="copyright" content="© 2025 Tamayan / ZebraSoft">
-    <title>SLP-SlideLooperPuzzle beta1.0</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 	<link rel="icon" href="favicon.ico">
+    <title>SLP-SlideLooperPuzzle beta2.4</title>
     <style>
-        body { background: #121212; display: flex; flex-direction: column; align-items: center; color: white; font-family: sans-serif; margin: 0; padding: 10px; user-select: none; }
-        .header { display: flex; align-items: center; gap: 20px; margin-bottom: 15px; flex-wrap: wrap; justify-content: center; }
+        body { 
+            background: #121212; 
+            display: flex; flex-direction: column; align-items: center; 
+            color: white; font-family: sans-serif; margin: 0; padding: 10px; 
+            user-select: none; touch-action: none; overflow-x: hidden; 
+        }
+
+        .header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; justify-content: center; }
         .mode-selector { display: flex; gap: 5px; }
         button { padding: 8px 12px; font-size: 13px; cursor: pointer; border: none; border-radius: 4px; background: #333; color: white; transition: 0.2s; }
         .active-mode { background: #d35400 !important; font-weight: bold; }
         #shuffle-btn { background: #27ae60; font-weight: bold; }
 
-        /* レイアウト構造 */
-        .main-layout { display: flex; gap: 30px; align-items: flex-start; }
-        .grid-container { display: grid; gap: 10px; background: #000; padding: 10px; border-radius: 8px; }
-        .face { display: grid; gap: 2px; }
-        .cell { border-radius: 3px; cursor: crosshair; }
+        .content-wrapper {
+            display: flex; align-items: flex-start; gap: 30px;
+            flex-wrap: wrap; justify-content: center; width: 100%;
+        }
 
-        /* ターゲット見本のスタイル */
-        .preview-area { text-align: center; background: #222; padding: 15px; border-radius: 8px; border: 1px solid #444; }
+        .game-area {
+            display: grid;
+            grid-template-areas: ". axis-top" "axis-left board";
+            gap: 5px; align-items: start;
+        }
+
+        .side-panel { display: flex; flex-direction: column; gap: 20px; min-width: 140px; }
+        .axis-h { grid-area: axis-top; display: grid; gap: 10px; justify-items: center; }
+        .axis-v { grid-area: axis-left; display: grid; gap: 10px; align-items: center; }
+        .axis-group-h { display: grid; gap: 2px; justify-items: center; }
+        .axis-group-v { display: grid; gap: 2px; align-items: center; }
+        .coord-label { display: flex; align-items: center; justify-content: center; color: #888; font-size: 14px; font-weight: bold; }
+
+        .board-wrapper {
+            grid-area: board; background: #000; padding: 10px;
+            border-radius: 8px; overflow: hidden; position: relative; 
+        }
+        .grid-container { display: grid; gap: 10px; }
+        .face { display: grid; gap: 2px; position: relative; }
+        .cell { border-radius: 3px; cursor: grab; }
+        .cell:active { cursor: grabbing; }
+
+        /* Highlight Frame */
+        .face-highlight {
+            position: absolute; top: -4px; left: -4px; right: -4px; bottom: -4px;
+            border: 3px solid #FFF; border-radius: 6px; pointer-events: none;
+            opacity: 0; transition: opacity 0.2s; z-index: 50;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+        }
+        .face.active-frame .face-highlight { opacity: 1; }
+
+        .ghost-strip { position: absolute; display: flex; gap: 0; z-index: 100; pointer-events: none; will-change: transform; }
+
+        .preview-area { 
+            text-align: center; background: #222; padding: 15px; border-radius: 8px; border: 1px solid #444; 
+            display: flex; flex-direction: column; align-items: center;
+        }
         #preview { margin: 0 auto; }
         .p-cell { border-radius: 1px; }
 
-        /* 9色配色 */
         .c0 { background: #FFD700; } .c1 { background: #1E90FF; } .c2 { background: #800080; }
         .c3 { background: #FF8C00; } .c4 { background: #FFFFFF; } .c5 { background: #FF0000; }
         .c6 { background: #00FFFF; } .c7 { background: #008000; } .c8 { background: #FF69B4; }
 
-        .status { margin-top: 10px; font-size: 22px; font-weight: bold; color: #2ecc71; min-height: 28px; }
+        .status { margin-top: 10px; font-size: 22px; font-weight: bold; color: #2ecc71; min-height: 28px; text-align: center; }
         .hint { margin-top: 15px; color: #888; font-size: 13px; text-align: center; border: 1px dashed #444; padding: 10px; border-radius: 5px; }
+        .key-indicator { display: inline-block; padding: 2px 6px; border-radius: 4px; background: #444; font-size: 0.9em; margin: 0 2px; }
+
+        @media (max-width: 600px) {
+            .content-wrapper { flex-direction: column; align-items: center; gap: 15px; }
+            .hint { font-size: 11px; }
+            .board-wrapper { padding: 5px; }
+            #axis-top { padding: 0 5px !important; }
+            #axis-left { padding: 5px 0 !important; }
+            .grid-container, .axis-h, .axis-v { gap: 6px; } 
+            .coord-label { font-size: 10px; }
+        }
     </style>
 </head>
 <body>
-<p style="text-align : center;"><b><span style="font-size : 200%;">SLP Slide Looper Puzle</span></b></p>
+<p style="text-align : center;"><b><span style="font-size : 150%;">SLP Slide Looper Puzle</span></b><br><span style="font-size:0.8em; color:#aaa;">(v2.4 Long Press Frame)</span></p>
     <div class="header">
         <div class="mode-selector">
-            <button id="btn-easy" onclick="changeMode(2, 2)">Easy (4x4)</button>
-            <button id="btn-mid" onclick="changeMode(2, 3)">Medium (6x6)</button>
-            <button id="btn-hard" onclick="changeMode(3, 3)">Hard (9x9)</button>
+            <button id="btn-easy" onclick="changeMode(2, 2)">Easy</button>
+            <button id="btn-mid" onclick="changeMode(2, 3)">Mid</button>
+            <button id="btn-hard" onclick="changeMode(3, 3)">Hard</button>
         </div>
-               <div style="display:flex; gap:5px; align-items:center;">
-               <input type="number" id="scramble-count" value="5" min="1" max="200" style="width: 50px; background: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px;">
-               <button id="shuffle-btn" onclick="shuffle()">Scramble</button>
-               <button onclick="initBoard()">Reset</button>
-               </div>
+        
+        <div style="display:flex; gap:5px; align-items:center;">
+            <input type="number" id="scramble-count" value="15" min="1" max="200" style="width: 40px; background: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px;">
+            <button id="shuffle-btn" onclick="shuffle()">Scramble</button>
+            <button onclick="initBoard()">Reset</button>
+        </div>
     </div>
 
-    <div class="main-layout">
-        <div id="board" class="grid-container"></div>
+    <div class="content-wrapper">
+        <div class="game-area">
+            <div id="axis-top" class="axis-h"></div>
+            <div id="axis-left" class="axis-v"></div>
+            <div class="board-wrapper" id="board-wrapper">
+                <div id="board" class="grid-container"></div>
+            </div>
+        </div>
 
-        <div class="preview-area">
-            <div style="font-size: 12px; color: #aaa; margin-bottom: 10px;">TARGET VIEW</div>
-            <div id="preview"></div>
+        <div class="side-panel">
+            <div class="preview-area">
+                <div style="font-size: 12px; color: #aaa; margin-bottom: 5px;">TARGET</div>
+                <div id="preview"></div>
+            </div>
         </div>
     </div>
 
     <div id="status" class="status"></div>
-
     <div class="hint">
-        Drag: <b> Move by block units</b><br>
-        <b>Hold any modifier key (Ctrl, Shift, or Alt) </b> + Drag: <b>Move by 1 cell</b><br>
-	    <span style="font-size:11px; color:#666;">
-	        © 2025 Tamayan / ZEBRASOFT
-	    </span>
+        PC: Drag (Std) / <span class="key-indicator">Shift</span> (Frame) / <span class="key-indicator">Ctrl</span> (1-Cell)<br>
+        Mobile: Drag (Std) / <b>Long Press</b> (Frame)
     </div>
 
     <script>
-/*
- * SLP – Slide Looper Puzzle
- * © 2025 Tamayan / ZebraSoft
- * License: All rights reserved.
- * (Single-file HTML experiment)
- */
-        let subSize = 3;   
-        let gridNum = 3;   
+        let subSize = 3;    
+        let gridNum = 3;    
         let board = [];
-        let startX, startY, isDragging = false, currentMode1Cell = false;
+        let cellSizePixel = 42; 
+        let GAP_FACE = 10; 
+        const GAP_CELL = 2;  
 
-        // モード変更時のトリガー
+        // Drag State
+        let startX = 0, startY = 0;
+        let isDragging = false;
+        let moveMode = 'standard'; 
+        let activeRow = -1;
+        let activeCol = -1;
+        let dragAxis = null; 
+        let currentTranslate = 0;
+        let ghostStrips = []; 
+        let isShiftPressed = false;
+        let isCtrlPressed = false;
+        let currentHoverFace = -1;
+
+        // ★長押し管理用タイマー
+        let longPressTimer = null;
+        const LONG_PRESS_MS = 500; // 0.5秒で発火
+
+        window.addEventListener('resize', () => { initBoard(); });
+
         function changeMode(sSize, gNum) {
             subSize = sSize;
             gridNum = gNum;
-            document.getElementById('btn-easy').className = (sSize===2 && gNum===2) ? 'active-mode' : '';
-            document.getElementById('btn-mid').className = (sSize===2 && gNum===3) ? 'active-mode' : '';
-            document.getElementById('btn-hard').className = (sSize===3 && gNum===3) ? 'active-mode' : '';
+            updateButtons();
             initBoard();
         }
+        function updateButtons() {
+            document.getElementById('btn-easy').className = (subSize===2 && gridNum===2) ? 'active-mode' : '';
+            document.getElementById('btn-mid').className = (subSize===2 && gridNum===3) ? 'active-mode' : '';
+            document.getElementById('btn-hard').className = (subSize===3 && gridNum===3) ? 'active-mode' : '';
+        }
 
-        // 初期化トリガー
+        function calculateLayout() {
+            const isMobile = window.innerWidth < 600;
+            const totalSize = subSize * gridNum;
+            if (isMobile) {
+                GAP_FACE = 6; 
+                const usableWidth = window.innerWidth * 0.95 - 25; 
+                const totalGaps = (gridNum - 1) * GAP_FACE + (totalSize - gridNum) * GAP_CELL;
+                let autoSize = Math.floor((usableWidth - totalGaps) / totalSize);
+                if (autoSize > 40) autoSize = 40;
+                if (autoSize < 20) autoSize = 20; 
+                cellSizePixel = autoSize;
+            } else {
+                GAP_FACE = 10;
+                cellSizePixel = (totalSize <= 6) ? 55 : 42;
+            }
+        }
+
         function initBoard() {
+            calculateLayout();
             const totalSize = subSize * gridNum;
             board = Array.from({length: totalSize}, () => Array(totalSize).fill(0));
-            document.getElementById('status').innerText = "";
             for (let r = 0; r < totalSize; r++) {
                 for (let c = 0; c < totalSize; c++) {
                     board[r][c] = Math.floor(r / subSize) * gridNum + Math.floor(c / subSize);
                 }
             }
-            renderPreview(); // 見本を生成
-            render();        // 盤面を生成
+            document.getElementById('status').innerText = "";
+            renderPreview();
+            render();
+            renderCoordinates();
+            resetDragState();
+        }
+
+        // --- Render Functions ---
+        function renderCoordinates() {
+            const axisTop = document.getElementById('axis-top');
+            const axisLeft = document.getElementById('axis-left');
+            const boardWrap = document.getElementById('board-wrapper');
+            document.querySelectorAll('.grid-container, .axis-h, .axis-v').forEach(el => el.style.gap = `${GAP_FACE}px`);
+            
+            const padSize = (window.innerWidth < 600) ? 5 : 10;
+            axisTop.style.padding = `0 ${padSize}px`;
+            axisLeft.style.padding = `${padSize}px 0`;
+            boardWrap.style.padding = `${padSize}px`;
+            axisTop.style.gridTemplateColumns = `repeat(${gridNum}, 1fr)`;
+            axisLeft.style.gridTemplateRows = `repeat(${gridNum}, 1fr)`;
+            axisTop.innerHTML = ''; axisLeft.innerHTML = '';
+
+            let colIndex = 1;
+            for(let g=0; g<gridNum; g++) {
+                const group = document.createElement('div');
+                group.className = 'axis-group-h';
+                group.style.gridTemplateColumns = `repeat(${subSize}, ${cellSizePixel}px)`;
+                for(let s=0; s<subSize; s++) {
+                    const label = document.createElement('div');
+                    label.className = 'coord-label';
+                    label.innerText = colIndex++;
+                    label.style.width = `${cellSizePixel}px`;
+                    group.appendChild(label);
+                }
+                axisTop.appendChild(group);
+            }
+            let rowIndex = 0;
+            for(let g=0; g<gridNum; g++) {
+                const group = document.createElement('div');
+                group.className = 'axis-group-v';
+                group.style.gridTemplateRows = `repeat(${subSize}, ${cellSizePixel}px)`;
+                for(let s=0; s<subSize; s++) {
+                    const label = document.createElement('div');
+                    label.className = 'coord-label';
+                    label.innerText = String.fromCharCode(65 + rowIndex++);
+                    label.style.height = `${cellSizePixel}px`;
+                    group.appendChild(label);
+                }
+                axisLeft.appendChild(group);
+            }
         }
 
         function renderPreview() {
             const preview = document.getElementById('preview');
             preview.style.display = 'grid';
-            preview.style.gridTemplateColumns = `repeat(${gridNum}, 1fr)`;
-            preview.style.gap = '6px';
+            preview.style.gridTemplateColumns = `repeat(${gridNum}, auto)`;
+            preview.style.justifyContent = 'center';
+            preview.style.gap = '4px'; 
             preview.innerHTML = '';
-
             const pCellSize = (gridNum === 3) ? 10 : 15;
-
             for (let f = 0; f < gridNum * gridNum; f++) {
                 const pFace = document.createElement('div');
                 pFace.style.display = 'grid';
                 pFace.style.gridTemplateColumns = `repeat(${subSize}, ${pCellSize}px)`;
                 pFace.style.gap = '1px';
-                
                 for (let i = 0; i < subSize * subSize; i++) {
                     const div = document.createElement('div');
                     div.className = `p-cell c${f}`;
-                    div.style.width = `${pCellSize}px`;
-                    div.style.height = `${pCellSize}px`;
+                    div.style.width = `${pCellSize}px`; div.style.height = `${pCellSize}px`;
                     pFace.appendChild(div);
                 }
                 preview.appendChild(pFace);
             }
         }
 
-		// render関数内のセル生成部分に、タッチイベントを追加します
-		function render() {
-		    const container = document.getElementById('board');
-		    const totalSize = subSize * gridNum;
-		    const cellSize = (totalSize <= 6) ? 55 : 42;
+        function render() {
+            const container = document.getElementById('board');
+            container.style.gridTemplateColumns = `repeat(${gridNum}, 1fr)`;
+            container.innerHTML = '';
 
-		    container.style.gridTemplateColumns = `repeat(${gridNum}, 1fr)`;
-		    container.innerHTML = '';
+            for (let f = 0; f < gridNum * gridNum; f++) {
+                const faceEl = document.createElement('div');
+                faceEl.className = 'face'; 
+                faceEl.id = `face-${f}`;
+                faceEl.style.gridTemplateColumns = `repeat(${subSize}, ${cellSizePixel}px)`;
+                const highlight = document.createElement('div');
+                highlight.className = 'face-highlight';
+                faceEl.appendChild(highlight);
 
-		    for (let f = 0; f < gridNum * gridNum; f++) {
-		        const faceEl = document.createElement('div');
-		        faceEl.className = 'face';
-		        faceEl.style.gridTemplateColumns = `repeat(${subSize}, ${cellSize}px)`;
-		        const fr = Math.floor(f / gridNum) * subSize, fc = (f % gridNum) * subSize;
+                const fr = Math.floor(f / gridNum) * subSize, fc = (f % gridNum) * subSize;
 
-		        for (let r = 0; r < subSize; r++) {
-		            for (let c = 0; c < subSize; c++) {
-		                const cell = document.createElement('div');
-		                const row = fr + r, col = fc + c;
-		                cell.className = `cell c${board[row][col]}`;
-		                cell.style.width = `${cellSize}px`; cell.style.height = `${cellSize}px`;
-		                
-		                // --- マウス操作 ---
-		                cell.onmousedown = (e) => { 
-		                    handleStart(e.clientX, e.clientY, e.ctrlKey || e.shiftKey || e.altKey || e.metaKey);
-		                };
-		                cell.onmousemove = (e) => { 
-		                    if (isDragging) handleSwipe(row, col, e.clientX, e.clientY); 
-		                };
+                for (let r = 0; r < subSize; r++) {
+                    for (let c = 0; c < subSize; c++) {
+                        const cell = document.createElement('div');
+                        const row = fr + r, col = fc + c;
+                        cell.dataset.row = row; cell.dataset.col = col; cell.dataset.face = f;
+                        cell.className = `cell c${board[row][col]}`;
+                        cell.style.width = `${cellSizePixel}px`; cell.style.height = `${cellSizePixel}px`;
 
-		                // --- スマホ・タブレット操作 (Touch対応) ---
-		                cell.ontouchstart = (e) => {
-		                    // スクロールを防止
-		                    e.preventDefault();
-							const isCheat = e.touches.length >= 2; // 指が2本以上ならチートモード
-		                    const touch = e.touches[0];
-							// handleStartにチートフラグを渡す
-						    handleStart(touch.clientX, touch.clientY, isCheat);
-		                };
-		                cell.ontouchmove = (e) => {
-		                    if (isDragging) {
-		                        e.preventDefault();
-		                        const touch = e.touches[0];
-		                        handleSwipe(row, col, touch.clientX, touch.clientY);
-		                    }
-		                };
-
-		                faceEl.appendChild(cell);
-		            }
-		        }
-		        container.appendChild(faceEl);
-		    }
-		}
-
-		// 共通の開始処理を分離
-		function handleStart(x, y, isModifier) {
-		    startX = x;
-		    startY = y;
-		    isDragging = true;
-		    currentMode1Cell = isModifier;
-		}
-
-		// 終了処理（グローバル）
-		window.onmouseup = () => { isDragging = false; };
-		window.ontouchend = () => { isDragging = false; };
-
-        function handleSwipe(r, c, curX, curY) {
-            const diffX = curX - startX, diffY = curY - startY;
-            const threshold = 10;
-            if (Math.abs(diffX) > threshold || Math.abs(diffY) > threshold) {
-                const moveCount = currentMode1Cell ? 1 : subSize;
-                for(let i=0; i<moveCount; i++) {
-                    moveLogic(r, c, Math.abs(diffY) > Math.abs(diffX), (Math.abs(diffX) > Math.abs(diffY) ? diffX < 0 : diffY < 0));
+                        cell.onmousedown = (e) => handleStart(row, col, f, e.clientX, e.clientY, 'mouse', e);
+                        cell.ontouchstart = (e) => handleStart(row, col, f, e.touches[0].clientX, e.touches[0].clientY, 'touch', e);
+                        cell.onmouseenter = () => { currentHoverFace = f; updateFrameHighlight(f); };
+                        
+                        faceEl.appendChild(cell);
+                    }
                 }
-                isDragging = false; render();
-                if (checkWin()) document.getElementById('status').innerText = "COMPLETE!";
+                container.appendChild(faceEl);
+            }
+            updateFrameHighlight(currentHoverFace);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Shift') isShiftPressed = true;
+            if (e.key === 'Control') isCtrlPressed = true;
+            updateFrameHighlight(currentHoverFace);
+        });
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift') isShiftPressed = false;
+            if (e.key === 'Control') isCtrlPressed = false;
+            if (!isShiftPressed) clearFrameHighlights();
+        });
+
+        function updateFrameHighlight(faceId) {
+            clearFrameHighlights();
+            // ハイライト条件: PCでShift中 または スマホで長押し発動(moveMode=='frame')
+            if ((isShiftPressed || moveMode === 'frame') && faceId !== -1) {
+                const faceEl = document.getElementById(`face-${faceId}`);
+                if (faceEl) faceEl.classList.add('active-frame');
             }
         }
+        function clearFrameHighlights() {
+            document.querySelectorAll('.face').forEach(el => el.classList.remove('active-frame'));
+        }
+
+        // --- Logic Core ---
+
+        function handleStart(r, c, f, x, y, type, event) {
+            if (isDragging) return;
+            isDragging = true;
+            startX = x; startY = y;
+            activeRow = r; activeCol = c;
+            currentHoverFace = f;
+            
+            // 初期モード設定
+            if (type === 'mouse') {
+                if (event.ctrlKey) moveMode = 'cheat';
+                else if (event.shiftKey) moveMode = 'frame';
+                else moveMode = 'standard';
+                // PCでFrameモードなら即座にハイライト
+                updateFrameHighlight(f);
+            } else {
+                // Mobile: デフォルトはStandard、長押しでFrameへ変化
+                moveMode = 'standard';
+                
+                // ★長押しタイマー開始
+                if (longPressTimer) clearTimeout(longPressTimer);
+                longPressTimer = setTimeout(() => {
+                    // 長押し成功時の処理
+                    moveMode = 'frame';
+                    updateFrameHighlight(f); // 枠を光らせる
+                    if (navigator.vibrate) navigator.vibrate(50); // バイブレーション
+                }, LONG_PRESS_MS);
+            }
+
+            dragAxis = null;
+            currentTranslate = 0;
+            clearGhosts();
+        }
+
+        function handleMove(curX, curY) {
+            if (!isDragging) return;
+            const diffX = curX - startX;
+            const diffY = curY - startY;
+
+            // まだ軸が決まっていない（移動開始判定前）
+            if (!dragAxis) {
+                // 一定以上動いたらドラッグ確定
+                if (Math.abs(diffX) > 5 || Math.abs(diffY) > 5) {
+                    
+                    // ★移動したら長押しタイマーはキャンセル
+                    if (longPressTimer) {
+                        clearTimeout(longPressTimer);
+                        longPressTimer = null;
+                    }
+
+                    if (Math.abs(diffX) > Math.abs(diffY)) {
+                        dragAxis = 'h';
+                        createGhosts('h');
+                    } else {
+                        dragAxis = 'v';
+                        createGhosts('v');
+                    }
+                } else {
+                    return; // 遊び範囲内
+                }
+            }
+
+            // ドラッグ処理
+            currentTranslate = (dragAxis === 'h') ? diffX : diffY;
+            const transform = (dragAxis === 'h') ? `translateX(${currentTranslate}px)` : `translateY(${currentTranslate}px)`;
+            ghostStrips.forEach(strip => {
+                strip.style.transform = transform;
+            });
+        }
+
+        function createGhosts(axis) {
+            let targetIndices = [];
+            
+            if (moveMode === 'frame') {
+                // 枠移動 (3列/3行)
+                if (axis === 'h') {
+                    const startRow = Math.floor(activeRow / subSize) * subSize;
+                    for (let i = 0; i < subSize; i++) targetIndices.push(startRow + i);
+                } else {
+                    const startCol = Math.floor(activeCol / subSize) * subSize;
+                    for (let i = 0; i < subSize; i++) targetIndices.push(startCol + i);
+                }
+            } else {
+                // Standard/Cheat (1列/1行)
+                if (axis === 'h') targetIndices.push(activeRow);
+                else targetIndices.push(activeCol);
+            }
+
+            targetIndices.forEach(idx => {
+                createSingleGhostStrip(axis, idx);
+            });
+        }
+
+        function createSingleGhostStrip(axis, targetIdx) {
+            const wrapper = document.getElementById('board-wrapper');
+            const strip = document.createElement('div');
+            strip.className = 'ghost-strip';
+            
+            const cells = [];
+            document.querySelectorAll('.cell').forEach(c => {
+                const r = parseInt(c.dataset.row);
+                const col = parseInt(c.dataset.col);
+                if ((axis === 'h' && r === targetIdx) || (axis === 'v' && col === targetIdx)) {
+                    cells.push({ el: c, sortKey: (axis === 'h' ? col : r) });
+                }
+            });
+            if (cells.length === 0) return;
+            cells.sort((a, b) => a.sortKey - b.sortKey);
+
+            const createSet = () => {
+                const setDiv = document.createElement('div');
+                setDiv.style.display = (axis === 'h') ? 'flex' : 'grid';
+                setDiv.style.gap = '2px';
+                if (axis === 'v') setDiv.style.gridTemplateColumns = '1fr';
+                cells.forEach((item, idx) => {
+                    const clone = item.el.cloneNode(true);
+                    if (idx > 0 && idx % subSize === 0) {
+                        const gapSize = GAP_FACE - GAP_CELL; 
+                        if (axis === 'h') clone.style.marginLeft = `${gapSize}px`;
+                        else clone.style.marginTop = `${gapSize}px`;
+                    }
+                    setDiv.appendChild(clone);
+                });
+                return setDiv;
+            };
+            const set1 = createSet(); const set2 = createSet(); const set3 = createSet(); 
+
+            if (axis === 'h') {
+                strip.style.flexDirection = 'row';
+                strip.style.gap = `${GAP_FACE}px`;
+                const rect = cells[0].el.getBoundingClientRect();
+                const wrapRect = wrapper.getBoundingClientRect();
+                strip.style.top = (rect.top - wrapRect.top) + 'px';
+                strip.style.left = `-${wrapRect.width + 10}px`;
+            } else {
+                strip.style.flexDirection = 'column';
+                strip.style.gap = `${GAP_FACE}px`;
+                const rect = cells[0].el.getBoundingClientRect();
+                const wrapRect = wrapper.getBoundingClientRect();
+                strip.style.left = (rect.left - wrapRect.left) + 'px';
+                strip.style.top = `-${wrapRect.height + 10}px`;
+            }
+            strip.appendChild(set1); strip.appendChild(set2); strip.appendChild(set3);
+            wrapper.appendChild(strip);
+            ghostStrips.push(strip);
+            cells.forEach(item => item.el.style.opacity = '0');
+        }
+
+        function endDrag() {
+            if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+            if (!isDragging) return;
+            if (!dragAxis || ghostStrips.length === 0) {
+                resetDragState();
+                return;
+            }
+
+            const faceW = (cellSizePixel * subSize) + (GAP_CELL * (subSize - 1));
+            const blockDist = faceW + GAP_FACE;
+            const singleDist = cellSizePixel + GAP_CELL;
+
+            const unitDist = (moveMode === 'cheat') ? singleDist : blockDist;
+
+            const moveSteps = Math.round(currentTranslate / unitDist);
+            const targetPx = moveSteps * unitDist;
+
+            ghostStrips.forEach(strip => {
+                strip.style.transition = 'transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1)';
+                strip.style.transform = (dragAxis === 'h') ? `translateX(${targetPx}px)` : `translateY(${targetPx}px)`;
+            });
+
+            setTimeout(() => {
+                if (moveSteps !== 0) {
+                    const isVertical = (dragAxis === 'v');
+                    const isReverse = (moveSteps < 0);
+                    const loopPerStep = (moveMode === 'cheat') ? 1 : subSize;
+                    const totalLoops = Math.abs(moveSteps) * loopPerStep;
+                    const linesToMove = (moveMode === 'frame') ? subSize : 1;
+                    const startRow = Math.floor(activeRow / subSize) * subSize;
+                    const startCol = Math.floor(activeCol / subSize) * subSize;
+
+                    for(let l = 0; l < linesToMove; l++) {
+                        let targetR = activeRow;
+                        let targetC = activeCol;
+                        if (moveMode === 'frame') {
+                            if (dragAxis === 'h') targetR = startRow + l;
+                            else targetC = startCol + l;
+                        }
+                        for(let i=0; i<totalLoops; i++) {
+                            moveLogic(targetR, targetC, isVertical, isReverse);
+                        }
+                    }
+                    if (checkWin()) document.getElementById('status').innerText = "COMPLETE!";
+                }
+                resetDragState();
+            }, 210);
+        }
+
+        function resetDragState() {
+            if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+            clearGhosts();
+            render(); 
+            renderCoordinates();
+            if(window.innerWidth >= 600) updateFrameHighlight(currentHoverFace);
+            else clearFrameHighlights();
+            activeRow = -1; activeCol = -1; dragAxis = null; currentTranslate = 0; isDragging = false;
+        }
+        function clearGhosts() { ghostStrips.forEach(el => el.remove()); ghostStrips = []; }
 
         function moveLogic(r, c, isVertical, isReverse) {
             const totalSize = subSize * gridNum;
@@ -227,26 +548,21 @@
             }
         }
 
-		function shuffle() {
-		    const totalSize = subSize * gridNum;
-		    const count = parseInt(document.getElementById('scramble-count').value) || 20;
-		    document.getElementById('status').innerText = "";
-		    
-		    for (let i = 0; i < count; i++) {
-		        // ランダムな行または列を選択
-		        const r = Math.floor(Math.random() * totalSize);
-		        const c = Math.floor(Math.random() * totalSize);
-		        const isVertical = Math.random() > 0.5;
-		        const isReverse = Math.random() > 0.5;
-
-		        // 【ここが重要】1コマではなく、ブロックのサイズ分だけ一気に動かす
-		        // これにより、パズルが「ブロック（面）」の単位を保ったまま崩れる
-		        for(let j = 0; j < subSize; j++) {
-		            moveLogic(r, c, isVertical, isReverse);
-		        }
-		    }
-		    render();
-		}
+        function shuffle() {
+            const totalSize = subSize * gridNum;
+            const count = parseInt(document.getElementById('scramble-count').value) || 20;
+            document.getElementById('status').innerText = "";
+            for (let i = 0; i < count; i++) {
+                const r = Math.floor(Math.random() * totalSize);
+                const c = Math.floor(Math.random() * totalSize);
+                const isVertical = Math.random() > 0.5;
+                const isReverse = Math.random() > 0.5;
+                for(let j = 0; j < subSize; j++) {
+                    moveLogic(r, c, isVertical, isReverse);
+                }
+            }
+            render();
+        }
         function checkWin() {
             for (let f = 0; f < gridNum * gridNum; f++) {
                 const fr = Math.floor(f / gridNum) * subSize, fc = (f % gridNum) * subSize;
@@ -258,6 +574,14 @@
             }
             return true;
         }
+
+        window.onmousemove = (e) => handleMove(e.clientX, e.clientY);
+        window.onmouseup = () => endDrag();
+        window.ontouchmove = (e) => {
+            if(isDragging) e.preventDefault();
+            handleMove(e.touches[0].clientX, e.touches[0].clientY);
+        };
+        window.ontouchend = () => endDrag();
 
         changeMode(2, 3);
     </script>
