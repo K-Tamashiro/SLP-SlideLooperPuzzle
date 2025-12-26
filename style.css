@@ -1,0 +1,260 @@
+/* --- Base Styles --- */
+body { 
+    background: #121212; 
+    display: flex;
+    flex-direction: column;
+    align-items: center; 
+    color: white;
+    font-family: sans-serif;
+    margin: 0;
+    padding: 10px; 
+    user-select: none;
+    touch-action: none;
+    overflow-x: hidden; 
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.mode-selector {
+    display: flex;
+    gap: 5px;
+}
+
+button {
+    padding: 8px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    background: #333;
+    color: white;
+    transition: 0.2s;
+}
+
+.active-mode {
+    background: #d35400 !important;
+    font-weight: bold;
+}
+
+#shuffle-btn {
+    background: #27ae60;
+    font-weight: bold;
+}
+
+.content-wrapper {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+}
+
+/* --- Game Area --- */
+.game-area {
+    display: grid;
+    grid-template-areas:
+        ". axis-top"
+        "axis-left board";
+    gap: 5px;
+    align-items: start;
+}
+
+.side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 140px;
+}
+
+.axis-h {
+    grid-area: axis-top;
+    display: grid;
+    gap: 10px;
+    justify-items: center;
+}
+
+.axis-v {
+    grid-area: axis-left;
+    display: grid;
+    gap: 10px;
+    align-items: center;
+}
+
+.axis-group-h {
+    display: grid;
+    gap: 2px;
+    justify-items: center;
+}
+
+.axis-group-v {
+    display: grid;
+    gap: 2px;
+    align-items: center;
+}
+
+.coord-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* 既存の .grid-container を修正 */
+.board-wrapper {
+    grid-area: board;
+    background: #000;
+    padding: 6px;
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+    /* コンテンツの大きさに合わせる */
+    width: fit-content; 
+    margin: 0 auto;
+}
+
+.grid-container {
+    display: grid;
+    /* セルサイズと隙間の合計値に厳密に合わせる */
+    width: max-content; 
+    margin: 0 auto;
+}
+
+.face {
+    display: grid;
+    gap: 2px;
+    position: relative;
+}
+
+.cell {
+    border-radius: 3px;
+    cursor: grab;
+}
+
+.cell:active {
+    cursor: grabbing;
+}
+
+/* --- Highlight Frame --- */
+.face-highlight {
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border: 3px solid #FFF;
+    border-radius: 6px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 50;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+}
+
+.face.active-frame .face-highlight {
+    opacity: 1;
+}
+
+.ghost-strip {
+    position: absolute;
+    display: flex;
+    gap: 0;
+    z-index: 100;
+    pointer-events: none;
+    will-change: transform;
+}
+
+/* --- Target Preview --- */
+.preview-area { 
+    text-align: center;
+    background: #222;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #444;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.target-stack {
+    position: relative;
+    display: inline-block;
+}
+
+#preview {
+    position: relative;
+}
+
+.p-cell {
+    border-radius: 1px;
+}
+
+/* --- Colors --- */
+.c0 { background: #FFD700; }
+.c1 { background: #1E90FF; }
+.c2 { background: #800080; }
+.c3 { background: #FF8C00; }
+.c4 { background: #FFFFFF; }
+.c5 { background: #FF0000; }
+.c6 { background: #00FFFF; }
+.c7 { background: #008000; }
+.c8 { background: #FF69B4; }
+
+/* --- Hint --- */
+.hint {
+    margin-top: 15px;
+    color: #888;
+    font-size: 13px;
+    text-align: center;
+    border: 1px dashed #444;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.key-indicator {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #444;
+    font-size: 0.9em;
+    margin: 0 2px;
+}
+
+/* --- Status Overlay --- */
+.status-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(46, 204, 113, 0.8);
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    /* 初期値は必ず none に。show クラスがある時だけ flex にする */
+    display: none !important; 
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    border-radius: 6px;
+    pointer-events: none;
+}
+
+.status-overlay.show {
+    display: flex !important;
+}
+
+@media (max-width: 600px){
+    .target-stack { position: relative !important; display: inline-block !important; }
+}
