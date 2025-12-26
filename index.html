@@ -10,17 +10,20 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <p style="text-align : center;"><b><span style="font-size : 150%;">SLP Slide Looper Puzzle v1.0</span></b></p>
-    
-    <div class="menu-panel">
+		<p style="text-align : center; cursor: pointer;">
+		    <b onclick="toggleMenu()">
+		        <span style="font-size : 150%;">SLP Slide Looper Puzzle v1.0</span>
+		    </b>
+		</p>    
+	<div class="menu-panel">
         <div class="mode-selector">
             <button id="btn-easy" onclick="changeMode(2, 2)">Easy</button>
             <button id="btn-mid" onclick="changeMode(2, 3)">Mid</button>
             <button id="btn-hard" onclick="changeMode(3, 3)">Hard</button>
         </div>
         
-        <div style="display:flex; gap:5px; align-items:center;">
-            <input type="number" id="scramble-count" value="15" min="1" max="200" style="width: 40px; background: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px;">
+        <div class="action-group">
+            <input type="number" id="scramble-count" value="15" min="1" max="200">
             <button id="shuffle-btn" onclick="shuffle()">Scramble</button>
             <button onclick="initBoard()">Reset</button>
         </div>

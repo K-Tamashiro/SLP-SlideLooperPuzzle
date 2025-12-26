@@ -14,6 +14,13 @@ const LONG_PRESS_MS = 500;
 window.targetColors = [];
 
 window.addEventListener('DOMContentLoaded', () => {
+    const title = document.querySelector('p[onclick]');
+    if (title) {
+        // スマホ向けに直接リスナーを追加
+        title.addEventListener('touchstart', (e) => {
+            toggleMenu();
+        }, { passive: true });
+    }
     initBoard();
 });
 
@@ -28,37 +35,37 @@ function updateButtons() {
     if (btnMid) btnMid.className = (subSize === 2 && gridNum === 3) ? 'active-mode' : '';
     if (btnHard) btnHard.className = (subSize === 3 && gridNum === 3) ? 'active-mode' : '';
 }
+
+function toggleMenu() {
+    const menu = document.querySelector('.menu-panel');
+    if (menu) {
+        // classList.toggle で 'hidden' クラスの有無を切り替え
+        menu.classList.toggle('hidden');
+    }
+}
+
 function calculateLayout() {
     const isMobile = window.innerWidth < 600;
     const totalSize = subSize * gridNum;
     
-    // PC/スマホ共通：利用可能な最大幅を取得
+    // スマホ時は座標表示スペース(左右計60px)を確保しつつ、利用可能幅を算出
     const usableWidth = isMobile 
-        ? Math.min(window.innerWidth, document.documentElement.clientWidth) - 30 
+        ? Math.min(window.innerWidth, document.documentElement.clientWidth) - 60 
         : 500;
 
-    // --- GAP_FACE（ブロック間の隙間）の決定 ---
-    // 2x2（Easy）ならセルの隙間(2px)の2倍の 4px
-    // 3x3（Mid/Hard）なら 6px 程度に固定
     GAP_FACE = (gridNum <= 2) ? 4 : 6; 
-
     const totalFaceGaps = (gridNum - 1) * GAP_FACE;
     const totalCellGaps = (totalSize - gridNum) * GAP_CELL;
 
-    // --- cellSizePixel の計算 ---
-    // 利用可能幅から隙間の総計を引き、セル数で割る
     cellSizePixel = Math.floor((usableWidth - totalFaceGaps - totalCellGaps) / totalSize);
 
     if (isMobile) {
-        // スマホ：視認性を考慮した範囲
-        cellSizePixel = Math.max(38, Math.min(70, cellSizePixel));
+        // Hardモード(totalSize=9)で画面を突き抜けないよう、最大値を厳格に制限
+        const maxCell = (totalSize > 6) ? 32 : 60;
+        cellSizePixel = Math.max(25, Math.min(maxCell, cellSizePixel));
     } else {
-        // PC：大きくなりすぎないよう 60px を上限にする
-        cellSizePixel = Math.max(40, Math.min(60, cellSizePixel));
-        
-        // PC版で隙間が広がりすぎるのを防ぐため、計算後に GAP_FACE を再調整
-        // セルが大きい時は隙間を 6px に、小さい時は 4px に固定
-        GAP_FACE = (cellSizePixel > 50) ? 6 : 4;
+        cellSizePixel = Math.max(40, Math.min(55, cellSizePixel));
+        GAP_FACE = (gridNum <= 2) ? 6 : 8;
     }
 }
 
