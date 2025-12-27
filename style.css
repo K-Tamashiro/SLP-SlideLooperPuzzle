@@ -609,3 +609,15 @@ min-width: 0;
 #searchlight-overlay.fx-active {
     display: block !important;
 }
+/* style.css */
+
+/* 回転アニメーションの定義 */
+@keyframes board-rotate-90 {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(90deg); }
+}
+
+/* アニメーション適用用のクラス */
+.board-rotating {
+    animation: board-rotate-90 0.4s ease-in-out;
+}

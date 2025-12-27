@@ -467,20 +467,37 @@ function moveLogic(idx, isV, isRev) {
     }
 }
 
-function rotateBoard() {
-    if (rotateTimerId) { clearInterval(rotateTimerId); rotateTimerId = null; }
-    updateFrameProgress('rotate', 0);
+/* script.js */
 
-    const totalSize = subSize * gridNum;
-    let newBoard = Array.from({length: totalSize}, () => []);
-    for (let r = 0; r < totalSize; r++) {
-        for (let c = 0; c < totalSize; c++) {
-            newBoard[c][totalSize - 1 - r] = board[r][c];
+function rotateBoard() {
+    const wrapper = document.getElementById('board-wrapper');
+    
+    // 1. 物理的な回転演出を開始
+    wrapper.classList.add('board-rotating');
+
+    // 2. アニメーション（0.4s）が終わるタイミングでデータの中身を書き換える
+    setTimeout(() => {
+        // --- 内部ロジック実行 ---
+        if (rotateTimerId) { clearInterval(rotateTimerId); rotateTimerId = null; }
+        updateFrameProgress('rotate', 0);
+
+        const totalSize = subSize * gridNum;
+        let newBoard = Array.from({length: totalSize}, () => []);
+        for (let r = 0; r < totalSize; r++) {
+            for (let c = 0; c < totalSize; c++) {
+                newBoard[c][totalSize - 1 - r] = board[r][c];
+            }
         }
-    }
-    board = newBoard;
-    render();
-    checkComplete();
+        board = newBoard;
+
+        // 3. 描画更新
+        render();
+        checkComplete();
+
+        // 4. 回転クラスを削除（位置を0度に戻すが、中身が既に回っているので見た目は維持される）
+        wrapper.classList.remove('board-rotating');
+        
+    }, 400); // CSSの 0.4s と同期
 }
 
 function recordMove(lineIdx, dir, steps, mode) {
