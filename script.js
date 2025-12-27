@@ -726,3 +726,86 @@ function executeRotateLoop() {
         }
     }, interval);
 }
+
+/* script.js */
+window.isSearchlightMode = false;
+
+function toggleSearchlight() {
+    window.isSearchlightMode = !window.isSearchlightMode;
+    const btn = document.querySelector('button[onclick="toggleSearchlight()"]');
+    if (btn) btn.classList.toggle('active-toggle', window.isSearchlightMode);
+    
+    // モードオフ時はレイヤーを隠す
+    if (!window.isSearchlightMode) {
+        document.getElementById('searchlight-overlay').classList.remove('searchlight-active');
+    }
+}
+
+/**
+ * サーチライト座標更新
+ */
+function updateSearchlight(x, y) {
+    if (!window.isSearchlightMode) return;
+    const overlay = document.getElementById('searchlight-overlay');
+    if (!overlay) return;
+
+    // タイマー停止中はオープン
+    if (!timerId) {
+        overlay.classList.remove('fx-active');
+        return;
+    }
+
+    const wrapper = document.getElementById('board-wrapper');
+    const rect = wrapper.getBoundingClientRect();
+    const relX = x - rect.left;
+    const relY = y - rect.top;
+
+    overlay.classList.add('fx-active'); // 表示
+    
+    const mask = `radial-gradient(circle 80px at ${relX}px ${relY}px, transparent 95%, black 100%)`;
+    overlay.style.webkitMaskImage = mask;
+    overlay.style.maskImage = mask;
+}function updateSearchlight(x, y) {
+    if (!window.isSearchlightMode) return;
+    const overlay = document.getElementById('searchlight-overlay');
+    if (!overlay) return;
+
+    // タイマー停止中はオープン
+    if (!timerId) {
+        overlay.classList.remove('fx-active');
+        return;
+    }
+
+    const wrapper = document.getElementById('board-wrapper');
+    const rect = wrapper.getBoundingClientRect();
+    const relX = x - rect.left;
+    const relY = y - rect.top;
+
+    overlay.classList.add('fx-active'); // 表示
+    
+    const mask = `radial-gradient(circle 80px at ${relX}px ${relY}px, transparent 95%, black 100%)`;
+    overlay.style.webkitMaskImage = mask;
+    overlay.style.maskImage = mask;
+}
+
+// 既存のイベントハンドラにフックを追加
+const originalHandleStart = handleStart;
+handleStart = function(r, c, f, x, y, type, event) {
+    originalHandleStart(r, c, f, x, y, type, event);
+    updateSearchlight(x, y);
+};
+
+const originalHandleMove = handleMove;
+handleMove = function(curX, curY) {
+    originalHandleMove(curX, curY);
+    updateSearchlight(curX, curY);
+};
+
+// ドラッグ終了（離した時）に暗幕を非表示にする
+const originalEndDrag = endDrag;
+window.endDrag = function() {
+    originalEndDrag();
+    if (window.isSearchlightMode) {
+        document.getElementById('searchlight-overlay').classList.remove('searchlight-active');
+    }
+};

@@ -568,7 +568,7 @@ min-width: 0;
 
 /* セルの同色フラッシュ：輝度とエフェクトの減衰版 */
 .cell.flash-active {
-    z-index: 10;
+    z-index: 950;
     /* 枠線を白から少しグレー（#ddd）へ、太さを3pxから2pxへ */
     outline: 2px solid #ddd;
     outline-offset: -2px;
@@ -589,4 +589,23 @@ min-width: 0;
     background-color: rgba(255, 0, 0, 0.4) !important;
     box-shadow: 0 0 10px #ff0000 !important;
     border-color: #ff0000 !important;
+}
+
+/* 既存の .searchlight-layer や .searchlight-active は削除し、以下を追記 */
+
+#searchlight-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(0, 0, 0, 0.95); /* 暗幕 */
+    z-index: 900; /* セルの上、赤枠の下 */
+    pointer-events: none;
+    display: none; /* JSの .fx-active クラスで表示制御 */
+    
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+}
+
+/* 稼働中（タイマーON ＋ ドラッグ中）の表示 */
+#searchlight-overlay.fx-active {
+    display: block !important;
 }
