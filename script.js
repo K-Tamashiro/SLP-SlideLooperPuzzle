@@ -10,6 +10,8 @@ let activeRow = -1, activeCol = -1, dragAxis = null, currentTranslate = 0;
 let ghostStrips = [], isShiftPressed = false, isCtrlPressed = false, currentHoverFace = -1;
 let longPressTimer = null;
 const LONG_PRESS_MS = 500;
+// ターゲット色を保持するグローバル変数
+let targetBoard = null;
 
 window.targetColors = [];
 
@@ -24,9 +26,40 @@ window.addEventListener('DOMContentLoaded', () => {
     initBoard();
 });
 
+function handleModeChange(mode) {
+    switch (mode) {
+        case 'easy':
+            changeMode(2, 2);
+            break;
+        case 'mid':
+            changeMode(2, 3);
+            break;
+        case 'hard':
+            changeMode(3, 3);
+            break;
+        case 'advance':
+            // Advance: 2x2のブロックが 4x4(16個) 並ぶ 8x8盤面
+            changeMode(2, 4); 
+            break;
+    }
+}
+
+function copyCurrentToTarget() {
+    targetBoard = JSON.parse(JSON.stringify(board));
+    renderPreview();
+    
+    // コピーした瞬間は「これから解く目標」に設定するため、判定を強制的に隠す
+    const statusBoard = document.getElementById('status-board');
+    const statusPreview = document.getElementById('status-preview');
+    if (statusBoard) statusBoard.classList.remove('show');
+    if (statusPreview) statusPreview.classList.remove('show');
+}
+
+// 既存の changeMode を更新（ボタンのクラス操作を削除し、セレクトボックスの状態を維持）
 function changeMode(sSize, gNum) {
-    subSize = sSize; gridNum = gNum;
-    updateButtons(); initBoard();
+    subSize = sSize; 
+    gridNum = gNum;
+    initBoard(true);
 }
 
 function updateButtons() {
@@ -69,21 +102,38 @@ function calculateLayout() {
     }
 }
 
-function initBoard() {
+function initBoard(resetTarget = false) {
     calculateLayout();
-    const totalSize = subSize * gridNum, numFaces = gridNum * gridNum;
-    window.targetColors = Array.from({length: numFaces}, (_, i) => i);
-    board = Array.from({length: totalSize}, (_, r) => 
-        Array.from({length: totalSize}, (_, c) => Math.floor(r / subSize) * gridNum + Math.floor(c / subSize))
-    );
+    const totalSize = subSize * gridNum;
 
-    // 先にステータスをリセットして非表示にする
-    resetStatus(); 
+    if (resetTarget || !targetBoard) {
+        targetBoard = [];
+        for (let r = 0; r < totalSize; r++) {
+            targetBoard[r] = [];
+            for (let c = 0; c < totalSize; c++) {
+                targetBoard[r][c] = Math.floor(r / subSize) * gridNum + Math.floor(c / subSize);
+            }
+        }
+    }
+
+    board = [];
+    for (let r = 0; r < totalSize; r++) {
+        board[r] = [];
+        for (let c = 0; c < totalSize; c++) {
+            board[r][c] = Math.floor(r / subSize) * gridNum + Math.floor(c / subSize);
+        }
+    }
     
+    render();
     renderPreview(); 
-    render(); 
-    renderCoordinates(); 
-    resetDragState();
+    renderCoordinates();
+    
+    // リセット時は盤面もターゲットも「完成状態」になるため、
+    // 意図的に判定を隠す（Scramble後に判定が出るようにする）
+    const statusBoard = document.getElementById('status-board');
+    const statusPreview = document.getElementById('status-preview');
+    if (statusBoard) statusBoard.classList.remove('show');
+    if (statusPreview) statusPreview.classList.remove('show');
 }
 
 function renderCoordinates() {
@@ -107,16 +157,27 @@ function renderCoordinates() {
 }
 
 function renderPreview() {
-    const preview = document.getElementById('preview'); if (!preview) return;
-    preview.style.display = 'grid'; preview.style.gridTemplateColumns = `repeat(${gridNum}, auto)`; preview.style.gap = '4px'; preview.innerHTML = '';
-    const pSize = (gridNum === 3) ? 10 : 15;
-    for (let f = 0; f < gridNum * gridNum; f++) {
-        const face = document.createElement('div'); face.style.display = 'grid'; face.style.gridTemplateColumns = `repeat(${subSize}, ${pSize}px)`; face.style.gap = '1px';
-        const colorClass = `c${window.targetColors[f]}`;
-        for (let i = 0; i < subSize * subSize; i++) {
-            const d = document.createElement('div'); d.className = `p-cell ${colorClass}`; d.style.width = d.style.height = `${pSize}px`; face.appendChild(d);
+    const container = document.getElementById('preview');
+    if (!container || !targetBoard) return;
+    
+    const totalSize = subSize * gridNum;
+    // 1セルあたりのサイズを12px程度に固定してグリッドを構成
+    container.style.display = 'grid';
+    container.style.gridTemplateColumns = `repeat(${totalSize}, 12px)`;
+    container.style.gridTemplateRows = `repeat(${totalSize}, 12px)`;
+    container.style.gap = '1px';
+    container.innerHTML = '';
+
+    for (let r = 0; r < totalSize; r++) {
+        for (let c = 0; c < totalSize; c++) {
+            const cell = document.createElement('div');
+            // クラス名は既存の c0, c1... を使用
+            cell.className = `preview-cell c${targetBoard[r][c]}`;
+            cell.style.width = '12px';
+            cell.style.height = '12px';
+            cell.style.borderRadius = '1px';
+            container.appendChild(cell);
         }
-        preview.appendChild(face);
     }
 }
 
@@ -248,16 +309,86 @@ function moveLogic(r, c, isV, isRev) {
     }
 }
 
+/**
+ * 2. Scramble
+ */
 function shuffle() {
-    const t = subSize * gridNum, count = parseInt(document.getElementById('scramble-count').value) || 20;
-    resetStatus();
+    const totalSize = subSize * gridNum;
+    const count = parseInt(document.getElementById('scramble-count').value) || 20;
+
+    // 盤面：積み上げスクランブル（行列単位）
     for (let i = 0; i < count; i++) {
-        const isV = Math.random() > 0.5, isRev = Math.random() > 0.5, lineIdx = Math.floor(Math.random() * t);
-        for (let j = 0; j < subSize; j++) moveLogic(isV ? 0 : lineIdx, isV ? lineIdx : 0, isV, isRev);
+        const isV = Math.random() > 0.5;
+        const isRev = Math.random() > 0.5;
+        const lineIdx = Math.floor(Math.random() * totalSize);
+        // 行列ループを維持
+        for (let j = 0; j < subSize; j++) {
+            executeMoveLogic(board, isV, lineIdx, isRev);
+        }
     }
-    randomizeTargetByMoves(20);
+
+    // ターゲット：リセット後に枠単位（ブロック）で移動
+    randomizeTargetByFaceMoves(20);
+
     render();
+    renderPreview();
     checkComplete();
+}
+
+/**
+ * ターゲット専用：枠単位の物理移動
+ */
+function randomizeTargetByFaceMoves(moves) {
+    const totalSize = subSize * gridNum;
+    
+    // 強制リセット
+    targetBoard = Array.from({length: totalSize}, (_, r) => 
+        Array.from({length: totalSize}, (_, c) => 
+            Math.floor(r / subSize) * gridNum + Math.floor(c / subSize)
+        )
+    );
+
+    for (let i = 0; i < moves; i++) {
+        const isV = Math.random() > 0.5;
+        const isRev = Math.random() > 0.5;
+        // 枠の起点インデックス
+        const faceIdx = Math.floor(Math.random() * gridNum) * subSize;
+
+        // 枠幅(subSize)を、枠距離(subSize)分スライドさせる
+        // 1コマ移動が発生する余地を物理的に排除
+        for (let step = 0; step < subSize; step++) { // 移動距離
+            for (let line = 0; line < subSize; line++) { // 移動幅
+                executeMoveLogic(targetBoard, isV, faceIdx + line, isRev);
+            }
+        }
+    }
+}
+
+/**
+ * 共通移動ロジック（行列ループ移動）
+ */
+function executeMoveLogic(arr, isV, idx, isRev) {
+    const totalSize = subSize * gridNum;
+    const dir = isRev ? -1 : 1;
+    if (isV) {
+        const colData = [];
+        for (let r = 0; r < totalSize; r++) colData.push(arr[r][idx]);
+        for (let r = 0; r < totalSize; r++) {
+            arr[(r + dir + totalSize) % totalSize][idx] = colData[r];
+        }
+    } else {
+        const rowData = [...arr[idx]];
+        for (let c = 0; c < totalSize; c++) {
+            arr[idx][(c + dir + totalSize) % totalSize] = rowData[c];
+        }
+    }
+}
+
+function hideComplete() {
+    const sb = document.getElementById('status-board');
+    const sp = document.getElementById('status-preview');
+    if (sb) sb.classList.remove('show');
+    if (sp) sp.classList.remove('show');
 }
 
 function randomizeTargetByMoves(steps) {
@@ -277,22 +408,32 @@ function randomizeTargetByMoves(steps) {
 }
 
 function checkComplete() {
+    if (!targetBoard) return;
+
     const totalSize = subSize * gridNum;
-    for (let f = 0; f < gridNum * gridNum; f++) {
-        const fr = Math.floor(f / gridNum) * subSize;
-        const fc = (f % gridNum) * subSize;
-        const target = window.targetColors[f];
-        for (let r = 0; r < subSize; r++) {
-            for (let c = 0; c < subSize; c++) {
-                if (board[fr + r][fc + c] !== target) return false;
+    let isComplete = true;
+
+    for (let r = 0; r < totalSize; r++) {
+        for (let c = 0; c < totalSize; c++) {
+            // 固定の計算式ではなく、targetBoard の値と比較
+            if (board[r][c] !== targetBoard[r][c]) {
+                isComplete = false;
+                break;
             }
         }
+        if (!isComplete) break;
     }
 
-    // 両方のオーバーレイを表示
-    document.getElementById('status-board')?.classList.add('show');
-    document.getElementById('status-preview')?.classList.add('show');
-    return true;
+    const statusBoard = document.getElementById('status-board');
+    const statusPreview = document.getElementById('status-preview');
+
+    if (isComplete) {
+        if (statusBoard) statusBoard.classList.add('show');
+        if (statusPreview) statusPreview.classList.add('show');
+    } else {
+        if (statusBoard) statusBoard.classList.remove('show');
+        if (statusPreview) statusPreview.classList.remove('show');
+    }
 }
 
 function resetStatus() { 

@@ -45,6 +45,15 @@ p[onclick] {
     gap: 5px;
 }
 
+#mode-select {
+    font-size: 14px;
+    min-width: 160px;
+    outline: none;
+}
+
+#mode-select:focus {
+    border-color: #d35400;
+}
 .action-group {
     display: flex;
     gap: 5px;
@@ -246,18 +255,24 @@ min-width: 0;
     border-radius: 1px;
 }
 
-/* --- Colors --- */
-.c0 { background: #FFD700; }
-.c1 { background: #1E90FF; }
-.c2 { background: #800080; }
-.c3 { background: #FF8C00; }
-.c4 { background: #FFFFFF; }
-.c5 { background: #FF0000; }
-.c6 { background: #00FFFF; }
-.c7 { background: #008000; }
-.c8 { background: #FF69B4; }
+/* --- 16 Colors for Advance Mode --- */
+.c0  { background: #FFD700; } /* Gold */
+.c1  { background: #1E90FF; } /* DodgerBlue */
+.c2  { background: #800080; } /* Purple */
+.c3  { background: #FF8C00; } /* DarkOrange */
+.c4  { background: #FFFFFF; } /* White */
+.c5  { background: #FF0000; } /* Red */
+.c6  { background: #00CED1; } /* DarkTurquoise */
+.c7  { background: #008000; } /* Green */
+.c8  { background: #FF69B4; } /* HotPink */
+.c9  { background: #4D4D4D; } /* 暗いグレー (背景#121212に紛れない設定) */
+.c10 { background: #CCFF00; } /* ネオンライム (Neon Lime) */
+.c11 { background: #E28B5E; } /* 小麦色 (濃い肌色) */
+.c12 { background: #A52A2A; } /* 赤茶色 (Brown) */
+.c13 { background: #32CD32; } /* ライム (Lime / 指定順序に基づき調整) */
+.c14 { background: #FF1493; } /* ネオンピンク (Deep Pink) */
+.c15 { background: #000080; } /* 紺色 (Navy) */
 
-/* --- Hint --- */
 .hint {
     margin-top: 15px;
     color: #888;

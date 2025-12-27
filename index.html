@@ -17,13 +17,16 @@
 		</p>    
 	<div class="menu-panel">
         <div class="mode-selector">
-            <button id="btn-easy" onclick="changeMode(2, 2)">Easy</button>
-            <button id="btn-mid" onclick="changeMode(2, 3)">Mid</button>
-            <button id="btn-hard" onclick="changeMode(3, 3)">Hard</button>
+            <select id="mode-select" onchange="handleModeChange(this.value)" style="padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer;">
+                <option value="easy">Easy (2x2 / 4-Face)</option>
+                <option value="mid" selected>Mid (2x3 / 6-Face)</option>
+                <option value="hard">Hard (3x3 / 9-Face)</option>
+                <option value="advance">Advance (2x2 / 16-Face)</option>
+            </select>
         </div>
         
-        <div class="action-group">
-            <input type="number" id="scramble-count" value="15" min="1" max="200">
+        <div class="action-group" style="display:flex; gap:5px; align-items:center;">
+            <input type="number" id="scramble-count" value="15" min="1" max="200" style="width: 45px; background: #333; color: white; border: 1px solid #555; padding: 6px; border-radius: 4px; text-align: center;">
             <button id="shuffle-btn" onclick="shuffle()">Scramble</button>
             <button onclick="initBoard()">Reset</button>
         </div>
@@ -39,20 +42,21 @@
             </div>
         </div>
 
-        <div class="side-panel">
-            <div class="preview-area">
-                <div style="font-size: 12px; color: #aaa; margin-bottom: 5px;">TARGET VIEW</div>
-                <div class="target-stack">
-                    <div id="preview"></div>
-                    <div id="status-preview" class="status-overlay">COMPLETE!</div>
-                </div>
-            </div>
-        </div>
+		<div class="side-panel">
+		    <div class="preview-area">
+		        <div style="font-size: 12px; color: #aaa; margin-bottom: 5px;">TARGET VIEW</div>
+		        <div class="target-stack">
+		            <div id="preview"></div>
+		            <div id="status-preview" class="status-overlay">COMPLETE!</div>
+		        </div>
+		        <button id="copy-btn" onclick="copyCurrentToTarget()" style="margin-top: 10px; width: 100%; background: #555;">Copy Current</button>
+		    </div>
+		</div>
     </div>
 
     <div class="hint">
-        PC: Drag (Std) / <span class="key-indicator">Shift</span> (Frame) / <span class="key-indicator">Ctrl</span> (1-Cell)<br>
-        Mobile: Drag (Std) / <b>Long Press</b> (Frame)
+        Mobile: Drag (Std) / <b>Long Press</b> (Frame))<br>
+        PC: Drag (Std) / <span class="key-indicator">Shift</span> (Frame) / <span class="key-indicator">Ctrl</span> (1-Cell
     </div>
     <script src="script.js"></script>
 </body>
