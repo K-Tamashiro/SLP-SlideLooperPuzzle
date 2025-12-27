@@ -105,7 +105,14 @@ function toggleTimer(forceState) {
     
     // forceStateがあればそれに従い、なければ反転
     const shouldStart = (forceState !== undefined) ? forceState : !timerId;
-
+			// 【追加】ローテートボタンが「オン」の状態ならカウントダウンを開始
+            const rotateBtn = document.querySelector('button[onclick="startRotateCountdown()"]');
+            if (rotateBtn && rotateBtn.classList.contains('active-toggle-red')) {
+                // 既に動いていない場合のみ起動
+                if (!window.rotateTimerId) {
+                    executeRotateLoop(); 
+                }
+            }
     if (!shouldStart) {
         // 停止
         if (timerId) {
@@ -113,6 +120,7 @@ function toggleTimer(forceState) {
             timerId = null;
         }
         if (btn) btn.classList.remove('active-toggle');
+		stopRotateIntervalOnly();
     } else {
         // 開始（既に動いていれば何もしない）
         if (timerId) return;
@@ -141,13 +149,18 @@ function incrementCounter() {
  * 全統計のリセット（Resetボタンから呼び出し）
  */
 function resetStats() {
-    // 1. タイマー・赤枠カウントダウンの物理的停止
-    if (timerId) { clearInterval(timerId); timerId = null; }
-    if (rotateTimerId) { clearInterval(rotateTimerId); rotateTimerId = null; }
+    // 1. 各種タイマーの物理的停止
+    if (timerId) { 
+        clearInterval(timerId); 
+        timerId = null; 
+    }
+    
+    // 回転動作のみを停止（スイッチ状態 active-toggle-red は維持される）
+    stopRotateIntervalOnly();
 
-    // 2. タイマーボタンの光（トグル状態）を消す
-    const btn = document.querySelector('button[onclick="toggleTimer()"]');
-    if (btn) btn.classList.remove('active-toggle');
+    // 2. タイマーボタン（時計アイコン）の光を消す
+    const timerBtn = document.querySelector('button[onclick="toggleTimer()"]');
+    if (timerBtn) timerBtn.classList.remove('active-toggle');
 
     // 3. 数値の初期化
     moveCount = 0;
@@ -157,8 +170,7 @@ function resetStats() {
     if (timerEl) timerEl.textContent = "00:00.000";
     if (counterEl) counterEl.textContent = "000";
     
-    // 4. 赤枠・コンプリート表示の消去
-    updateFrameProgress('rotate', 0);
+    // 4. コンプリート表示の消去
     hideCompleteOverlays();
 }
 
@@ -177,7 +189,6 @@ function render() {
         const faceEl = document.createElement('div');
         faceEl.className = 'face'; faceEl.id = `face-${f}`;
         faceEl.style.gridTemplateColumns = `repeat(${subSize}, ${cellSizePixel}px)`;
-        
         const fr = Math.floor(f / gridNum) * subSize, fc = (f % gridNum) * subSize;
         for (let r = 0; r < subSize; r++) {
             for (let c = 0; c < subSize; c++) {
@@ -186,8 +197,48 @@ function render() {
                 cell.dataset.row = row; cell.dataset.col = col;
                 cell.className = `cell c${board[row][col]}`;
                 cell.style.width = cell.style.height = `${cellSizePixel}px`;
-                cell.onmousedown = (e) => handleStart(row, col, f, e.clientX, e.clientY, 'mouse', e);
-                cell.ontouchstart = (e) => handleStart(row, col, f, e.touches[0].clientX, e.touches[0].clientY, 'touch', e);
+                // 修正：フラッシュモード判定を追加
+                cell.onmousedown = (e) => {
+                    if(typeof isFlashMode !== 'undefined' && isFlashMode) triggerFlash(board[row][col]);
+                    handleStart(row, col, f, e.clientX, e.clientY, 'mouse', e);
+                };
+                cell.ontouchstart = (e) => {
+                    if(typeof isFlashMode !== 'undefined' && isFlashMode) triggerFlash(board[row][col]);
+                    handleStart(row, col, f, e.touches[0].clientX, e.touches[0].clientY, 'touch', e);
+                };
+                faceEl.appendChild(cell);
+            }
+        }
+        container.appendChild(faceEl);
+    }
+}function render() {
+    const container = document.getElementById('board'); 
+    if (!container) return;
+    container.style.gridTemplateColumns = `repeat(${gridNum}, 1fr)`; 
+    container.style.gap = `${GAP_FACE}px`; 
+    container.innerHTML = '';
+
+    for (let f = 0; f < gridNum * gridNum; f++) {
+        const faceEl = document.createElement('div');
+        faceEl.className = 'face'; faceEl.id = `face-${f}`;
+        faceEl.style.gridTemplateColumns = `repeat(${subSize}, ${cellSizePixel}px)`;
+        const fr = Math.floor(f / gridNum) * subSize, fc = (f % gridNum) * subSize;
+        for (let r = 0; r < subSize; r++) {
+            for (let c = 0; c < subSize; c++) {
+                const cell = document.createElement('div');
+                const row = fr + r, col = fc + c;
+                cell.dataset.row = row; cell.dataset.col = col;
+                cell.className = `cell c${board[row][col]}`;
+                cell.style.width = cell.style.height = `${cellSizePixel}px`;
+                // 修正：フラッシュモード判定を追加
+                cell.onmousedown = (e) => {
+                    if(typeof isFlashMode !== 'undefined' && isFlashMode) triggerFlash(board[row][col]);
+                    handleStart(row, col, f, e.clientX, e.clientY, 'mouse', e);
+                };
+                cell.ontouchstart = (e) => {
+                    if(typeof isFlashMode !== 'undefined' && isFlashMode) triggerFlash(board[row][col]);
+                    handleStart(row, col, f, e.touches[0].clientX, e.touches[0].clientY, 'touch', e);
+                };
                 faceEl.appendChild(cell);
             }
         }
@@ -270,10 +321,7 @@ function handleMove(curX, curY) {
 }
 
 /**
- * ゴースト（スライド中の複製）生成の修正
- */
-/**
- * ゴースト生成：セット間の隙間（GAP_FACE）を完全に再現した決定版
+ * ゴースト生成：セット間の隙間（GAP_FACE）を完全に再現
  */
 function createGhosts(axis) {
     let indices = [];
@@ -286,13 +334,13 @@ function createGhosts(axis) {
 
     const wrapper = document.getElementById('board-wrapper');
     const wrapRect = wrapper.getBoundingClientRect();
+    const PADDING = 10; // CSSの padding: 10px !important と同期
 
     indices.forEach(idx => {
         const strip = document.createElement('div');
         strip.className = 'ghost-strip';
         const cells = [];
         
-        // 対象の行列に属するセルを抽出
         document.querySelectorAll('.cell').forEach(c => {
             const r = parseInt(c.dataset.row), col = parseInt(c.dataset.col);
             if ((axis === 'h' && r === idx) || (axis === 'v' && col === idx)) {
@@ -302,29 +350,24 @@ function createGhosts(axis) {
         cells.sort((a, b) => a.k - b.k);
 
         const firstRect = cells[0].el.getBoundingClientRect();
-        // 盤面全体の物理サイズを正確に取得（継ぎ目の計算用）
-        const boardW = wrapRect.width;
-        const boardH = wrapRect.height;
         
-        const bL = (firstRect.left - wrapRect.left);
-        const bT = (firstRect.top - wrapRect.top);
+        // wrapperの左上を(0,0)とした相対座標を計算
+        const bL = firstRect.left - wrapRect.left;
+        const bT = firstRect.top - wrapRect.top;
         
-        strip.style.display = 'flex';
         strip.style.left = bL + 'px';
         strip.style.top = bT + 'px';
-        // セット（ブロック）間の隙間をGAP_FACEで固定
         strip.style.gap = `${GAP_FACE}px`; 
 
         const createSet = () => {
             const d = document.createElement('div');
             d.style.display = (axis === 'h') ? 'flex' : 'grid';
-            d.style.gap = `${GAP_CELL}px`; // セル同士の基本隙間
+            d.style.gap = `${GAP_CELL}px`;
             if (axis === 'v') d.style.gridTemplateColumns = '1fr';
 
             cells.forEach((item, i) => {
                 const clone = item.el.cloneNode(true);
                 clone.style.opacity = '1';
-                // フェイス境界（ブロックの継ぎ目）の隙間を再現
                 if (i > 0 && i % subSize === 0) {
                     if (axis === 'h') clone.style.marginLeft = `${GAP_FACE - GAP_CELL}px`;
                     else clone.style.marginTop = `${GAP_FACE - GAP_CELL}px`;
@@ -334,28 +377,25 @@ function createGhosts(axis) {
             return d;
         };
 
+        const boardW = wrapRect.width - (PADDING * 2);
+        const boardH = wrapRect.height - (PADDING * 2);
+
         if (axis === 'v') {
             strip.style.flexDirection = 'column';
-            // 垂直ループ：上・中・下
             strip.style.top = (bT - boardH - GAP_FACE) + 'px'; 
-            strip.appendChild(createSet()); // セット1
-            strip.appendChild(createSet()); // セット2
-            strip.appendChild(createSet()); // セット3
+            strip.appendChild(createSet()); strip.appendChild(createSet()); strip.appendChild(createSet());
         } else {
             strip.style.flexDirection = 'row';
-            // 水平ループ：左・中・右
             strip.style.left = (bL - boardW - GAP_FACE) + 'px';
-            strip.appendChild(createSet()); // セット1
-            strip.appendChild(createSet()); // セット2
-            strip.appendChild(createSet()); // セット3
+            strip.appendChild(createSet()); strip.appendChild(createSet()); strip.appendChild(createSet());
         }
 
         wrapper.appendChild(strip);
         ghostStrips.push(strip);
-        // 本体のセルを薄くする
         cells.forEach(item => item.el.style.opacity = '0.2');
     });
 }
+
 
 function endDrag() {
     if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
@@ -443,23 +483,6 @@ function rotateBoard() {
     checkComplete();
 }
 
-function startRotateCountdown() {
-    const totalSize = subSize * gridNum;
-    const maxSteps = totalSize * 4 - 4; 
-    let currentStep = maxSteps;
-    if (rotateTimerId) clearInterval(rotateTimerId);
-    updateFrameProgress('rotate', 100);
-    rotateTimerId = setInterval(() => {
-        currentStep--;
-        const progress = (currentStep / maxSteps) * 100;
-        updateFrameProgress('rotate', progress);
-        if (currentStep <= 0) {
-            clearInterval(rotateTimerId); rotateTimerId = null;
-            rotateBoard();
-        }
-    }, 3000);
-}
-
 function recordMove(lineIdx, dir, steps, mode) {
 	// 最初の操作でタイマーが止まっていたら動かす
     if (!timerId) toggleTimer(true);
@@ -495,6 +518,9 @@ function shuffle() {
 /**
  * 盤面判定の修正
  */
+/**
+ * 盤面判定の修正
+ */
 function checkComplete() {
     if (!targetBoard) return;
     const totalSize = subSize * gridNum;
@@ -508,11 +534,20 @@ function checkComplete() {
     }
 
     if (isComplete && !skipCompleteOnce) {
-        // コンプリート時にタイマー停止
+        // 1. 通常タイマー停止
         toggleTimer(false);
+
+        // 2. 回転ギミックが動いている場合は停止してスイッチオフ
+        if (window.rotateTimerId) {
+            // startRotateCountdownを呼び出すことで、内部の停止ロジック（clearInterval, クラス除去）を走らせる
+            startRotateCountdown();
+        }
+
+        // 3. コンプリート表示
         document.getElementById('status-board')?.classList.add('show');
         document.getElementById('status-preview')?.classList.add('show');
     } else {
+        // 未完成時は表示を消すのみ（ギミックの状態には触れない）
         document.getElementById('status-board')?.classList.remove('show');
         document.getElementById('status-preview')?.classList.remove('show');
     }
@@ -561,3 +596,133 @@ window.onmousemove = (e) => handleMove(e.clientX, e.clientY);
 window.onmouseup = endDrag;
 window.ontouchmove = (e) => { if(isDragging) { if(e.cancelable) e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY); } };
 window.ontouchend = endDrag;
+
+window.rotateTimerId = window.rotateTimerId || null;
+window.isFlashMode = false;
+
+function toggleFlash() {
+    window.isFlashMode = !window.isFlashMode;
+    const btn = document.querySelector('button[onclick="toggleFlash()"]');
+    if (btn) btn.classList.toggle('active-toggle', window.isFlashMode);
+}
+
+function triggerFlash(colorIdx) {
+    const colorClass = `c${colorIdx}`;
+    document.querySelectorAll('#board .cell').forEach(cell => {
+        if (cell.classList.contains(colorClass)) {
+            cell.classList.add('flash-active');
+            setTimeout(() => cell.classList.remove('flash-active'), 1200);
+        }
+    });
+}
+
+function startRotateCountdown() {
+    const btn = document.querySelector('button[onclick="startRotateCountdown()"]');
+    const frame = document.getElementById('rotate-frame');
+    if (window.rotateTimerId) {
+        clearInterval(window.rotateTimerId); window.rotateTimerId = null;
+        if (frame) { frame.classList.remove('fx-active'); frame.style.webkitMaskImage = 'none'; }
+        if (btn) btn.classList.remove('active-toggle-red');
+        return;
+    }
+    const totalSize = subSize * gridNum, maxSteps = totalSize * 4 - 4;
+    let currentStep = maxSteps;
+    if (frame) frame.classList.add('fx-active');
+    if (btn) btn.classList.add('active-toggle-red');
+    window.rotateTimerId = setInterval(() => {
+        currentStep--;
+		if (frame) {
+		    const progress = (currentStep / maxSteps) * 100;
+		    // 枠そのものにマスクをかけて削る
+		    frame.style.webkitMaskImage = `conic-gradient(#000 ${progress}%, transparent ${progress}%)`;
+		    frame.style.maskImage = `conic-gradient(#000 ${progress}%, transparent ${progress}%)`;
+		}
+        if (currentStep <= 0) {
+            clearInterval(window.rotateTimerId); window.rotateTimerId = null;
+            rotateBoard();
+            if (frame) { frame.classList.remove('fx-active'); frame.style.webkitMaskImage = 'none'; }
+            if (btn) btn.classList.remove('active-toggle-red');
+        }
+    }, 3000);
+}
+// windowオブジェクトでタイマーを一元管理（二重宣言エラー防止）
+window.rotateTimerId = window.rotateTimerId || null;
+
+/**
+ * 回転カウントダウン（ループ対応・コンプリート連動版）
+ */
+// script.js の startRotateCountdown 関数を以下に差し替え
+/**
+ * ローテート動作のみを物理的に停止する（設定は維持）
+ */
+function stopRotateIntervalOnly() {
+    if (window.rotateTimerId) {
+        clearInterval(window.rotateTimerId);
+        window.rotateTimerId = null;
+    }
+    const frame = document.getElementById('rotate-frame');
+    if (frame) {
+        frame.classList.remove('fx-active');
+        frame.style.display = 'none';
+    }
+}
+
+/**
+ * startRotateCountdown を「スイッチの切り替え」専用に修正
+ */
+function startRotateCountdown() {
+    const btn = document.querySelector('button[onclick="startRotateCountdown()"]');
+    
+    if (btn.classList.contains('active-toggle-red')) {
+        // スイッチをオフにする
+        btn.classList.remove('active-toggle-red');
+        stopRotateIntervalOnly();
+    } else {
+        // スイッチをオンにする
+        btn.classList.add('active-toggle-red');
+        // すでにゲームが始まっている（タイマーが動いている）なら即座に開始
+        if (timerId) {
+            executeRotateLoop();
+        }
+    }
+}
+
+/**
+ * 実際のループ処理を分離
+ */
+function executeRotateLoop() {
+    const frame = document.getElementById('rotate-frame');
+    const n = subSize * gridNum;
+    const perimeterCells = (n * 4) - 4;
+    const duration = perimeterCells * 3000;
+    const interval = 50;
+    let elapsed = 0;
+
+    if (frame) {
+        frame.style.display = 'block';
+        void frame.offsetWidth;
+        frame.classList.add('fx-active');
+    }
+
+    window.rotateTimerId = setInterval(() => {
+        // コンプリート画面が出たら停止
+        if (document.getElementById('status-board')?.classList.contains('show')) {
+            stopRotateIntervalOnly();
+            return;
+        }
+
+        elapsed += interval;
+        const progress = 100 - (elapsed / duration * 100);
+
+        if (frame) {
+            const mask = `conic-gradient(black ${progress}%, transparent ${progress}%)`;
+            frame.style.webkitMaskImage = mask;
+            frame.style.maskImage = mask;
+        }
+
+        if (elapsed >= duration) {
+            rotateBoard();
+            elapsed = 0;
+        }
+    }, interval);
+}
