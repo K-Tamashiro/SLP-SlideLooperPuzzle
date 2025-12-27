@@ -30,19 +30,16 @@ p[onclick] {
 }
 
 /* メニューパネルのレイアウト修正 */
+/* メニューパネル全体の基本設定（中央揃えを優先） */
 .menu-panel {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    justify-content: center;
+    justify-content: center; /* 中央に配置 */
     align-items: center;
-    margin-bottom: 15px;
-    /* 幅を自動調整にして回り込みを許可する */
-    width: fit-content; 
-    max-width: 100%;
-    /* 右側に配置する場合の余白調整 */
-    margin-left: auto;
-    margin-right: 0;
+    margin: 0 auto 15px auto; /* 左右マージンをautoにして中央寄せ */
+    width: 100%; 
+    max-width: 600px;
 }
 
 .mode-selector {
