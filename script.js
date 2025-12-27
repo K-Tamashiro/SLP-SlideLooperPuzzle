@@ -519,22 +519,58 @@ function recordMove(lineIdx, dir, steps, mode) {
 /**
  * --- 6. ユーティリティ・演出 ---
  */
-
+/**
+ * 4. 判定・統計
+ */
 function shuffle() {
-    const totalSize = subSize * gridNum;
     const count = parseInt(document.getElementById('scramble-count').value) || 15;
+    resetStats();
+
+    // --- 1. 盤面データの論理計算のみを先に実行（描画を挟まない） ---
     for (let i = 0; i < count; i++) {
         const isV = Math.random() > 0.5;
-        const lineIdx = Math.floor(Math.random() * totalSize);
-        for (let j = 0; j < subSize; j++) moveLogic(lineIdx, isV, Math.random() > 0.5);
+        const isRev = Math.random() > 0.5;
+        const lineIdx = Math.floor(Math.random() * (subSize * gridNum));
+        
+        // subSize分（1枠分）の移動を1つの論理ステップとして実行
+        for (let j = 0; j < subSize; j++) {
+            moveLogic(lineIdx, isV, isRev);
+        }
     }
-    render();
-    checkComplete();
+
+    // --- 2. ターゲット（正解配置）の枠単位置換を計算 ---
+    const totalFaces = gridNum * gridNum;
+    let faces = Array.from({length: totalFaces}, (_, i) => i);
+    for (let i = 0; i < 20; i++) {
+        const isV = Math.random() > 0.5;
+        const isRev = Math.random() > 0.5;
+        const line = Math.floor(Math.random() * gridNum);
+        let idxs = [];
+        if (isV) for (let g = 0; g < gridNum; g++) idxs.push(g * gridNum + line);
+        else for (let g = 0; g < gridNum; g++) idxs.push(line * gridNum + g);
+
+        if (isRev) {
+            let temp = faces[idxs[0]];
+            for (let j = 0; j < gridNum - 1; j++) faces[idxs[j]] = faces[idxs[j+1]];
+            faces[idxs[gridNum-1]] = temp;
+        } else {
+            let temp = faces[idxs[gridNum-1]];
+            for (let j = gridNum - 1; j > 0; j--) faces[idxs[j]] = faces[idxs[j-1]];
+            faces[idxs[0]] = temp;
+        }
+    }
+
+    // --- 3. 最後に1回だけDOMを更新する ---
+    const totalSize = subSize * gridNum;
+    targetBoard = Array.from({length: totalSize}, (_, r) => 
+        Array.from({length: totalSize}, (_, c) => faces[Math.floor(r / subSize) * gridNum + Math.floor(c / subSize)])
+    );
+
+    renderPreview(); 
+    render(); 
+    checkComplete(); // 最終状態の1回のみ判定
 }
 
-/**
- * 盤面判定の修正
- */
 /**
  * 盤面判定の修正
  */
