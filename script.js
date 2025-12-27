@@ -148,30 +148,42 @@ function incrementCounter() {
 /**
  * 全統計のリセット（Resetボタンから呼び出し）
  */
+/**
+ * 全統計のリセット（Resetボタン）
+ * サーチライトのオン/オフに関わらず、画面上の全オーバーレイを強制排除する
+ */
 function resetStats() {
-    // 1. 各種タイマーの物理的停止
+    // 1. タイマーの停止
     if (timerId) { 
         clearInterval(timerId); 
         timerId = null; 
     }
-    
-    // 回転動作のみを停止（スイッチ状態 active-toggle-red は維持される）
     stopRotateIntervalOnly();
 
-    // 2. タイマーボタン（時計アイコン）の光を消す
-    const timerBtn = document.querySelector('button[onclick="toggleTimer()"]');
-    if (timerBtn) timerBtn.classList.remove('active-toggle');
+    // 2. サーチライト状態の強制リセット（ボタン消灯とモードオフ）
+    const slBtn = document.querySelector('button[onclick="toggleSearchlight()"]');
+    if (slBtn) slBtn.classList.remove('active-toggle');
+    window.isSearchlightMode = false;
 
-    // 3. 数値の初期化
+    // 3. サーチライト要素がDOMに残っていれば、オフ時でも物理的に削除して画面を戻す
+    const overlay = document.getElementById('searchlight-overlay');
+    if (overlay) {
+        overlay.remove();
+    }
+
+    // 4. コンプリート表示（status-board / status-preview）を確実に消去
+    hideCompleteOverlays();
+
+    // 5. 統計数値の初期化
     moveCount = 0;
     const timerEl = document.getElementById('timer-display');
     const counterEl = document.getElementById('counter-display');
-    
     if (timerEl) timerEl.textContent = "00:00.000";
     if (counterEl) counterEl.textContent = "000";
     
-    // 4. コンプリート表示の消去
-    hideCompleteOverlays();
+    // 6. タイマーボタンの光を消す
+    const timerBtn = document.querySelector('button[onclick="toggleTimer()"]');
+    if (timerBtn) timerBtn.classList.remove('active-toggle');
 }
 
 /**
@@ -783,14 +795,34 @@ function executeRotateLoop() {
 /* script.js */
 window.isSearchlightMode = false;
 
+/**
+ * サーチライトモードの切り替え
+ * オフにした際、同時にコンプリート表示（オーバーレイ）も物理的に消去する
+ */
 function toggleSearchlight() {
     window.isSearchlightMode = !window.isSearchlightMode;
     const btn = document.querySelector('button[onclick="toggleSearchlight()"]');
+    const overlay = document.getElementById('searchlight-overlay');
+    
     if (btn) btn.classList.toggle('active-toggle', window.isSearchlightMode);
     
-    // モードオフ時はレイヤーを隠す
     if (!window.isSearchlightMode) {
-        document.getElementById('searchlight-overlay').classList.remove('searchlight-active');
+        // 1. サーチライト要素を物理削除してキャッシュをリセット
+        if (overlay) {
+            overlay.remove();
+        }
+        
+        // 2. 指示通り、ここにコンプリート表示を消す処理を統合
+        hideCompleteOverlays();
+        
+    } else {
+        // オンにする際の生成処理
+        if (!overlay) {
+            const newOverlay = document.createElement('div');
+            newOverlay.id = 'searchlight-overlay';
+            newOverlay.className = 'searchlight-overlay';
+            document.getElementById('board-wrapper').appendChild(newOverlay);
+        }
     }
 }
 
@@ -818,7 +850,9 @@ function updateSearchlight(x, y) {
     const mask = `radial-gradient(circle 80px at ${relX}px ${relY}px, transparent 95%, black 100%)`;
     overlay.style.webkitMaskImage = mask;
     overlay.style.maskImage = mask;
-}function updateSearchlight(x, y) {
+}
+
+function updateSearchlight(x, y) {
     if (!window.isSearchlightMode) return;
     const overlay = document.getElementById('searchlight-overlay');
     if (!overlay) return;

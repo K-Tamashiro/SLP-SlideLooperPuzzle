@@ -1,444 +1,659 @@
 /* --- Base Styles --- */
-body { 
-	padding: 0 10px 10px 10px; /* 上部のみ 0 に設定 */
-    background: #121212; 
-    display: flex;
-    flex-direction: column;
-    align-items: center; 
-    color: white;
-    font-family: sans-serif;
-    margin: 0;
-    padding: 10px; 
-    user-select: none;
-    touch-action: none;
-    overflow-x: hidden; 
+body {
+	padding: 0 10px 10px 10px;/* 上部のみ 0 に設定 */
+	background: #121212;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	color: white;
+	font-family: sans-serif;
+	margin: 0;
+	padding: 10px;
+	user-select: none;
+	touch-action: none;
+	overflow-x: hidden;
 }
 
 .header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
-    justify-content: center;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 10px;
+	flex-wrap: wrap;
+	justify-content: center;
 }
-
 /* タイトル要素の余白をリセット */
+
 p[onclick] {
-    margin: 0;
-    padding: 10px 0; /* 必要に応じてタイトル周りのみの余白を調整 */
+	margin: 0;
+	padding: 10px 0;/* 必要に応じてタイトル周りのみの余白を調整 */
 }
 
+/* メニューパネルのレイアウト修正 */
 .menu-panel {
     display: flex;
-    flex-wrap: wrap;       /* スマホ等で幅が足りない場合は折り返す */
+    flex-wrap: wrap;
+    gap: 8px;
     justify-content: center;
     align-items: center;
-	margin-top: 5px; /* タイトルとボタンの距離が詰まりすぎた場合の調整用 */
-	margin-bottom: 10px; /* メニュー下の余白を削減 */
-    gap: 10px;             /* モード選択と操作ボタンの間の距離 */
-    width: 100%;
+    margin-bottom: 15px;
+    /* 幅を自動調整にして回り込みを許可する */
+    width: fit-content; 
+    max-width: 100%;
+    /* 右側に配置する場合の余白調整 */
+    margin-left: auto;
+    margin-right: 0;
 }
 
 .mode-selector {
-    display: flex;
-    gap: 5px;
+	display: flex;
+	gap: 5px;
 }
 
 #mode-select {
-    font-size: 14px;
-    min-width: 160px;
-    outline: none;
+	font-size: 14px;
+	min-width: 160px;
+	outline: none;
 }
 
 #mode-select:focus {
-    border-color: #d35400;
-}
-.action-group {
-    display: flex;
-    gap: 5px;
-    align-items: center;
+	border-color: #d35400;
 }
 
+.action-group {
+	display: flex;
+	gap: 5px;
+	align-items: center;
+}
 /* 数値入力ボックスのスタイル調整 */
+
 #scramble-count {
-    width: 45px;
-    background: #333;
-    color: white;
-    border: 1px solid #555;
-    padding: 6px;
-    border-radius: 4px;
-    text-align: center;
+	width: 45px;
+	background: #333;
+	color: white;
+	border: 1px solid #555;
+	padding: 6px;
+	border-radius: 4px;
+	text-align: center;
 }
 
 .menu-panel.hidden {
-    display: none !important;
+	display: none !important;
 }
 
 button {
-    padding: 8px 12px;
-    font-size: 13px;
-    cursor: pointer;
-    border: none;
-    border-radius: 4px;
-    background: #333;
-    color: white;
-    transition: 0.2s;
+	padding: 8px 12px;
+	font-size: 13px;
+	cursor: pointer;
+	border: none;
+	border-radius: 4px;
+	background: #333;
+	color: white;
+	transition: 0.2s;
 }
 
 .active-mode {
-    background: #d35400 !important;
-    font-weight: bold;
+	background: #d35400 !important;
+	font-weight: bold;
 }
 
 #shuffle-btn {
-    background: #27ae60;
-    font-weight: bold;
+	background: #27ae60;
+	font-weight: bold;
 }
 
 .content-wrapper {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    flex-wrap: wrap;
-    justify-content: center;
-    width: 100%;
-    max-width: 100vw;
-    box-sizing: border-box;
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	flex-wrap: wrap;
+	justify-content: center;
+	width: 100%;
+	max-width: 100vw;
+	box-sizing: border-box;
 }
-
 /* --- Game Area --- */
+
 .game-area {
 	margin-top: 5px;
-    display: grid;
-    grid-template-areas:
-        ". axis-top"
+	display: grid;
+	grid-template-areas: ". axis-top"
         "axis-left board";
-    gap: 10px;
-    align-items: start;
+	gap: 10px;
+	align-items: start;
 	max-width: 100vw;
-    overflow: visible;
+	overflow: visible;
 }
 
 .side-panel {
-    display: flex;
-    flex-direction: column;
+	display: flex;
+	flex-direction: column;
 	gap: 0;
 }
 
 .stats-display {
-    background: #000;
-    border: 1px solid #333;
-    padding: 10px;
-    border-radius: 4px;
-    font-family: 'Courier New', monospace;
-    width: 100%; /* 横幅一杯 */
-    box-sizing: border-box;
+	background: #000;
+	border: 1px solid #333;
+	padding: 10px;
+	border-radius: 4px;
+	font-family: 'Courier New', monospace;
+	width: 100%;/* 横幅一杯 */
+	box-sizing: border-box;
 }
 
 .stat-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 5px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 5px;
 }
 
 .stat-item:last-child {
-    margin-bottom: 0;
+	margin-bottom: 0;
 }
 
 .stat-item .label {
-    color: #888;
-    font-size: 10px;
+	color: #888;
+	font-size: 10px;
 }
 
 #timer-display, #counter-display {
-    color: #0f0;
-    font-size: 16px;
-    font-weight: bold;
+	color: #0f0;
+	font-size: 16px;
+	font-weight: bold;
 }
 
 .axis-h {
-    grid-area: axis-top;
-    display: grid;
-    gap: 10px;
-    justify-items: center;
+	grid-area: axis-top;
+	display: grid;
+	gap: 10px;
+	justify-items: center;
 }
 
 .axis-v {
-    grid-area: axis-left;
-    display: grid;
-    gap: 10px;
-    align-items: center;
+	grid-area: axis-left;
+	display: grid;
+	gap: 10px;
+	align-items: center;
 }
 
 .axis-group-h {
-    display: grid;
-    gap: 2px;
-    justify-items: center;
+	display: grid;
+	gap: 2px;
+	justify-items: center;
 }
 
 .axis-group-v {
-    display: grid;
-    gap: 2px;
-    align-items: center;
+	display: grid;
+	gap: 2px;
+	align-items: center;
 }
 
 .coord-label {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #bbb;
-    font-size: 11px;
-    font-weight: bold;
-min-width: 0;
-    min-height: 0;
-    font-size: 11px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #bbb;
+	font-size: 11px;
+	font-weight: bold;
+	min-width: 0;
+	min-height: 0;
+	font-size: 11px;
 }
-
 /* 既存の .grid-container を修正 */
+
 .board-wrapper {
-    grid-area: board;
-    background: #000;
-    padding: 6px;
-    border-radius: 8px;
-    position: relative;
-    overflow: hidden;
-    /* コンテンツの大きさに合わせる */
-    width: fit-content; 
-    margin: 0 auto;
+	grid-area: board;
+	background: #000;
+	padding: 6px;
+	border-radius: 8px;
+	position: relative;
+	overflow: hidden;/* コンテンツの大きさに合わせる */
+	width: fit-content;
+	margin: 0 auto;
 }
 
 .grid-container {
-    display: grid;
-    /* セルサイズと隙間の合計値に厳密に合わせる */
-    width: max-content; 
-    margin: 0 auto;
+	display: grid;/* セルサイズと隙間の合計値に厳密に合わせる */
+	width: max-content;
+	margin: 0 auto;
 }
 
 .face {
-    display: grid;
-    gap: 2px;
-    position: relative;
+	display: grid;
+	gap: 2px;
+	position: relative;
 }
 
 .cell {
-    border-radius: 3px;
-    cursor: grab;
+	border-radius: 3px;
+	cursor: grab;
 }
 
 .cell:active {
-    cursor: grabbing;
+	cursor: grabbing;
 }
-
 /* --- Highlight Frame --- */
+
 .face-highlight {
-    position: absolute;
-    top: -4px;
-    left: -4px;
-    right: -4px;
-    bottom: -4px;
-    border: 3px solid #FFF;
-    border-radius: 6px;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.2s;
-    z-index: 50;
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+	position: absolute;
+	top: -4px;
+	left: -4px;
+	right: -4px;
+	bottom: -4px;
+	border: 3px solid #FFF;
+	border-radius: 6px;
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 0.2s;
+	z-index: 50;
+	box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
 }
 
 .face.active-frame .face-highlight {
-    opacity: 1;
+	opacity: 1;
 }
 
 .ghost-strip {
-    position: absolute;
-    display: flex;
-    gap: 0;
-    z-index: 100;
-    pointer-events: none;
-    will-change: transform;
+	position: absolute;
+	display: flex;
+	gap: 0;
+	z-index: 100;
+	pointer-events: none;
+	will-change: transform;
 }
-
 /* --- Target Preview --- */
-.preview-area { 
+
+.preview-area {
 	margin-top: 25px;
-    text-align: center;
-    background: #222;
-    padding: 5px;
-    border-radius: 8px;
-    border: 1px solid #444;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+	text-align: center;
+	background: #222;
+	padding: 5px;
+	border-radius: 8px;
+	border: 1px solid #444;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
 	margin-bottom: 5px;
 	margin-right: 15px;
 }
 
 .target-stack {
-    position: relative;
-    display: inline-block;
+	position: relative;
+	display: inline-block;
 }
 
 #preview {
-    width: fit-content;
-    height: fit-content;
-    margin: 0 auto;
-    background: #000;
-    padding: 2px;
+	width: fit-content;
+	height: fit-content;
+	margin: 0 auto;
+	background: #000;
+	padding: 2px;
 }
 
 .p-cell {
-    border-radius: 1px;
+	border-radius: 1px;
 }
-
 /* --- 16 Colors for Advance Mode --- */
-.c0  { background: #FFD700; } /* Gold */
-.c1  { background: #1E90FF; } /* DodgerBlue */
-.c2  { background: #800080; } /* Purple */
-.c3  { background: #FF8C00; } /* DarkOrange */
-.c4  { background: #FFFFFF; } /* White */
-.c5  { background: #FF0000; } /* Red */
-.c6  { background: #00CED1; } /* DarkTurquoise */
-.c7  { background: #008000; } /* Green */
-.c8  { background: #FF69B4; } /* HotPink */
-.c9  { background: #4D4D4D; } /* 暗いグレー (背景#121212に紛れない設定) */
-.c10 { background: #CCFF00; } /* ネオンライム (Neon Lime) */
-.c11 { background: #E28B5E; } /* 小麦色 (濃い肌色) */
-.c12 { background: #A52A2A; } /* 赤茶色 (Brown) */
-.c13 { background: #32CD32; } /* ライム (Lime / 指定順序に基づき調整) */
-.c14 { background: #FF1493; } /* ネオンピンク (Deep Pink) */
-.c15 { background: #000080; } /* 紺色 (Navy) */
+
+.c0 {
+	background: #FFD700;
+}
+/* Gold */
+
+.c1 {
+	background: #1E90FF;
+}
+/* DodgerBlue */
+
+.c2 {
+	background: #800080;
+}
+/* Purple */
+
+.c3 {
+	background: #FF8C00;
+}
+/* DarkOrange */
+
+.c4 {
+	background: #FFFFFF;
+}
+/* White */
+
+.c5 {
+	background: #FF0000;
+}
+/* Red */
+
+.c6 {
+	background: #00CED1;
+}
+/* DarkTurquoise */
+
+.c7 {
+	background: #008000;
+}
+/* Green */
+
+.c8 {
+	background: #FF69B4;
+}
+/* HotPink */
+
+.c9 {
+	background: #4D4D4D;
+}
+/* 暗いグレー (背景#121212に紛れない設定) */
+
+.c10 {
+	background: #CCFF00;
+}
+/* ネオンライム (Neon Lime) */
+
+.c11 {
+	background: #E28B5E;
+}
+/* 小麦色 (濃い肌色) */
+
+.c12 {
+	background: #A52A2A;
+}
+/* 赤茶色 (Brown) */
+
+.c13 {
+	background: #32CD32;
+}
+/* ライム (Lime / 指定順序に基づき調整) */
+
+.c14 {
+	background: #FF1493;
+}
+/* ネオンピンク (Deep Pink) */
+
+.c15 {
+	background: #000080;
+}
+/* 紺色 (Navy) */
 
 .hint {
-    margin-top: 15px;
-    color: #888;
-    font-size: 13px;
-    text-align: center;
-    border: 1px dashed #444;
-    padding: 10px;
-    border-radius: 5px;
+	margin-top: 15px;
+	color: #888;
+	font-size: 13px;
+	text-align: center;
+	border: 1px dashed #444;
+	padding: 10px;
+	border-radius: 5px;
 }
 
 .key-indicator {
-    display: inline-block;
-    padding: 2px 6px;
-    border-radius: 4px;
-    background: #444;
-    font-size: 0.9em;
-    margin: 0 2px;
+	display: inline-block;
+	padding: 2px 6px;
+	border-radius: 4px;
+	background: #444;
+	font-size: 0.9em;
+	margin: 0 2px;
 }
-
 /* --- Status Overlay --- */
+
 .status-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(46, 204, 113, 0.8);
-    color: white;
-    font-size: 24px;
-    font-weight: bold;
-    /* 初期値は必ず none に。show クラスがある時だけ flex にする */
-    display: none !important; 
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    border-radius: 6px;
-    pointer-events: none;
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(46, 204, 113, 0.8);
+	color: white;
+	font-size: 24px;
+	font-weight: bold;/* 初期値は必ず none に。show クラスがある時だけ flex にする */
+	display: none !important;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+	border-radius: 6px;
+	pointer-events: none;
 }
 
 .status-overlay.show {
-    display: flex !important;
+	display: flex !important;
 }
 
 .side-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 0px;
+	display: flex;
+	flex-direction: column;
+	gap: 0px;
 }
 
 .stats-display {
 	background: #000;
-    border: 1px solid #333;
-    padding: 6px 8px; /* パディングを詰める */
-    border-radius: 4px;
-    font-family: 'Courier New', monospace;
-    width: 100%;
-    box-sizing: border-box;
-    margin-bottom: 5px; /* ボタンとの間の隙間 */
+	border: 1px solid #333;
+	padding: 6px 8px;/* パディングを詰める */
+	border-radius: 4px;
+	font-family: 'Courier New', monospace;
+	width: 100%;
+	box-sizing: border-box;
+	margin-bottom: 5px;/* ボタンとの間の隙間 */
 }
-
 /* ボタンのトグル状態 */
+
 .icon-btn.active-toggle {
-    background-color: #008800; /* 濃い緑 */
-    box-shadow: inset 0 0 5px #0f0;
-    border-color: #0f0;
+	background-color: #008800;/* 濃い緑 */
+	box-shadow: inset 0 0 5px #0f0;
+	border-color: #0f0;
 }
 
 .icon-btn.active-toggle svg {
-    stroke: #0f0;
+	stroke: #0f0;
 }
 
 .stat-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 5px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 5px;
 }
 
 .stat-item:last-child {
-    margin-bottom: 0;
+	margin-bottom: 0;
 }
 
 .stat-item .label {
-    color: #888;
-    font-size: 10px;
+	color: #888;
+	font-size: 10px;
 }
 
 #timer-display, #counter-display {
-    color: #0f0;
-    font-size: 16px;
-    font-weight: bold;
+	color: #0f0;
+	font-size: 16px;
+	font-weight: bold;
 }
 
 .action-icons {
 	display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 4px; /* ボタン同士の隙間を最小化 */
+	grid-template-columns: repeat(2, 1fr);
+	gap: 4px;/* ボタン同士の隙間を最小化 */
 }
 
 .icon-btn {
-    width: 40px;
-    height: 40px;
-    background: #222;
-    border: 1px solid #444;
-    padding: 6px;
-    cursor: pointer;
+	width: 40px;
+	height: 40px;
+	background: #222;
+	border: 1px solid #444;
+	padding: 6px;
+	cursor: pointer;
 }
 
 .overlay {
-    display: none;
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.8);
-    z-index: 9000;
+	display: none;
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0,0,0,0.8);
+	z-index: 9000;
 }
+
 .log-panel {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    background: #222; padding: 20px;
-    width: 90%; max-width: 500px;
-    border-radius: 8px; border: 1px solid #444;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background: #222;
+	padding: 20px;
+	width: 90%;
+	max-width: 500px;
+	border-radius: 8px;
+	border: 1px solid #444;
 }
-.log-section { margin-bottom: 20px; }
+
+.log-section {
+	margin-bottom: 20px;
+}
+
 .log-section input {
-    width: 100%; padding: 10px; margin: 8px 0;
-    background: #000; border: 1px solid #555; color: #fff;
+	width: 100%;
+	padding: 10px;
+	margin: 8px 0;
+	background: #000;
+	border: 1px solid #555;
+	color: #fff;
 }
-.log-controls { display: flex; gap: 5px; flex-wrap: wrap; }
+
+.log-controls {
+	display: flex;
+	gap: 5px;
+	flex-wrap: wrap;
+}
+
+.board-wrapper {
+	position: relative;
+	padding: 10px;/* 枠が表示されるスペース */
+}
+
+.fx-frame {
+	position: absolute;
+	top: -10px;
+	left: -10px;
+	right: -10px;
+	bottom: -10px;
+	pointer-events: none;
+	border: 6px solid;/* 太い枠 */
+	border-radius: 8px;
+	opacity: 0;
+	visibility: hidden;
+	transition: opacity 0.3s;
+	z-index: 100;
+}
+/* 回転中（アクティブ）の状態 */
+
+.fx-active {
+	opacity: 1;
+	visibility: visible;
+}
+/* style.css */
+
+#rotate-frame {
+	position: absolute;/* 盤面の board-wrapper に対して配置 */
+	top: -12px !important;
+	left: -12px !important;
+	right: -12px !important;
+	bottom: -12px !important;
+	border: 10px solid #ff3300 !important;/* 太さを強調 */
+	border-radius: 12px !important;
+	display: none;/* JSで block に切り替え */
+	z-index: 3000 !important;
+	pointer-events: none;/* 発光 */
+	box-shadow: 0 0 20px #ff3300, inset 0 0 10px #ff3300;/* マスクの初期設定 */
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+}
+
+#rotate-frame.fx-active {
+	display: block !important;
+	opacity: 1 !important;/* 常に少し明滅させることで「稼働中」を強調 */
+	animation: pulse-red 2s infinite alternate;
+}
+@keyframes pulse-red {
+    from { filter: brightness(1.0) drop-shadow(0 0 5px #ff0000); }
+    to   { filter: brightness(1.5) drop-shadow(0 0 15px #ff0000); }
+}
+
+.stats-display {
+	margin-top: 0px;
+	padding: 10px;
+	background: #111;
+	border: 1px solid #333;
+	border-radius: 4px;
+	font-family: 'Courier New', Courier, monospace;
+}
+
+.stat-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 5px;
+}
+
+.stat-item .label {
+	color: #888;
+	font-size: 10px;
+}
+
+#timer-display, #counter-display {
+	color: #0f0;/* 緑色のデジタル文字 */
+	font-size: 18px;
+	font-weight: bold;
+}
+/* セルの同色フラッシュ：輝度とエフェクトの減衰版 */
+
+.cell.flash-active {
+	z-index: 950;/* 枠線を白から少しグレー（#ddd）へ、太さを3pxから2pxへ */
+	outline: 2px solid #ddd;
+	outline-offset: -2px;/* 発光範囲（ぼかし）を縮小し、不透明度を下げる */
+	box-shadow: inset 0 0 10px 2px rgba(255, 255, 255, 0.6),
+        0 0 15px 5px rgba(255, 255, 255, 0.4);/* 輝度倍率を 2.0 から 1.3 程度に落とし、彩度を少し上げる */
+	filter: brightness(1.3) saturate(1.2);/* 消灯時の余韻を少し長く（0.4s）して目に優しく */
+	transition: all 0.4s ease-out;
+}
+
+.active-toggle-red {
+	background-color: rgba(255, 0, 0, 0.4) !important;
+	box-shadow: 0 0 10px #ff0000 !important;
+	border-color: #ff0000 !important;
+}
+/* 既存の .searchlight-layer や .searchlight-active は削除し、以下を追記 */
+
+#searchlight-overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: rgba(0, 0, 0, 0.95);/* 暗幕 */
+	z-index: 150;/* セルの上、赤枠の下 */
+	pointer-events: none;
+	display: none;/* JSの .fx-active クラスで表示制御 */
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+}
+/* 稼働中（タイマーON ＋ ドラッグ中）の表示 */
+
+#searchlight-overlay.fx-active {
+	display: block !important;
+}
+/* style.css */
+
+/* 回転アニメーションの定義 */
+@keyframes board-rotate-90 {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(90deg); }
+}
+/* アニメーション適用用のクラス */
+
+.board-rotating {
+	animation: board-rotate-90 0.4s ease-in-out;
+}
 
 @media (max-width: 600px){
     .target-stack { position: relative !important; display: inline-block !important; }
@@ -449,175 +664,4 @@ min-width: 0;
     .action-icons {
         grid-template-columns: repeat(3, 40px); /* 3列2段 */
     }
-}
-.board-wrapper {
-    position: relative;
-    padding: 10px; /* 枠が表示されるスペース */
-}
-
-.fx-frame {
-    position: absolute;
-    top: -10px; left: -10px; right: -10px; bottom: -10px;
-    pointer-events: none;
-    border: 6px solid; /* 太い枠 */
-    border-radius: 8px;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s;
-    z-index: 100;
-}
-
-/* 回転中（アクティブ）の状態 */
-.fx-active {
-    opacity: 1;
-    visibility: visible;
-}
-
-/* style.css */
-#rotate-frame {
-    position: absolute;
-    /* 盤面の board-wrapper に対して配置 */
-    top: -12px !important;
-    left: -12px !important;
-    right: -12px !important;
-    bottom: -12px !important;
-    
-    border: 10px solid #ff3300 !important; /* 太さを強調 */
-    border-radius: 12px !important;
-    
-    display: none; /* JSで block に切り替え */
-    z-index: 9999 !important;
-    pointer-events: none;
-    
-    /* 発光 */
-    box-shadow: 0 0 20px #ff3300, inset 0 0 10px #ff3300;
-    
-    /* マスクの初期設定 */
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-}
-
-#rotate-frame {
-    position: absolute;
-    /* 位置を微調整して盤面との距離を確保 */
-    top: -16px !important;
-    left: -16px !important;
-    right: -16px !important;
-    bottom: -16px !important;
-    
-    /* 太さと色 */
-    border: 14px solid #ff0000 !important; 
-    border-radius: 16px !important;
-    
-    display: none;
-    z-index: 1000 !important;
-    pointer-events: none;
-    
-    /* 強力なネオン発光エフェクト */
-    box-shadow: 
-        0 0 10px #ff0000, 
-        0 0 20px #ff0000, 
-        0 0 40px #ff0000, 
-        inset 0 0 15px #ff0000 !important;
-    
-    /* マスクの設定 */
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-    /* 透過部分の境界を滑らかにしない（パキッと削る） */
-    mask-clip: border-box;
-}
-
-#rotate-frame.fx-active {
-    display: block !important;
-    opacity: 1 !important;
-    /* 常に少し明滅させることで「稼働中」を強調 */
-    animation: pulse-red 2s infinite alternate;
-}
-
-@keyframes pulse-red {
-    from { filter: brightness(1.0) drop-shadow(0 0 5px #ff0000); }
-    to   { filter: brightness(1.5) drop-shadow(0 0 15px #ff0000); }
-}
-
-.stats-display {
-    margin-top: 0px;
-    padding: 10px;
-    background: #111;
-    border: 1px solid #333;
-    border-radius: 4px;
-    font-family: 'Courier New', Courier, monospace;
-}
-
-.stat-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 5px;
-}
-
-.stat-item .label {
-    color: #888;
-    font-size: 10px;
-}
-
-#timer-display, #counter-display {
-    color: #0f0; /* 緑色のデジタル文字 */
-    font-size: 18px;
-    font-weight: bold;
-}
-
-/* セルの同色フラッシュ：輝度とエフェクトの減衰版 */
-.cell.flash-active {
-    z-index: 950;
-    /* 枠線を白から少しグレー（#ddd）へ、太さを3pxから2pxへ */
-    outline: 2px solid #ddd;
-    outline-offset: -2px;
-    
-    /* 発光範囲（ぼかし）を縮小し、不透明度を下げる */
-    box-shadow: 
-        inset 0 0 10px 2px rgba(255, 255, 255, 0.6),
-        0 0 15px 5px rgba(255, 255, 255, 0.4);
-    
-    /* 輝度倍率を 2.0 から 1.3 程度に落とし、彩度を少し上げる */
-    filter: brightness(1.3) saturate(1.2);
-    
-    /* 消灯時の余韻を少し長く（0.4s）して目に優しく */
-    transition: all 0.4s ease-out;
-}
-
-.active-toggle-red {
-    background-color: rgba(255, 0, 0, 0.4) !important;
-    box-shadow: 0 0 10px #ff0000 !important;
-    border-color: #ff0000 !important;
-}
-
-/* 既存の .searchlight-layer や .searchlight-active は削除し、以下を追記 */
-
-#searchlight-overlay {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background-color: rgba(0, 0, 0, 0.95); /* 暗幕 */
-    z-index: 900; /* セルの上、赤枠の下 */
-    pointer-events: none;
-    display: none; /* JSの .fx-active クラスで表示制御 */
-    
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-}
-
-/* 稼働中（タイマーON ＋ ドラッグ中）の表示 */
-#searchlight-overlay.fx-active {
-    display: block !important;
-}
-/* style.css */
-
-/* 回転アニメーションの定義 */
-@keyframes board-rotate-90 {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(90deg); }
-}
-
-/* アニメーション適用用のクラス */
-.board-rotating {
-    animation: board-rotate-90 0.4s ease-in-out;
 }
