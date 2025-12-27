@@ -12,9 +12,144 @@ let longPressTimer = null;
 const LONG_PRESS_MS = 500;
 // ターゲット色を保持するグローバル変数
 let targetBoard = null;
+let solveHistory = []; // スクリプトの冒頭に配置
 
 window.targetColors = [];
 
+/**
+ * --- ログ管理システム (統合版) ---
+ */
+
+// パネルの開閉
+/**
+ * ログパネルの表示/非表示（ステータス表示のクリアを統合）
+ */
+function toggleLogPanel() {
+    const overlay = document.getElementById('log-overlay');
+    if (!overlay) return;
+
+    const isVisible = overlay.style.display === 'block';
+    
+    if (!isVisible) {
+        // パネルを開く瞬間にコンプリート表示を消去
+        const statusBoard = document.getElementById('status-board');
+        const statusPreview = document.getElementById('status-preview');
+        if (statusBoard) statusBoard.classList.remove('show');
+        if (statusPreview) statusPreview.classList.remove('show');
+        
+        overlay.style.display = 'block';
+    } else {
+        overlay.style.display = 'none';
+    }
+}
+
+// ライブログへの記録 (物理定義: U/L = 順方向)
+/**
+ * ログ記録：枠移動は複数ラベル（大文字）、単一行は単一ラベル（小文字）
+ */
+function recordMove(lineIdx, dir, steps, mode) {
+    const isV = (dir === 'U' || dir === 'D');
+    let label = "";
+
+    if (mode === 'frame') {
+        // 枠移動：枠内の全行列を結合（大文字）
+        const start = Math.floor(lineIdx / subSize) * subSize;
+        for (let i = 0; i < subSize; i++) {
+            const idx = start + i;
+            label += isV ? (idx + 1) : String.fromCharCode(65 + idx);
+        }
+        label = label.toUpperCase();
+    } else {
+        // 単一行：単一ラベル（小文字）
+        label = isV ? (lineIdx + 1) : String.fromCharCode(65 + lineIdx).toLowerCase();
+    }
+
+    const logEntry = `${label}-${dir}${steps}`;
+    solveHistory.push(logEntry);
+    
+    const logInput = document.getElementById('solve-log');
+    if (logInput) {
+        logInput.value = solveHistory.join(',');
+        logInput.scrollLeft = logInput.scrollWidth;
+    }
+}
+
+// ログの反映 (物理定義: U/L = isRev: true)
+function applyScrambleLog() {
+    const rawLog = document.getElementById('scramble-input').value;
+    if (!rawLog) return;
+
+    const totalSize = subSize * gridNum;
+    targetBoard = Array.from({length: totalSize}, (_, r) => 
+        Array.from({length: totalSize}, (_, c) => 
+            Math.floor(r / subSize) * gridNum + Math.floor(c / subSize)
+        )
+    );
+
+    const moves = rawLog.split(',');
+    moves.forEach(move => {
+        const m = move.trim().match(/^([a-z0-9]+)-([lrud])(\d+)$/i);
+        if (!m) return;
+
+        const label = m[1].toUpperCase();
+        const dir = m[2].toUpperCase();
+        const blocks = parseInt(m[3]);
+        const isV = (dir === 'U' || dir === 'D');
+        
+        // あなたが修正した正解の定義
+        let isRev = (dir === 'U' || dir === 'L');
+
+        let lineIdx = isV ? (parseInt(label) - 1) : (label.charCodeAt(0) - 65);
+
+        if (lineIdx >= 0 && lineIdx < totalSize) {
+            const totalSteps = blocks * subSize;
+            for (let s = 0; s < totalSteps; s++) {
+                executeMoveLogic(targetBoard, isV, lineIdx, isRev);
+            }
+        }
+    });
+	// 反映後に判定をリセット
+    const statusBoard = document.getElementById('status-board');
+    const statusPreview = document.getElementById('status-preview');
+    if (statusBoard) statusBoard.classList.remove('show');
+    if (statusPreview) statusPreview.classList.remove('show');
+    renderPreview();
+}
+
+// ログのコピーとクリア
+function copySolveToScramble() {
+    document.getElementById('scramble-input').value = document.getElementById('solve-log').value;
+}
+
+function clearSolveLog() {
+    solveHistory = [];
+    const logInput = document.getElementById('solve-log');
+    if (logInput) logInput.value = '';
+}
+
+// CSV保存・読込
+function saveCSV(type) {
+    const id = type === 'scramble' ? 'scramble-input' : 'solve-log';
+    const content = document.getElementById(id).value;
+    if (!content) return;
+    const blob = new Blob([content], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${type}_log_${Date.now()}.csv`;
+    a.click();
+}
+
+function importCSV(input, type) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const id = type === 'scramble' ? 'scramble-input' : 'solve-log';
+        document.getElementById(id).value = e.target.result;
+    };
+    reader.readAsText(file);
+}
 window.addEventListener('DOMContentLoaded', () => {
     const title = document.querySelector('p[onclick]');
     if (title) {
@@ -123,7 +258,9 @@ function initBoard(resetTarget = false) {
             board[r][c] = Math.floor(r / subSize) * gridNum + Math.floor(c / subSize);
         }
     }
-    
+    // ログをクリア
+    clearSolveLog();
+
     render();
     renderPreview(); 
     renderCoordinates();
@@ -278,22 +415,35 @@ function endDrag() {
         s.style.transform = (dragAxis === 'h') ? `translateX(${steps * unit}px)` : `translateY(${steps * unit}px)`; 
     });
 
-    setTimeout(() => {
-        if (steps !== 0) {
-            const loops = Math.abs(steps) * ((moveMode === 'cheat') ? 1 : subSize);
-            const lines = (moveMode === 'frame') ? subSize : 1;
-            const sr = Math.floor(activeRow / subSize) * subSize;
-            const sc = Math.floor(activeCol / subSize) * subSize;
+// endDrag 関数の中の該当箇所を修正
+setTimeout(() => {
+    if (steps !== 0) {
+        const isV = (dragAxis === 'v');
+        const isRev = steps < 0; // 配列操作上の向き
+        
+        // 物理方向記号の決定
+        let dirChar = "";
+        if (isV) dirChar = (steps < 0) ? "U" : "D";
+        else dirChar = (steps < 0) ? "L" : "R";
 
-            for(let l = 0; l < lines; l++) {
-                let r = (dragAxis === 'h' && moveMode === 'frame') ? sr + l : activeRow;
-                let c = (dragAxis === 'v' && moveMode === 'frame') ? sc + l : activeCol;
-                for(let i = 0; i < loops; i++) moveLogic(r, c, dragAxis === 'v', steps < 0);
-            }
-            checkComplete();
+        const loops = Math.abs(steps) * ((moveMode === 'cheat') ? 1 : subSize);
+        const lines = (moveMode === 'frame') ? subSize : 1;
+        const sr = Math.floor(activeRow / subSize) * subSize;
+        const sc = Math.floor(activeCol / subSize) * subSize;
+
+        for(let l = 0; l < lines; l++) {
+            let r = (dragAxis === 'h' && moveMode === 'frame') ? sr + l : activeRow;
+            let c = (dragAxis === 'v' && moveMode === 'frame') ? sc + l : activeCol;
+            
+            // ログ記録 (行列ごとに記録)
+            recordMove(isV ? c : r, dirChar, Math.abs(steps));
+            
+            for(let i = 0; i < loops; i++) moveLogic(r, c, isV, isRev);
         }
-        resetDragState();
-    }, 210);
+        checkComplete();
+    }
+    resetDragState();
+}, 210);
 }
 
 function moveLogic(r, c, isV, isRev) {
@@ -447,6 +597,92 @@ function resetDragState() { if (longPressTimer) { clearTimeout(longPressTimer); 
 function clearGhosts() { ghostStrips.forEach(el => el.remove()); ghostStrips = []; }
 function updateFrameHighlight(f) { clearFrameHighlights(); if ((isShiftPressed || moveMode === 'frame') && f !== -1) document.getElementById(`face-${f}`)?.classList.add('active-frame'); }
 function clearFrameHighlights() { document.querySelectorAll('.face').forEach(el => el.classList.remove('active-frame')); }
+
+// --- 1. タイマー & 2. カウンター ---
+function updateCounter() {
+    moveCount++;
+    // 表示用のDOMがあれば更新（例: アイコン横の数値など）
+}
+
+function toggleTimer() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    } else {
+        startTime = Date.now();
+        timerInterval = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            console.log(`Time: ${elapsed}s`); // 後ほど専用表示部へ接続
+        }, 1000);
+    }
+}
+
+// --- 3. ローテート (盤面90度回転) ---
+function rotateBoard() {
+    const totalSize = subSize * gridNum;
+    let newBoard = Array.from({length: totalSize}, () => []);
+    for (let r = 0; r < totalSize; r++) {
+        for (let c = 0; c < totalSize; c++) {
+            newBoard[c][totalSize - 1 - r] = board[r][c];
+        }
+    }
+    board = newBoard;
+    render();
+}
+
+// --- 4. 同色フラッシュ ---
+function flashSameColor(colorId) {
+    const cells = document.querySelectorAll('.cell');
+    cells.forEach(cell => {
+        if (cell.dataset.colorId == colorId) {
+            cell.classList.add('flash-highlight');
+            setTimeout(() => cell.classList.remove('flash-highlight'), 1000);
+        }
+    });
+}
+
+/**
+ * タイムショック演出：枠の進捗を更新
+ * @param {string} id - 'timer', 'counter', 'rotate'
+ * @param {number} percent - 0 to 100
+ */
+function updateFrameProgress(id, percent) {
+    const el = document.getElementById(`${id}-frame`);
+    if (!el) return;
+
+    if (percent > 0) el.classList.add('fx-active');
+    else el.classList.remove('fx-active');
+
+    // conic-gradientを使用して、時計回りに枠を削っていく
+    // 背景をグラデーションにすることで、進捗分だけ色が見えるように制御
+    el.style.background = `conic-gradient(currentColor ${percent}%, transparent ${percent}%)`;
+    
+    // 枠線部分以外を透明にするため、background-originを調整
+    el.style.backgroundOrigin = "border-box";
+}
+
+// --- タイマー連動 ---
+function startTimerWithFX(limitSec = 60) {
+    let current = 0;
+    const interval = 100; // 0.1秒ごとに更新
+    const timer = setInterval(() => {
+        current += interval / 1000;
+        const progress = (current / limitSec) * 100;
+        updateFrameProgress('timer', progress);
+
+        if (progress >= 100) {
+            clearInterval(timer);
+            console.log("TIME UP");
+            // ここに時間切れの処理（盤面ロック等）
+        }
+    }, interval);
+}
+
+// --- カウンター連動 (recordMoveの中で呼び出し) ---
+function updateCounterFX(moves, limitMoves = 50) {
+    const progress = (moves / limitMoves) * 100;
+    updateFrameProgress('counter', progress);
+}
 
 window.onmousemove = (e) => handleMove(e.clientX, e.clientY);
 window.onmouseup = endDrag;

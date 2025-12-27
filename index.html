@@ -10,14 +10,17 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-		<p style="text-align : center; cursor: pointer;">
-		    <b onclick="toggleMenu()">
-		        <span style="font-size : 150%;">SLP Slide Looper Puzzle v1.0</span>
-		    </b>
-		</p>    
-	<div class="menu-panel">
+    <p style="text-align : center; cursor: pointer;">
+        <b onclick="toggleMenu()">
+            <span style="font-size : 150%;">SLP Slide Looper Puzzle v1.0</span>
+        </b>
+    </p>
+
+    <div class="menu-panel">
+        <button class="log-btn" onclick="toggleLogPanel()">LOG</button>
+
         <div class="mode-selector">
-            <select id="mode-select" onchange="handleModeChange(this.value)" style="padding: 8px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; cursor: pointer;">
+            <select id="mode-select" onchange="handleModeChange(this.value)">
                 <option value="easy">Easy (2x2 / 4-Face)</option>
                 <option value="mid" selected>Mid (2x3 / 6-Face)</option>
                 <option value="hard">Hard (3x3 / 9-Face)</option>
@@ -25,10 +28,34 @@
             </select>
         </div>
         
-        <div class="action-group" style="display:flex; gap:5px; align-items:center;">
-            <input type="number" id="scramble-count" value="15" min="1" max="200" style="width: 45px; background: #333; color: white; border: 1px solid #555; padding: 6px; border-radius: 4px; text-align: center;">
+        <div class="action-group">
+            <input type="number" id="scramble-count" value="15" min="1" max="200">
             <button id="shuffle-btn" onclick="shuffle()">Scramble</button>
             <button onclick="initBoard()">Reset</button>
+        </div>
+    </div>
+
+    <div id="log-overlay" class="overlay">
+        <div class="log-panel">
+            <div class="log-section">
+                <label>Scramble Box (Input)</label>
+                <input type="text" id="scramble-input" placeholder="A-L1,D-R2...">
+                <div class="log-controls">
+                    <button onclick="applyScrambleLog()">Apply to Target</button>
+                    <button onclick="saveCSV('scramble')">Save CSV</button>
+                    <input type="file" id="import-scramble" hidden onchange="importCSV(this, 'scramble')">
+                    <button onclick="document.getElementById('import-scramble').click()">Import</button>
+                </div>
+            </div>
+            <div class="log-section">
+                <label>Solve Log (Live)</label>
+                <input type="text" id="solve-log" readonly>
+                <div class="log-controls">
+                    <button onclick="copySolveToScramble()">Copy to Scramble</button>
+                    <button onclick="saveCSV('solve')">Save CSV</button>
+                </div>
+            </div>
+            <button class="close-btn" onclick="toggleLogPanel()">Close</button>
         </div>
     </div>
 
@@ -37,26 +64,49 @@
             <div id="axis-top" class="axis-h"></div>
             <div id="axis-left" class="axis-v"></div>
             <div class="board-wrapper" id="board-wrapper">
+				<div id="timer-frame" class="fx-frame"></div>
+			    <div id="counter-frame" class="fx-frame"></div>
+			    <div id="rotate-frame" class="fx-frame"></div>
+
                 <div id="board" class="grid-container"></div>
                 <div id="status-board" class="status-overlay">COMPLETE!</div>
             </div>
         </div>
 
-		<div class="side-panel">
-		    <div class="preview-area">
-		        <div style="font-size: 12px; color: #aaa; margin-bottom: 5px;">TARGET VIEW</div>
-		        <div class="target-stack">
-		            <div id="preview"></div>
-		            <div id="status-preview" class="status-overlay">COMPLETE!</div>
-		        </div>
-		        <button id="copy-btn" onclick="copyCurrentToTarget()" style="margin-top: 10px; width: 100%; background: #555;">Copy Current</button>
-		    </div>
-		</div>
+        <div class="side-panel">
+            <div class="preview-area">
+                <div style="font-size: 12px; color: #aaa; margin-bottom: 5px;">TARGET VIEW</div>
+                <div class="target-stack">
+                    <div id="preview"></div>
+                    <div id="status-preview" class="status-overlay">COMPLETE!</div>
+                </div>
+            </div>
+            <div class="action-icons">
+                <button class="icon-btn" onclick="copyCurrentToTarget()" title="Copy">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+                <button class="icon-btn" onclick="toggleTimer()" title="Timer">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                </button>
+                <button class="icon-btn" onclick="incrementCounter()" title="Counter">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M7 20V4M17 4v16M7 4l10 16"></path></svg>
+                </button>
+                <button class="icon-btn" onclick="rotateBoard()" title="Rotate">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                </button>
+                <button class="icon-btn" onclick="toggleFlash()" title="Flash">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/><rect x="10" y="4" width="4" height="4" fill="yellow" stroke="white" stroke-width="1"/></svg>
+                </button>
+                <button class="icon-btn" onclick="toggleSearchlight()" title="Searchlight">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/><circle cx="16" cy="12" r="5" stroke="white" stroke-width="2"/></svg>
+                </button>
+            </div>
+        </div>
     </div>
 
     <div class="hint">
         Mobile: Drag (Std) / <b>Long Press</b> (Frame))<br>
-        PC: Drag (Std) / <span class="key-indicator">Shift</span> (Frame) / <span class="key-indicator">Ctrl</span> (1-Cell
+        PC: Drag (Std) / <span class="key-indicator">Shift</span> (Frame) / <span class="key-indicator">Ctrl</span> (1-Cell)
     </div>
     <script src="script.js"></script>
 </body>
