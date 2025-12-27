@@ -896,3 +896,257 @@ window.endDrag = function() {
         document.getElementById('searchlight-overlay').classList.remove('searchlight-active');
     }
 };
+
+/**
+ * Scramble Box内のコードを解析し、ターゲット盤面に反映（1ベースのラベルに対応）
+ */
+function applyScrambleLog() {
+    const input = document.getElementById('scramble-input').value;
+    if (!input) return;
+
+    const totalSize = subSize * gridNum;
+
+    // 1. ターゲットを完成状態で初期化
+    targetBoard = Array.from({ length: totalSize }, (_, r) =>
+        Array.from({ length: totalSize }, (_, c) => {
+            const rowGroup = Math.floor(r / subSize);
+            const colGroup = Math.floor(c / subSize);
+            return rowGroup * gridNum + colGroup;
+        })
+    );
+
+    const moves = input.split(',');
+    moves.forEach(move => {
+        const cmd = move.trim().toLowerCase();
+        if (!cmd.includes('-')) return;
+
+        const [label, action] = cmd.split('-'); 
+        
+        // 2. ラベルの解析（1ベースを0ベースに変換）
+        let lineIdx;
+        let isVertical = false;
+
+        if (!isNaN(label)) {
+            // 数値の場合：列(Column)移動。1から始まるため -1 する
+            lineIdx = parseInt(label) - 1; 
+            isVertical = true;
+        } else {
+            // アルファベットの場合：行(Row)移動。a=0, b=1...
+            lineIdx = label.charCodeAt(0) - 97;
+            isVertical = false;
+        }
+
+        const dir = action[0].toUpperCase(); // U, D, R, L
+        const blockStep = parseInt(action.substring(1)); // ブロック単位の移動距離
+
+        // 範囲外チェック（0 ～ totalSize-1 の間であること）
+        if (lineIdx < 0 || lineIdx >= totalSize || isNaN(blockStep)) return;
+
+        const isReverse = (dir === 'R' || dir === 'D');
+
+        // 3. セル抽出
+        let cells = [];
+        if (isVertical) {
+            for (let r = 0; r < totalSize; r++) cells.push(targetBoard[r][lineIdx]);
+        } else {
+            for (let c = 0; c < totalSize; c++) cells.push(targetBoard[lineIdx][c]);
+        }
+
+        // 4. 移動距離（ブロックサイズ分）のスライド
+        const totalStep = blockStep * subSize; 
+        for (let s = 0; s < totalStep; s++) {
+            if (isReverse) cells.unshift(cells.pop());
+            else cells.push(cells.shift());
+        }
+
+        // 5. 書き戻し
+        if (isVertical) {
+            for (let r = 0; r < totalSize; r++) targetBoard[r][lineIdx] = cells[r];
+        } else {
+            for (let c = 0; c < totalSize; c++) targetBoard[lineIdx][c] = cells[c];
+        }
+    });
+
+    renderPreview();
+    localStorage.setItem('slp_target', JSON.stringify(targetBoard));
+}
+
+/**
+ * 汎用ログ出力関数（未定義エラー防止）
+ */
+function addLog(msg) {
+    console.log("LOG:", msg);
+    // 既存のログリスト(log-list)があればそこにも出力
+    const logList = document.getElementById('log-list');
+    if (logList) {
+        const li = document.createElement('li');
+        li.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        logList.insertBefore(li, logList.firstChild);
+    }
+}
+
+/**
+ * 指定された要素の内容をCSVとして保存する
+ */
+function saveCSV(type) {
+    const id = (type === 'scramble') ? 'scramble-input' : 'solve-log';
+    const inputElement = document.getElementById(id);
+    
+    // 空の状態でのエラーを回避
+    if (!inputElement || !inputElement.value || inputElement.value.trim() === "") {
+        console.warn(`Save aborted: ${id} is empty.`);
+        // addLogが未定義でも落ちないよう、存在確認してから呼ぶ
+        if (typeof addLog === 'function') {
+            addLog(`Notice: No data to save in ${type} box.`);
+        }
+        return; 
+    }
+
+    try {
+        const content = inputElement.value;
+        const blob = new Blob([content], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        const now = new Date();
+        const time = now.getFullYear() + (now.getMonth() + 1).toString().padStart(2, '0') + 
+                     now.getDate().toString().padStart(2, '0') + "_" + 
+                     now.getHours().toString().padStart(2, '0') + 
+                     now.getMinutes().toString().padStart(2, '0');
+        
+        a.download = `slp_${type}_${time}.csv`;
+        
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+        if (typeof addLog === 'function') {
+            addLog(`Saved ${type} CSV.`);
+        }
+    } catch (e) {
+        console.error("Save failed:", e);
+    }
+}/**
+ * 汎用ログ出力関数（未定義エラー防止）
+ */
+function addLog(msg) {
+    console.log("LOG:", msg);
+    // 既存のログリスト(log-list)があればそこにも出力
+    const logList = document.getElementById('log-list');
+    if (logList) {
+        const li = document.createElement('li');
+        li.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        logList.insertBefore(li, logList.firstChild);
+    }
+}
+
+/**
+ * 指定された要素の内容をCSVとして保存する
+ */
+function saveCSV(type) {
+    const id = (type === 'scramble') ? 'scramble-input' : 'solve-log';
+    const inputElement = document.getElementById(id);
+    
+    // 空の状態でのエラーを回避
+    if (!inputElement || !inputElement.value || inputElement.value.trim() === "") {
+        console.warn(`Save aborted: ${id} is empty.`);
+        // addLogが未定義でも落ちないよう、存在確認してから呼ぶ
+        if (typeof addLog === 'function') {
+            addLog(`Notice: No data to save in ${type} box.`);
+        }
+        return; 
+    }
+
+    try {
+        const content = inputElement.value;
+        const blob = new Blob([content], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        const now = new Date();
+        const time = now.getFullYear() + (now.getMonth() + 1).toString().padStart(2, '0') + 
+                     now.getDate().toString().padStart(2, '0') + "_" + 
+                     now.getHours().toString().padStart(2, '0') + 
+                     now.getMinutes().toString().padStart(2, '0');
+        
+        a.download = `slp_${type}_${time}.csv`;
+        
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+        if (typeof addLog === 'function') {
+            addLog(`Saved ${type} CSV.`);
+        }
+    } catch (e) {
+        console.error("Save failed:", e);
+    }
+}
+
+/**
+ * 3. Import: ファイル選択時に実行される
+ */
+function importCSV(input, type) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const targetId = (type === 'scramble') ? 'scramble-input' : 'solve-log';
+        const inputField = document.getElementById(targetId);
+        
+        if (inputField) {
+            // 文字列整形（改行除去）
+            inputField.value = e.target.result.trim().replace(/\n|\r/g, "");
+            
+            if (typeof addLog === 'function') {
+                addLog(`Imported ${type} CSV: ${file.name}`);
+            }
+        }
+        // 同じファイルを再度選択可能にするためのリセット
+        input.value = '';
+    };
+    reader.readAsText(file);
+}
+
+/**
+ * 4. Copy to Scramble: LiveログをInputボックスへコピー
+ */
+function copySolveToScramble() {
+    const solveLog = document.getElementById('solve-log');
+    const scrambleInput = document.getElementById('scramble-input');
+    if (solveLog && scrambleInput) {
+        scrambleInput.value = solveLog.value;
+        if (typeof addLog === 'function') addLog("Solve log copied to Scramble Box");
+    }
+}
+
+/**
+ * 2 & 5. Save CSV: Scramble側・Solve側の両方に対応
+ */
+function saveCSV(type) {
+    const id = (type === 'scramble') ? 'scramble-input' : 'solve-log';
+    const element = document.getElementById(id);
+    
+    if (!element || !element.value.trim()) {
+        if (typeof addLog === 'function') addLog(`No data to save in ${type}`);
+        return;
+    }
+
+    const blob = new Blob([element.value], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    
+    const timestamp = new Date().getTime();
+    a.href = url;
+    a.download = `slp_${type}_${timestamp}.csv`;
+    
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
