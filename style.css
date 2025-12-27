@@ -121,11 +121,41 @@ button {
 }
 
 .side-panel {
-	margin-top: 10px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    min-width: auto;
+	gap: 0;
+}
+
+.stats-display {
+    background: #000;
+    border: 1px solid #333;
+    padding: 10px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    width: 100%; /* 横幅一杯 */
+    box-sizing: border-box;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.stat-item:last-child {
+    margin-bottom: 0;
+}
+
+.stat-item .label {
+    color: #888;
+    font-size: 10px;
+}
+
+#timer-display, #counter-display {
+    color: #0f0;
+    font-size: 16px;
+    font-weight: bold;
 }
 
 .axis-h {
@@ -232,6 +262,7 @@ min-width: 0;
 
 /* --- Target Preview --- */
 .preview-area { 
+	margin-top: 25px;
     text-align: center;
     background: #222;
     padding: 5px;
@@ -240,6 +271,8 @@ min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
+	margin-bottom: 5px;
+	margin-right: 15px;
 }
 
 .target-stack {
@@ -322,14 +355,58 @@ min-width: 0;
 
 .side-panel {
     display: flex;
-    flex-direction: column; /* PC: 縦並び */
-    gap: 10px;
+    flex-direction: column;
+    gap: 0px;
+}
+
+.stats-display {
+	background: #000;
+    border: 1px solid #333;
+    padding: 6px 8px; /* パディングを詰める */
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 5px; /* ボタンとの間の隙間 */
+}
+
+/* ボタンのトグル状態 */
+.icon-btn.active-toggle {
+    background-color: #008800; /* 濃い緑 */
+    box-shadow: inset 0 0 5px #0f0;
+    border-color: #0f0;
+}
+
+.icon-btn.active-toggle svg {
+    stroke: #0f0;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.stat-item:last-child {
+    margin-bottom: 0;
+}
+
+.stat-item .label {
+    color: #888;
+    font-size: 10px;
+}
+
+#timer-display, #counter-display {
+    color: #0f0;
+    font-size: 16px;
+    font-weight: bold;
 }
 
 .action-icons {
-    display: grid;
-    grid-template-columns: repeat(2, 40px);
-    gap: 8px;
+	display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 4px; /* ボタン同士の隙間を最小化 */
 }
 
 .icon-btn {
@@ -411,7 +488,32 @@ min-width: 0;
     opacity: 0;
     transition: opacity 0.3s;
 }
+.stats-display {
+    margin-top: 0px;
+    padding: 10px;
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 4px;
+    font-family: 'Courier New', Courier, monospace;
+}
 
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.stat-item .label {
+    color: #888;
+    font-size: 10px;
+}
+
+#timer-display, #counter-display {
+    color: #0f0; /* 緑色のデジタル文字 */
+    font-size: 18px;
+    font-weight: bold;
+}
 /* 各枠の色と発光 */
 #timer-frame { color: #00d2ff; filter: drop-shadow(0 0 5px #00d2ff); }
 #counter-frame { color: #00ff66; filter: drop-shadow(0 0 5px #00ff66); margin: -8px; }
