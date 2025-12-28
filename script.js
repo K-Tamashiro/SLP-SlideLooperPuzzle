@@ -12,7 +12,7 @@ let startX = 0, startY = 0, isDragging = false, moveMode = 'standard';
 let activeRow = -1, activeCol = -1, dragAxis = null, currentTranslate = 0;
 let ghostStrips = [];
 let longPressTimer = null;
-const LONG_PRESS_MS = 250;
+const LONG_PRESS_MS = 200;
 
 // 統計・タイマー管理用（一本化）
 let moveCount = 0;
@@ -469,22 +469,10 @@ function endDrag() {
     }, 100);
 }
 
-/**
-<<<<<<< HEAD
- * ログパネルの表示/非表示（コンプリート通知の制御を追加）
-=======
- * ログパネルの表示/非表示（MODEL表示の復旧）
->>>>>>> origin/develop
- */
 function toggleLogPanel() {
     const overlay = document.getElementById('log-overlay');
     const mediaControls = document.getElementById('media-controls');
-<<<<<<< HEAD
     const statusBoard = document.getElementById('status-board');
-=======
-    
-    // ご提示のIDに合わせて取得先を変更
->>>>>>> origin/develop
     const logModeSpan = document.getElementById('mode-text');
     const mainSelect = document.getElementById('mode-select');
 
@@ -492,42 +480,26 @@ function toggleLogPanel() {
 
     const isVisible = overlay.style.display === 'block';
     if (!isVisible) {
-<<<<<<< HEAD
-        // パネルを開く時：コンプリート通知を隠す
         if (statusBoard) statusBoard.classList.remove('show');
-        
-        if (logModeSpan && mainSelect) {
-            logModeSpan.innerText = mainSelect.options[mainSelect.selectedIndex].text;
-=======
-        // --- モードテキストの反映 ---
         if (logModeSpan && mainSelect) {
             const selectedText = mainSelect.options[mainSelect.selectedIndex].text;
             logModeSpan.innerText = selectedText;
->>>>>>> origin/develop
         }
-
         if (typeof refreshHistoryList === 'function') refreshHistoryList();
         overlay.style.display = 'block';
-
         if (window.isReplayMode && mediaControls) {
             mediaControls.style.visibility = 'hidden';
             mediaControls.style.opacity = '0';
         }
     } else {
-        // パネルを閉じる時
         overlay.style.display = 'none';
-
         if (window.isReplayMode && mediaControls) {
             mediaControls.style.visibility = 'visible';
             mediaControls.style.opacity = '1';
-<<<<<<< HEAD
-            
-            // 解析モード中で、かつ現在地が完了（56/56）なら通知を再表示
-            if (window.currentReplayIdx === window.replaySteps.length) {
-                if (statusBoard) statusBoard.classList.add('show');
+            const isComplete = (window.currentReplayIdx === window.replaySteps.length);
+            if (isComplete && statusBoard) {
+                statusBoard.classList.add('show');
             }
-=======
->>>>>>> origin/develop
         }
     }
 }
@@ -1395,10 +1367,7 @@ function updateReplayDisplay() {
     if (totalEl) totalEl.innerText = window.replaySteps.length;
     
     const isComplete = (window.currentReplayIdx === window.replaySteps.length);
-<<<<<<< HEAD
-	const isLogVisible = document.getElementById('log-overlay').style.display === 'block';
-=======
->>>>>>> origin/develop
+    const isLogVisible = document.getElementById('log-overlay').style.display === 'block';
 
     if (moveEl) {
         moveEl.innerText = isComplete ? "COMPLETE" : (window.replaySteps[window.currentReplayIdx] || "END");
@@ -1410,12 +1379,8 @@ function updateReplayDisplay() {
     if (nextBtn) nextBtn.disabled = isComplete;
     if (backBtn) backBtn.disabled = (window.currentReplayIdx <= 0);
 
-    // 完成時のみ演出
-<<<<<<< HEAD
+    // 完成時演出：ログパネルが表示されていない時のみ出す
     if (isComplete && !isLogVisible) {
-=======
-    if (isComplete) {
->>>>>>> origin/develop
         document.getElementById('status-board')?.classList.add('show');
     } else {
         document.getElementById('status-board')?.classList.remove('show');
@@ -1423,10 +1388,9 @@ function updateReplayDisplay() {
 }
 
 /**
-<<<<<<< HEAD
  * サイドメニューの再生ボタン押下時の挙動
- * 1. メディアコントロール表示中 -> コントロールを消して終了
- * 2. 非表示中 -> ログパネルを表示（ユーザーにログ選択を促す）
+ * 1. メディアコントロール表示中 -> 解析モードを終了してコントロールを消す
+ * 2. 非表示中 -> ログパネルを表示してログ選択を促す
  */
 function toggleReplayMode() {
     const mediaControls = document.getElementById('media-controls');
@@ -1448,25 +1412,7 @@ function toggleReplayMode() {
         // 表示されていなければログダイアログを表示
         toggleLogPanel();
     }
-=======
- * リプレイモード終了 (Exit)
- */
-function toggleReplayMode() {
-    // 既存のロジックを整理
-    window.isReplayMode = false;
-    showMediaControls(false);
-
-    if (window.autoPlayTimer) {
-        clearInterval(window.autoPlayTimer);
-        window.autoPlayTimer = null;
-    }
-    
-    // 盤面をリセット（または現状維持か選択可能ですが、一旦ニュートラルに戻します）
-    initBoard();
-    if (typeof addLog === 'function') addLog("Exited replay mode.");
->>>>>>> origin/develop
 }
-
 
 /**
  * メディアコントロールの表示制御（Behavior）
@@ -1487,5 +1433,65 @@ function showMediaControls(show) {
         if (replayBtn) replayBtn.classList.remove('active-toggle');
         if (titleContainer) titleContainer.style.opacity = "1";
     }
+}
+
+/**
+ * 履歴をJSONファイルとして保存（Save）
+ */
+function exportHistory() {
+    const historyData = localStorage.getItem('puzzleHistory');
+    if (!historyData || historyData === '[]') {
+        alert("保存する履歴がありません。");
+        return;
+    }
+
+    const blob = new Blob([historyData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    a.href = url;
+    a.download = `puzzle_history_${timestamp}.json`;
+    a.click();
+    
+    URL.revokeObjectURL(url);
+}
+
+/**
+ * JSONファイルから履歴を読み込み（Import）
+ */
+function importHistory() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+
+    input.onchange = e => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = event => {
+            try {
+                const importedData = JSON.parse(event.target.result);
+                if (!Array.isArray(importedData)) throw new Error("Invalid format");
+
+                // 既存の履歴と統合（重複排除はせず追加）
+                const currentHistory = JSON.parse(localStorage.getItem('puzzleHistory') || '[]');
+                const newHistory = [...importedData, ...currentHistory];
+                
+                // 最新100件などに制限する場合はここで調整
+                localStorage.setItem('puzzleHistory', JSON.stringify(newHistory));
+                
+                // リストを更新
+                if (typeof refreshHistoryList === 'function') refreshHistoryList();
+                alert("履歴をインポートしました。");
+            } catch (err) {
+                alert("ファイルの形式が正しくありません。");
+            }
+        };
+        reader.readAsText(file);
+    };
+
+    input.click();
 }
 
