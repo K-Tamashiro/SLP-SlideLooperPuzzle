@@ -216,11 +216,7 @@ button {
 	margin: 0 auto;
 }
 
-.face {
-	display: grid;
-	gap: 2px;
-	position: relative;
-}
+
 
 .cell {
 	border-radius: 3px;
@@ -229,26 +225,6 @@ button {
 
 .cell:active {
 	cursor: grabbing;
-}
-/* --- Highlight Frame --- */
-
-.face-highlight {
-	position: absolute;
-	top: -4px;
-	left: -4px;
-	right: -4px;
-	bottom: -4px;
-	border: 3px solid #FFF;
-	border-radius: 6px;
-	pointer-events: none;
-	opacity: 0;
-	transition: opacity 0.2s;
-	z-index: 50;
-	box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
-}
-
-.face.active-frame .face-highlight {
-	opacity: 1;
 }
 
 .ghost-strip {
@@ -480,6 +456,15 @@ button {
 	cursor: pointer;
 }
 
+/* リセットボタンの強調（新規） */
+#reset-btn {
+    background: #c0392b !important; /* 濃い赤 */
+    font-weight: bold;
+}
+#reset-btn:hover {
+    background: #e74c3c !important;
+}
+
 .overlay {
 	display: none;
 	position: fixed;
@@ -662,3 +647,192 @@ button {
         grid-template-columns: repeat(3, 40px); /* 3列2段 */
     }
 }
+
+/* 上部タイトル位置に最小限で配置するオーバーレイ */
+.media-overlay-top {
+    position: absolute;
+    top: 5px; /* さらに上へ移動し、タイトルとほぼ同高度に配置 */
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto; /* 幅を自動にしてコンパクトに */
+    min-width: 280px;
+    background: rgba(10, 10, 10, 0.98);
+    border: 1px solid #0f0; /* 枠線を細く */
+    border-radius: 4px;
+    padding: 4px 8px; /* 余白を最小限に */
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    z-index: 10001; /* ヘッダーより前面に */
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+#log-current-mode {
+    color: #0f0;
+    text-shadow: 0 0 5px rgba(0, 255, 0, 0.7);
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.media-overlay-top.active {
+    display: flex !important;
+}
+/* ログパネル（ダイアログ）のオーバーレイ */
+#log-overlay {
+    z-index: 20000; /* メディアコントロールより確実に前面へ */
+}
+
+/* コンプリート時の通知なども必要に応じて調整 */
+#status-board {
+    z-index: 20001;
+}
+
+.m-group {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    justify-content: center;
+}
+
+.m-btn {
+    background: #222;
+    color: #fff;
+    border: 1px solid #444;
+    padding: 6px 12px; /* ボタンを小さく */
+    font-size: 12px; /* 文字を小さく */
+    border-radius: 3px;
+    flex: 1;
+}
+
+.m-btn.stop {
+    background: #400;
+}
+
+.replay-status {
+    font-family: 'Courier New', monospace;
+    color: #0f0;
+    font-size: 11px; /* ステータスも小さく */
+}
+
+.m-group {
+    display: flex;
+    gap: 15px;
+    width: 100%;
+    justify-content: center;
+}
+
+.m-btn {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-weight: bold;
+    flex: 1;
+    max-width: 100px;
+}
+
+.m-btn.stop {
+    background: #600;
+}
+
+.replay-status {
+    font-family: 'Courier New', monospace;
+    color: #0f0;
+    font-size: 14px;
+}
+.main-header {
+    width: 100%;
+    max-width: 600px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    /* 左側に少しマージンを持たせて中央よりやや左から開始 */
+    padding-left: 20px; 
+    position: relative;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+.title-container {
+    flex: 1;
+    cursor: pointer;
+    text-align: left; /* 左寄せにする */
+}
+
+.title-text {
+    font-size: 130%;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.header-side-right {
+    width: 50px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+}
+
+#menu-dots {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 32px;
+    cursor: pointer;
+    padding: 10px;
+}
+
+/* --- Face & Highlight Frame --- */
+.face {
+    display: grid;
+    gap: 2px;
+    position: relative;
+    box-sizing: border-box;
+    transition: box-shadow 0.2s ease, outline 0.2s ease;
+}
+
+/* 枠モード（SHIFT/長押し）有効時の強調：outlineとbox-shadowで実装 */
+.face.active-frame {
+    z-index: 2000;
+    outline: 4px solid #FFFFFF;
+    outline-offset: 2px;
+    border-radius: 4px;
+    box-shadow: 0 0 25px rgba(255, 255, 255, 1), 0 0 50px rgba(255, 255, 255, 0.5);
+}
+
+/* 既存の .face-highlight 要素（HTMLに存在する場合）との互換性維持 */
+.face-highlight {
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border: 3px solid #FFF;
+    border-radius: 6px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 50;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+}
+
+.face.active-frame .face-highlight {
+    opacity: 1;
+}
+
+.history-container {
+    max-height: 250px; /* 表示領域を少し拡大 */
+    overflow-y: auto;
+    background: #111;
+    border: 1px solid #444;
+    margin-bottom: 5px;
+    /* スムーズなスクロール */
+    -webkit-overflow-scrolling: touch;
+}
+
+.history-item:active {
+    background: #333; /* 選択時のフィードバック */
+}
+
+
