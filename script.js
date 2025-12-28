@@ -470,12 +470,21 @@ function endDrag() {
 }
 
 /**
+<<<<<<< HEAD
  * ログパネルの表示/非表示（コンプリート通知の制御を追加）
+=======
+ * ログパネルの表示/非表示（MODEL表示の復旧）
+>>>>>>> origin/develop
  */
 function toggleLogPanel() {
     const overlay = document.getElementById('log-overlay');
     const mediaControls = document.getElementById('media-controls');
+<<<<<<< HEAD
     const statusBoard = document.getElementById('status-board');
+=======
+    
+    // ご提示のIDに合わせて取得先を変更
+>>>>>>> origin/develop
     const logModeSpan = document.getElementById('mode-text');
     const mainSelect = document.getElementById('mode-select');
 
@@ -483,11 +492,18 @@ function toggleLogPanel() {
 
     const isVisible = overlay.style.display === 'block';
     if (!isVisible) {
+<<<<<<< HEAD
         // パネルを開く時：コンプリート通知を隠す
         if (statusBoard) statusBoard.classList.remove('show');
         
         if (logModeSpan && mainSelect) {
             logModeSpan.innerText = mainSelect.options[mainSelect.selectedIndex].text;
+=======
+        // --- モードテキストの反映 ---
+        if (logModeSpan && mainSelect) {
+            const selectedText = mainSelect.options[mainSelect.selectedIndex].text;
+            logModeSpan.innerText = selectedText;
+>>>>>>> origin/develop
         }
 
         if (typeof refreshHistoryList === 'function') refreshHistoryList();
@@ -504,11 +520,14 @@ function toggleLogPanel() {
         if (window.isReplayMode && mediaControls) {
             mediaControls.style.visibility = 'visible';
             mediaControls.style.opacity = '1';
+<<<<<<< HEAD
             
             // 解析モード中で、かつ現在地が完了（56/56）なら通知を再表示
             if (window.currentReplayIdx === window.replaySteps.length) {
                 if (statusBoard) statusBoard.classList.add('show');
             }
+=======
+>>>>>>> origin/develop
         }
     }
 }
@@ -1376,7 +1395,10 @@ function updateReplayDisplay() {
     if (totalEl) totalEl.innerText = window.replaySteps.length;
     
     const isComplete = (window.currentReplayIdx === window.replaySteps.length);
+<<<<<<< HEAD
 	const isLogVisible = document.getElementById('log-overlay').style.display === 'block';
+=======
+>>>>>>> origin/develop
 
     if (moveEl) {
         moveEl.innerText = isComplete ? "COMPLETE" : (window.replaySteps[window.currentReplayIdx] || "END");
@@ -1389,7 +1411,11 @@ function updateReplayDisplay() {
     if (backBtn) backBtn.disabled = (window.currentReplayIdx <= 0);
 
     // 完成時のみ演出
+<<<<<<< HEAD
     if (isComplete && !isLogVisible) {
+=======
+    if (isComplete) {
+>>>>>>> origin/develop
         document.getElementById('status-board')?.classList.add('show');
     } else {
         document.getElementById('status-board')?.classList.remove('show');
@@ -1397,6 +1423,7 @@ function updateReplayDisplay() {
 }
 
 /**
+<<<<<<< HEAD
  * サイドメニューの再生ボタン押下時の挙動
  * 1. メディアコントロール表示中 -> コントロールを消して終了
  * 2. 非表示中 -> ログパネルを表示（ユーザーにログ選択を促す）
@@ -1421,6 +1448,23 @@ function toggleReplayMode() {
         // 表示されていなければログダイアログを表示
         toggleLogPanel();
     }
+=======
+ * リプレイモード終了 (Exit)
+ */
+function toggleReplayMode() {
+    // 既存のロジックを整理
+    window.isReplayMode = false;
+    showMediaControls(false);
+
+    if (window.autoPlayTimer) {
+        clearInterval(window.autoPlayTimer);
+        window.autoPlayTimer = null;
+    }
+    
+    // 盤面をリセット（または現状維持か選択可能ですが、一旦ニュートラルに戻します）
+    initBoard();
+    if (typeof addLog === 'function') addLog("Exited replay mode.");
+>>>>>>> origin/develop
 }
 
 
