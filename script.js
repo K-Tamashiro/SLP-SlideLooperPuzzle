@@ -121,10 +121,6 @@ function initBoard(resetTarget = false) {
     renderCoordinates();
 }
 
-/**
- * --- 2. 統計・タイマー・カウンター ---
- */
-
 function toggleTimer(forceState) {
     const display = document.getElementById('timer-display');
     const btn = document.querySelector('button[onclick="toggleTimer()"]');
@@ -135,9 +131,9 @@ function toggleTimer(forceState) {
         // 停止処理
         if (timerId) { clearInterval(timerId); timerId = null; }
         if (btn) btn.classList.remove('active-toggle');
-        stopRotateIntervalOnly();
         
-        // ★ ロック解除（生存ボタン以外を元に戻す）
+        // 【重要】タイマー停止と同時にローテートの動作（枠とカウント）を停止
+        stopRotateIntervalOnly();
         setInterfaceLock(false);
     } else {
         // 開始処理
@@ -153,10 +149,9 @@ function toggleTimer(forceState) {
         }, 10);
         if (btn) btn.classList.add('active-toggle');
 
-        // ★ インターフェースロック実行
         setInterfaceLock(true);
 
-        // 回転ギミックの連動
+        // 【重要】タイマー開始時、ローテートボタンが予約（赤点灯）状態ならカウント開始
         const rotateBtn = document.querySelector('button[onclick="startRotateCountdown()"]');
         if (rotateBtn && rotateBtn.classList.contains('active-toggle-red')) {
             if (!window.rotateTimerId) executeRotateLoop(); 
@@ -721,36 +716,28 @@ function triggerFlash(colorIdx) {
 }
 
 /**
- * startRotateCountdown を「スイッチの切り替え」専用に修正
+ * startRotateCountdown
+ * ボタンの点灯状態（予約）のみを切り替える
  */
 function startRotateCountdown() {
     const btn = document.querySelector('button[onclick="startRotateCountdown()"]');
-    const frame = document.getElementById('rotate-frame');
-    if (window.rotateTimerId) {
-        clearInterval(window.rotateTimerId); window.rotateTimerId = null;
-        if (frame) { frame.classList.remove('fx-active'); frame.style.webkitMaskImage = 'none'; }
-        if (btn) btn.classList.remove('active-toggle-red');
-        return;
-    }
-    const totalSize = subSize * gridNum, maxSteps = totalSize * 4 - 4;
-    let currentStep = maxSteps;
-    if (frame) frame.classList.add('fx-active');
-    if (btn) btn.classList.add('active-toggle-red');
-    window.rotateTimerId = setInterval(() => {
-        currentStep--;
-		if (frame) {
-		    const progress = (currentStep / maxSteps) * 100;
-		    // 枠そのものにマスクをかけて削る
-		    frame.style.webkitMaskImage = `conic-gradient(#000 ${progress}%, transparent ${progress}%)`;
-		    frame.style.maskImage = `conic-gradient(#000 ${progress}%, transparent ${progress}%)`;
-		}
-        if (currentStep <= 0) {
-            clearInterval(window.rotateTimerId); window.rotateTimerId = null;
-            rotateBoard();
-            if (frame) { frame.classList.remove('fx-active'); frame.style.webkitMaskImage = 'none'; }
-            if (btn) btn.classList.remove('active-toggle-red');
+    if (!btn) return;
+
+    const isReserved = btn.classList.contains('active-toggle-red');
+
+    if (isReserved) {
+        // 予約解除
+        btn.classList.remove('active-toggle-red');
+        stopRotateIntervalOnly();
+    } else {
+        // 予約点灯
+        btn.classList.add('active-toggle-red');
+        
+        // タイマーが既に動いている場合のみ、即座にカウントダウン（枠表示）を開始
+        if (timerId && !window.rotateTimerId) {
+            executeRotateLoop();
         }
-    }, 3000);
+    }
 }
 
 /**
@@ -773,25 +760,21 @@ function stopRotateIntervalOnly() {
 }
 
 
-/**
- * 実際のループ処理を分離
- */
 function executeRotateLoop() {
     const frame = document.getElementById('rotate-frame');
     const n = subSize * gridNum;
     const perimeterCells = (n * 4) - 4;
-    const duration = perimeterCells * 3000;
-    const interval = 50;
+    const duration = perimeterCells * 3000; // 1セル3秒計算
+    const interval = 50; // 描画更新間隔
     let elapsed = 0;
 
     if (frame) {
         frame.style.display = 'block';
-        void frame.offsetWidth;
         frame.classList.add('fx-active');
     }
 
     window.rotateTimerId = setInterval(() => {
-        // コンプリート画面が出たら停止
+        // コンプリートや停止時は即座に抜ける
         if (document.getElementById('status-board')?.classList.contains('show')) {
             stopRotateIntervalOnly();
             return;
@@ -807,8 +790,8 @@ function executeRotateLoop() {
         }
 
         if (elapsed >= duration) {
-            rotateBoard();
-            elapsed = 0;
+            rotateBoard(); // 内部で一旦停止し、描画を更新
+            elapsed = 0;   // ループ
         }
     }, interval);
 }
@@ -974,28 +957,38 @@ function addLog(msg) {
 }
 
 /**
- * 3. Import: ファイル選択時に実行される
+ * 1. Scramble Import: Trigger file selection
  */
-function importCSV(input, type) {
-    const file = input.files[0];
+function triggerImport() {
+    const input = document.getElementById('import-input');
+    if (input) {
+        input.value = ''; // Reset to allow re-selection of the same file
+        input.click();
+    }
+}
+
+/**
+ * 1. Scramble Import: Process the selected CSV file
+ */
+function importCSV(event) {
+    const file = event.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (e) => {
-        const targetId = (type === 'scramble') ? 'scramble-input' : 'solve-log';
-        const inputField = document.getElementById(targetId);
-        
-        if (inputField) {
-            // 文字列整形（改行除去）
-            inputField.value = e.target.result.trim().replace(/\n|\r/g, "");
+        const scrambleInput = document.getElementById('scramble-input');
+        if (scrambleInput) {
+            // Remove newlines and extra spaces
+            const content = e.target.result.trim().replace(/\r?\n|\r/g, "");
+            scrambleInput.value = content;
             
             if (typeof addLog === 'function') {
-                addLog(`Imported ${type} CSV: ${file.name}`);
+                addLog("Scramble pattern imported from file.");
             }
+            alert("Import successful: Scramble data loaded.");
         }
-        // 同じファイルを再度選択可能にするためのリセット
-        input.value = '';
     };
+    reader.onerror = () => alert("Failed to read the file.");
     reader.readAsText(file);
 }
 
@@ -1012,27 +1005,40 @@ function copySolveToScramble() {
 }
 
 /**
- * CSV保存（仕様3, 5）
+ * 2. Save CSV: Scramble or Solve pattern
+ * @param {string} type - 'scramble' or 'solve'
  */
 function saveCSV(type) {
-    const scLog = document.getElementById('scramble-input')?.value || "";
-    const slLog = document.getElementById('solve-log')?.value || "";
-    const modeInfo = getCurrentModeInfo();
+    const inputId = (type === 'scramble') ? 'scramble-input' : 'solve-log';
+    const inputElement = document.getElementById(inputId);
     
-    const gimmicks = JSON.stringify({
-        rotate: !!(document.querySelector('.active-toggle-red')),
-        spotlight: !!(window.isSearchlightMode),
-        flash: !!(window.isFlashMode)
-    });
+    if (!inputElement || !inputElement.value.trim()) {
+        alert(`No ${type} data available to save.`);
+        return;
+    }
 
-    const header = "Timestamp,ModeKey,GridSize,SubSize,Scramble,SolveHistory,Gimmicks,Time,Steps,TargetState\n";
-    const dataRow = `"${new Date().toLocaleString()}","${modeInfo.key}",${gridNum},${subSize},"${scLog}","${slLog}","${gimmicks.replace(/"/g, '""')}","${document.getElementById('timer-display')?.innerText}","${document.getElementById('counter-display')?.innerText}","${JSON.stringify(targetBoard).replace(/"/g, '""')}"`;
+    const data = inputElement.value.trim();
+    const blob = new Blob([data], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    
+    // タイムスタンプを付与したファイル名
+    const timestamp = new Date().getTime();
+    a.href = url;
+    a.download = `${type}_pattern_${timestamp}.csv`;
+    
+    document.body.appendChild(a);
+    a.click();
+    
+    // 後処理
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 0);
 
-    const blob = new Blob([header + dataRow], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = getExportFileName(type);
-    link.click();
+    if (typeof addLog === 'function') {
+        addLog(`${type.charAt(0).toUpperCase() + type.slice(1)} data saved to CSV.`);
+    }
 }
 
 /**
@@ -1083,47 +1089,67 @@ function saveSystemLog(isComplete = false) {
 }
 
 /**
- * 履歴リストの更新：モードフィルタリングとターゲットプレビュー生成
+ * 5. Refresh history list with Delete button
  */
 function refreshHistoryList() {
     const container = document.getElementById('history-list');
     if (!container) return;
 
-    // 1. 全履歴を取得
     const history = JSON.parse(localStorage.getItem('slp_history') || '[]');
     
-    // 2. 現在のモード（gridNum, subSize）に完全に一致するものだけを抽出
+    // 現在のモードでフィルタリング（最新順）
     const filtered = history.filter(h => 
         Number(h.grid_size) === gridNum && Number(h.sub_size) === subSize
-    ).reverse(); // 最新を上に
+    ).reverse();
 
     if (filtered.length === 0) {
-        container.innerHTML = '<div style="color:#666; padding:10px; text-align:center;">No history for this mode.</div>';
+        container.innerHTML = '<div style="color:#666; padding:20px; text-align:center;">No history for this mode.</div>';
         return;
     }
 
-    // 3. 各エントリに対してHTMLを構築
-    container.innerHTML = filtered.map((data, index) => {
+    container.innerHTML = filtered.map((data) => {
+        // dataオブジェクトを安全に文字列化（削除用にタイムスタンプ等を使用）
+        const entryId = data.timestamp; 
         const dataStr = JSON.stringify(data).replace(/'/g, "\\'");
-        
-        // ターゲットプレビュー(アイコン)の生成
-        const miniPreviewHtml = createMiniPreview(data.target_state);
 
         return `
-            <div class="history-item" onclick='loadFilteredHistory(${dataStr})' 
-                 style="display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #333; cursor:pointer;">
-                <div class="mini-target-icon" style="flex-shrink:0;">${miniPreviewHtml}</div>
-                <div style="flex-grow:1; font-size:12px;">
+            <div class="history-item" style="display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #333; cursor:pointer;">
+                <div class="mini-target-icon" onclick='loadFilteredHistory(${dataStr})' style="flex-shrink:0;">
+                    ${createMiniPreview(data.target_state)}
+                </div>
+                <div style="flex-grow:1; font-size:12px;" onclick='loadFilteredHistory(${dataStr})'>
                     <div style="color:#aaa;">${data.timestamp}</div>
                     <div style="display:flex; justify-content:space-between;">
                         <span style="color:#00ffcc; font-weight:bold;">${data.solve_time}</span>
                         <span style="color:#888;">${data.step_count} steps</span>
-                        <span style="color:${data.is_complete ? '#2ecc71' : '#e74c3c'};">${data.is_complete ? '● FIN' : '○ MID'}</span>
                     </div>
                 </div>
+                <button onclick="deleteHistoryEntry('${entryId}')" 
+                        style="background:none; border:none; color:#e74c3c; cursor:pointer; font-size:16px; padding:5px;" 
+                        title="Delete this log">🗑️</button>
             </div>
         `;
     }).join('');
+}
+
+/**
+ * 5. Delete specific history entry
+ * @param {string} timestamp - Unique identifier for the log
+ */
+function deleteHistoryEntry(timestamp) {
+    if (!confirm("Are you sure you want to delete this log?")) return;
+
+    let history = JSON.parse(localStorage.getItem('slp_history') || '[]');
+    
+    // 指定されたタイムスタンプ以外のものを残す
+    const newHistory = history.filter(item => item.timestamp !== timestamp);
+    
+    localStorage.setItem('slp_history', JSON.stringify(newHistory));
+    
+    // リストを再描画
+    refreshHistoryList();
+    
+    if (typeof addLog === 'function') addLog("History entry deleted.");
 }
 
 /**
@@ -1273,6 +1299,45 @@ function initBoardForAnalyze() {
     // Scrambleを実行して「解く前の状態」にする
     // ここで reproduceScramble() を呼び出し、boardを崩す
     reproduceScramble(); 
+}
+
+/**
+ * 3. Reproduce Scramble (Updated)
+ */
+function reproduceScramble() {
+    const input = document.getElementById('scramble-input').value;
+    if (!input) return;
+
+    // 1. 判定を一時的にスキップするフラグを立てる
+    skipCompleteOnce = true;
+
+    // 2. 盤面初期化
+    initBoard();
+
+    const steps = input.split(',').filter(s => s.trim() !== "");
+    
+    try {
+        steps.forEach(move => {
+            executeSingleMove(move, false);
+        });
+
+        render();
+        
+        // 3. 正常終了時はダイアログを閉じ、メッセージは出さない
+        toggleLogPanel();
+        
+        if (typeof addLog === 'function') {
+            addLog("Scramble pattern applied.");
+        }
+        
+    } catch (err) {
+        // エラー時のみ通知
+        alert("Error: Invalid scramble code format.");
+        console.error(err);
+    } finally {
+        // フラグを元に戻す
+        skipCompleteOnce = false;
+    }
 }
 
 /**
@@ -1495,3 +1560,71 @@ function importHistory() {
     input.click();
 }
 
+/**
+ * 4. Backup History: Export all history data as a JSON file
+ */
+function saveBackupCSV() {
+    const historyData = localStorage.getItem('slp_history');
+    if (!historyData || historyData === '[]') {
+        alert("No history data to backup.");
+        return;
+    }
+
+    const blob = new Blob([historyData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    
+    const timestamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `slp_history_backup_${timestamp}.json`;
+    a.click();
+    
+    URL.revokeObjectURL(url);
+    if (typeof addLog === 'function') addLog("History backup exported.");
+}
+
+/**
+ * 4. Restore History: Trigger file selection
+ */
+function triggerRestore() {
+    const input = document.getElementById('restore-input');
+    if (input) {
+        input.value = '';
+        input.click();
+    }
+}
+
+/**
+ * 4. Restore History: Import and merge/overwrite history data
+ */
+function restoreHistory(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const importedData = JSON.parse(e.target.result);
+            if (!Array.isArray(importedData)) throw new Error("Invalid format");
+
+            // 既存の履歴を確認
+            const currentHistory = JSON.parse(localStorage.getItem('slp_history') || '[]');
+            
+            // 統合（重複を避ける場合はタイムスタンプ等で比較が必要ですが、現在は単純追加）
+            const newHistory = [...importedData, ...currentHistory];
+            
+            // 最大400件に制限
+            const limitedHistory = newHistory.slice(-400);
+            
+            localStorage.setItem('slp_history', JSON.stringify(limitedHistory));
+            
+            refreshHistoryList();
+            alert("History restored successfully.");
+            
+        } catch (err) {
+            alert("Error: Invalid backup file format.");
+            console.error(err);
+        }
+    };
+    reader.readAsText(file);
+}

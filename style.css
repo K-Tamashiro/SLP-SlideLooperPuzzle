@@ -202,12 +202,18 @@ button {
 .board-wrapper {
 	grid-area: board;
 	background: #000;
-	padding: 6px;
+	padding: 10px;
 	border-radius: 8px;
 	position: relative;
 	overflow: hidden;/* コンテンツの大きさに合わせる */
 	width: fit-content;
 	margin: 0 auto;
+	transition: transform 0.2s ease-out; /* 手動操作時の追従性 */
+    transform-origin: center center;
+    will-change: transform;
+transform-origin: center center !important;
+    backface-visibility: hidden;
+    perspective: 1000px;
 }
 
 .grid-container {
@@ -506,11 +512,6 @@ button {
 	display: flex;
 	gap: 5px;
 	flex-wrap: wrap;
-}
-
-.board-wrapper {
-	position: relative;
-	padding: 10px;/* 枠が表示されるスペース */
 }
 
 .fx-frame {
@@ -835,4 +836,7 @@ button {
     background: #333; /* 選択時のフィードバック */
 }
 
-
+.history-item button:hover {
+    transform: scale(1.2);
+    color: #ff0000 !important;
+}
