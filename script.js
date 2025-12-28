@@ -12,7 +12,7 @@ let startX = 0, startY = 0, isDragging = false, moveMode = 'standard';
 let activeRow = -1, activeCol = -1, dragAxis = null, currentTranslate = 0;
 let ghostStrips = [];
 let longPressTimer = null;
-const LONG_PRESS_MS = 500;
+const LONG_PRESS_MS = 250;
 
 // 統計・タイマー管理用（一本化）
 let moveCount = 0;
@@ -31,13 +31,34 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     initBoard();
 });
+window.onmousemove = (e) => handleMove(e.clientX, e.clientY);
+window.onmouseup = endDrag;
+window.ontouchmove = (e) => { if(isDragging) { if(e.cancelable) e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY); } };
+window.ontouchend = endDrag;
+window.rotateTimerId = window.rotateTimerId || null;
+window.isFlashMode = false;
+window.isSearchlightMode = false;
+// ドラッグ終了（離した時）に暗幕を非表示にする
+const originalEndDrag = endDrag;
+window.endDrag = function() {
+    originalEndDrag();
+    if (window.isSearchlightMode) {
+        document.getElementById('searchlight-overlay').classList.remove('searchlight-active');
+    }
+};
+
 
 function handleModeChange(mode) {
+    // 現在タイマーが動いている、または1手以上動かしている場合は保存して締める
+    if (timerId || moveCount > 0) {
+        saveSystemLog(false); // 未完了(isComplete=false)として保存
+    }
+
     switch (mode) {
         case 'easy': changeMode(2, 2); break;
         case 'mid': changeMode(2, 3); break;
         case 'hard': changeMode(3, 3); break;
-        case 'advance': changeMode(2, 4); break; // 8x8盤面
+        case 'advance': changeMode(2, 4); break;
     }
 }
 
@@ -68,6 +89,14 @@ function calculateLayout() {
 }
 
 function initBoard(resetTarget = false) {
+    // ★ 追加：リセット時は強制的にタイマーを停止し、ロックを解除する
+    if (timerId) {
+        toggleTimer(false); 
+    } else {
+        // タイマーが動いていなくても、念のためロックを解除（不整合の防止）
+        setInterfaceLock(false);
+    }
+
     calculateLayout();
     const totalSize = subSize * gridNum;
 
@@ -96,33 +125,22 @@ function initBoard(resetTarget = false) {
  * --- 2. 統計・タイマー・カウンター ---
  */
 
-/**
- * タイマーのトグル（手動・自動共通）
- */
 function toggleTimer(forceState) {
     const display = document.getElementById('timer-display');
     const btn = document.querySelector('button[onclick="toggleTimer()"]');
     
-    // forceStateがあればそれに従い、なければ反転
     const shouldStart = (forceState !== undefined) ? forceState : !timerId;
-			// 【追加】ローテートボタンが「オン」の状態ならカウントダウンを開始
-            const rotateBtn = document.querySelector('button[onclick="startRotateCountdown()"]');
-            if (rotateBtn && rotateBtn.classList.contains('active-toggle-red')) {
-                // 既に動いていない場合のみ起動
-                if (!window.rotateTimerId) {
-                    executeRotateLoop(); 
-                }
-            }
+
     if (!shouldStart) {
-        // 停止
-        if (timerId) {
-            clearInterval(timerId);
-            timerId = null;
-        }
+        // 停止処理
+        if (timerId) { clearInterval(timerId); timerId = null; }
         if (btn) btn.classList.remove('active-toggle');
-		stopRotateIntervalOnly();
+        stopRotateIntervalOnly();
+        
+        // ★ ロック解除（生存ボタン以外を元に戻す）
+        setInterfaceLock(false);
     } else {
-        // 開始（既に動いていれば何もしない）
+        // 開始処理
         if (timerId) return;
         
         startTime = performance.now();
@@ -134,7 +152,36 @@ function toggleTimer(forceState) {
             if (display) display.textContent = `${m}:${s}.${ms}`;
         }, 10);
         if (btn) btn.classList.add('active-toggle');
+
+        // ★ インターフェースロック実行
+        setInterfaceLock(true);
+
+        // 回転ギミックの連動
+        const rotateBtn = document.querySelector('button[onclick="startRotateCountdown()"]');
+        if (rotateBtn && rotateBtn.classList.contains('active-toggle-red')) {
+            if (!window.rotateTimerId) executeRotateLoop(); 
+        }
     }
+}
+
+/**
+ * ギミック操作ボタンのロック状態を一括制御
+ */
+function setGimmickButtonsLock(isLocked) {
+    const gimmickButtons = [
+        'button[onclick="startRotateCountdown()"]',
+        'button[onclick="toggleFlash()"]',
+        'button[onclick="toggleSearchlight()"]'
+    ];
+    
+    gimmickButtons.forEach(selector => {
+        const btn = document.querySelector(selector);
+        if (btn) {
+            btn.disabled = isLocked;
+            btn.style.opacity = isLocked ? "0.5" : "1";
+            btn.style.cursor = isLocked ? "not-allowed" : "pointer";
+        }
+    });
 }
 
 function incrementCounter() {
@@ -223,39 +270,6 @@ function render() {
         }
         container.appendChild(faceEl);
     }
-}function render() {
-    const container = document.getElementById('board'); 
-    if (!container) return;
-    container.style.gridTemplateColumns = `repeat(${gridNum}, 1fr)`; 
-    container.style.gap = `${GAP_FACE}px`; 
-    container.innerHTML = '';
-
-    for (let f = 0; f < gridNum * gridNum; f++) {
-        const faceEl = document.createElement('div');
-        faceEl.className = 'face'; faceEl.id = `face-${f}`;
-        faceEl.style.gridTemplateColumns = `repeat(${subSize}, ${cellSizePixel}px)`;
-        const fr = Math.floor(f / gridNum) * subSize, fc = (f % gridNum) * subSize;
-        for (let r = 0; r < subSize; r++) {
-            for (let c = 0; c < subSize; c++) {
-                const cell = document.createElement('div');
-                const row = fr + r, col = fc + c;
-                cell.dataset.row = row; cell.dataset.col = col;
-                cell.className = `cell c${board[row][col]}`;
-                cell.style.width = cell.style.height = `${cellSizePixel}px`;
-                // 修正：フラッシュモード判定を追加
-                cell.onmousedown = (e) => {
-                    if(typeof isFlashMode !== 'undefined' && isFlashMode) triggerFlash(board[row][col]);
-                    handleStart(row, col, f, e.clientX, e.clientY, 'mouse', e);
-                };
-                cell.ontouchstart = (e) => {
-                    if(typeof isFlashMode !== 'undefined' && isFlashMode) triggerFlash(board[row][col]);
-                    handleStart(row, col, f, e.touches[0].clientX, e.touches[0].clientY, 'touch', e);
-                };
-                faceEl.appendChild(cell);
-            }
-        }
-        container.appendChild(faceEl);
-    }
 }
 
 function renderPreview() {
@@ -308,11 +322,18 @@ function renderCoordinates() {
 function handleStart(r, c, f, x, y, type, event) {
     if (isDragging) return;
     isDragging = true; startX = x; startY = y; activeRow = r; activeCol = c;
+    
     if (type === 'mouse') {
         moveMode = event.ctrlKey ? 'cheat' : (event.shiftKey ? 'frame' : 'standard');
+        if (moveMode === 'frame') updateFrameHighlight(true);
     } else {
         moveMode = 'standard';
-        longPressTimer = setTimeout(() => { moveMode = 'frame'; if (navigator.vibrate) navigator.vibrate(50); }, LONG_PRESS_MS);
+        // 250msで発動。指を動かす前に「枠モード」への切り替えを完了させる
+        longPressTimer = setTimeout(() => { 
+            moveMode = 'frame'; 
+            if (navigator.vibrate) navigator.vibrate(50);
+            updateFrameHighlight(true); 
+        }, LONG_PRESS_MS);
     }
     dragAxis = null; currentTranslate = 0;
 }
@@ -325,11 +346,22 @@ function handleMove(curX, curY) {
             if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
             dragAxis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
             createGhosts(dragAxis);
+            // ドラッグ開始確定時、枠モードなら再度強調
+            if (moveMode === 'frame') updateFrameHighlight(true);
         } else return;
     }
     currentTranslate = (dragAxis === 'h') ? dx : dy;
     const ts = (dragAxis === 'h') ? `translateX(${currentTranslate}px)` : `translateY(${currentTranslate}px)`;
     ghostStrips.forEach(s => s.style.transform = ts);
+}
+
+function updateFrameHighlight(isActive) {
+    document.querySelectorAll('.face').forEach(f => f.classList.remove('active-frame'));
+    if (isActive && moveMode === 'frame') {
+        const fIdx = Math.floor(activeRow / subSize) * gridNum + Math.floor(activeCol / subSize);
+        const target = document.getElementById(`face-${fIdx}`);
+        if (target) target.classList.add('active-frame');
+    }
 }
 
 /**
@@ -410,6 +442,7 @@ function createGhosts(axis) {
 
 
 function endDrag() {
+	updateFrameHighlight(false); // 枠を消す
     if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
     if (!isDragging || !dragAxis) { resetDragState(); return; }
     
@@ -437,22 +470,40 @@ function endDrag() {
 }
 
 /**
- * --- 5. 移動・回転・ログロジック ---
- */
-/**
- * ログパネルの表示/非表示：開く際にコンプリート表示を消去
+ * ログパネルの表示/非表示（MODEL表示の復旧）
  */
 function toggleLogPanel() {
     const overlay = document.getElementById('log-overlay');
+    const mediaControls = document.getElementById('media-controls');
+    
+    // ご提示のIDに合わせて取得先を変更
+    const logModeSpan = document.getElementById('mode-text');
+    const mainSelect = document.getElementById('mode-select');
+
     if (!overlay) return;
 
     const isVisible = overlay.style.display === 'block';
     if (!isVisible) {
-        // パネルを開く瞬間にコンプリート表示を消去
-        hideCompleteOverlays();
+        // --- モードテキストの反映 ---
+        if (logModeSpan && mainSelect) {
+            const selectedText = mainSelect.options[mainSelect.selectedIndex].text;
+            logModeSpan.innerText = selectedText;
+        }
+
+        if (typeof refreshHistoryList === 'function') refreshHistoryList();
         overlay.style.display = 'block';
+
+        if (window.isReplayMode && mediaControls) {
+            mediaControls.style.visibility = 'hidden';
+            mediaControls.style.opacity = '0';
+        }
     } else {
         overlay.style.display = 'none';
+
+        if (window.isReplayMode && mediaControls) {
+            mediaControls.style.visibility = 'visible';
+            mediaControls.style.opacity = '1';
+        }
     }
 }
 
@@ -478,8 +529,6 @@ function moveLogic(idx, isV, isRev) {
         if (isRev) board[idx].push(board[idx].shift()); else board[idx].unshift(board[idx].pop());
     }
 }
-
-/* script.js */
 
 function rotateBoard() {
     const wrapper = document.getElementById('board-wrapper');
@@ -511,7 +560,6 @@ function rotateBoard() {
         
     }, 400); // CSSの 0.4s と同期
 }
-
 function recordMove(lineIdx, dir, steps, mode) {
 	// 最初の操作でタイマーが止まっていたら動かす
     if (!timerId) toggleTimer(true);
@@ -607,8 +655,10 @@ function checkComplete() {
             // startRotateCountdownを呼び出すことで、内部の停止ロジック（clearInterval, クラス除去）を走らせる
             startRotateCountdown();
         }
-
-        // 3. コンプリート表示
+		
+		saveSystemLog(true); // コンプリートフラグを立てて保存
+        
+		// 3. コンプリート表示
         document.getElementById('status-board')?.classList.add('show');
         document.getElementById('status-preview')?.classList.add('show');
     } else {
@@ -657,14 +707,6 @@ function copyCurrentToTarget() {
     checkComplete();
 }
 
-window.onmousemove = (e) => handleMove(e.clientX, e.clientY);
-window.onmouseup = endDrag;
-window.ontouchmove = (e) => { if(isDragging) { if(e.cancelable) e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY); } };
-window.ontouchend = endDrag;
-
-window.rotateTimerId = window.rotateTimerId || null;
-window.isFlashMode = false;
-
 function toggleFlash() {
     window.isFlashMode = !window.isFlashMode;
     const btn = document.querySelector('button[onclick="toggleFlash()"]');
@@ -681,6 +723,9 @@ function triggerFlash(colorIdx) {
     });
 }
 
+/**
+ * startRotateCountdown を「スイッチの切り替え」専用に修正
+ */
 function startRotateCountdown() {
     const btn = document.querySelector('button[onclick="startRotateCountdown()"]');
     const frame = document.getElementById('rotate-frame');
@@ -710,8 +755,6 @@ function startRotateCountdown() {
         }
     }, 3000);
 }
-// windowオブジェクトでタイマーを一元管理（二重宣言エラー防止）
-window.rotateTimerId = window.rotateTimerId || null;
 
 /**
  * 回転カウントダウン（ループ対応・コンプリート連動版）
@@ -732,25 +775,6 @@ function stopRotateIntervalOnly() {
     }
 }
 
-/**
- * startRotateCountdown を「スイッチの切り替え」専用に修正
- */
-function startRotateCountdown() {
-    const btn = document.querySelector('button[onclick="startRotateCountdown()"]');
-    
-    if (btn.classList.contains('active-toggle-red')) {
-        // スイッチをオフにする
-        btn.classList.remove('active-toggle-red');
-        stopRotateIntervalOnly();
-    } else {
-        // スイッチをオンにする
-        btn.classList.add('active-toggle-red');
-        // すでにゲームが始まっている（タイマーが動いている）なら即座に開始
-        if (timerId) {
-            executeRotateLoop();
-        }
-    }
-}
 
 /**
  * 実際のループ処理を分離
@@ -792,8 +816,6 @@ function executeRotateLoop() {
     }, interval);
 }
 
-/* script.js */
-window.isSearchlightMode = false;
 
 /**
  * サーチライトモードの切り替え
@@ -852,29 +874,6 @@ function updateSearchlight(x, y) {
     overlay.style.maskImage = mask;
 }
 
-function updateSearchlight(x, y) {
-    if (!window.isSearchlightMode) return;
-    const overlay = document.getElementById('searchlight-overlay');
-    if (!overlay) return;
-
-    // タイマー停止中はオープン
-    if (!timerId) {
-        overlay.classList.remove('fx-active');
-        return;
-    }
-
-    const wrapper = document.getElementById('board-wrapper');
-    const rect = wrapper.getBoundingClientRect();
-    const relX = x - rect.left;
-    const relY = y - rect.top;
-
-    overlay.classList.add('fx-active'); // 表示
-    
-    const mask = `radial-gradient(circle 80px at ${relX}px ${relY}px, transparent 95%, black 100%)`;
-    overlay.style.webkitMaskImage = mask;
-    overlay.style.maskImage = mask;
-}
-
 // 既存のイベントハンドラにフックを追加
 const originalHandleStart = handleStart;
 handleStart = function(r, c, f, x, y, type, event) {
@@ -888,14 +887,6 @@ handleMove = function(curX, curY) {
     updateSearchlight(curX, curY);
 };
 
-// ドラッグ終了（離した時）に暗幕を非表示にする
-const originalEndDrag = endDrag;
-window.endDrag = function() {
-    originalEndDrag();
-    if (window.isSearchlightMode) {
-        document.getElementById('searchlight-overlay').classList.remove('searchlight-active');
-    }
-};
 
 /**
  * Scramble Box内のコードを解析し、ターゲット盤面に反映（1ベースのラベルに対応）
@@ -986,108 +977,6 @@ function addLog(msg) {
 }
 
 /**
- * 指定された要素の内容をCSVとして保存する
- */
-function saveCSV(type) {
-    const id = (type === 'scramble') ? 'scramble-input' : 'solve-log';
-    const inputElement = document.getElementById(id);
-    
-    // 空の状態でのエラーを回避
-    if (!inputElement || !inputElement.value || inputElement.value.trim() === "") {
-        console.warn(`Save aborted: ${id} is empty.`);
-        // addLogが未定義でも落ちないよう、存在確認してから呼ぶ
-        if (typeof addLog === 'function') {
-            addLog(`Notice: No data to save in ${type} box.`);
-        }
-        return; 
-    }
-
-    try {
-        const content = inputElement.value;
-        const blob = new Blob([content], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.href = url;
-        const now = new Date();
-        const time = now.getFullYear() + (now.getMonth() + 1).toString().padStart(2, '0') + 
-                     now.getDate().toString().padStart(2, '0') + "_" + 
-                     now.getHours().toString().padStart(2, '0') + 
-                     now.getMinutes().toString().padStart(2, '0');
-        
-        a.download = `slp_${type}_${time}.csv`;
-        
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-
-        if (typeof addLog === 'function') {
-            addLog(`Saved ${type} CSV.`);
-        }
-    } catch (e) {
-        console.error("Save failed:", e);
-    }
-}/**
- * 汎用ログ出力関数（未定義エラー防止）
- */
-function addLog(msg) {
-    console.log("LOG:", msg);
-    // 既存のログリスト(log-list)があればそこにも出力
-    const logList = document.getElementById('log-list');
-    if (logList) {
-        const li = document.createElement('li');
-        li.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-        logList.insertBefore(li, logList.firstChild);
-    }
-}
-
-/**
- * 指定された要素の内容をCSVとして保存する
- */
-function saveCSV(type) {
-    const id = (type === 'scramble') ? 'scramble-input' : 'solve-log';
-    const inputElement = document.getElementById(id);
-    
-    // 空の状態でのエラーを回避
-    if (!inputElement || !inputElement.value || inputElement.value.trim() === "") {
-        console.warn(`Save aborted: ${id} is empty.`);
-        // addLogが未定義でも落ちないよう、存在確認してから呼ぶ
-        if (typeof addLog === 'function') {
-            addLog(`Notice: No data to save in ${type} box.`);
-        }
-        return; 
-    }
-
-    try {
-        const content = inputElement.value;
-        const blob = new Blob([content], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.href = url;
-        const now = new Date();
-        const time = now.getFullYear() + (now.getMonth() + 1).toString().padStart(2, '0') + 
-                     now.getDate().toString().padStart(2, '0') + "_" + 
-                     now.getHours().toString().padStart(2, '0') + 
-                     now.getMinutes().toString().padStart(2, '0');
-        
-        a.download = `slp_${type}_${time}.csv`;
-        
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-
-        if (typeof addLog === 'function') {
-            addLog(`Saved ${type} CSV.`);
-        }
-    } catch (e) {
-        console.error("Save failed:", e);
-    }
-}
-
-/**
  * 3. Import: ファイル選択時に実行される
  */
 function importCSV(input, type) {
@@ -1126,27 +1015,417 @@ function copySolveToScramble() {
 }
 
 /**
- * 2 & 5. Save CSV: Scramble側・Solve側の両方に対応
+ * CSV保存（仕様3, 5）
  */
 function saveCSV(type) {
-    const id = (type === 'scramble') ? 'scramble-input' : 'solve-log';
-    const element = document.getElementById(id);
+    const scLog = document.getElementById('scramble-input')?.value || "";
+    const slLog = document.getElementById('solve-log')?.value || "";
+    const modeInfo = getCurrentModeInfo();
     
-    if (!element || !element.value.trim()) {
-        if (typeof addLog === 'function') addLog(`No data to save in ${type}`);
+    const gimmicks = JSON.stringify({
+        rotate: !!(document.querySelector('.active-toggle-red')),
+        spotlight: !!(window.isSearchlightMode),
+        flash: !!(window.isFlashMode)
+    });
+
+    const header = "Timestamp,ModeKey,GridSize,SubSize,Scramble,SolveHistory,Gimmicks,Time,Steps,TargetState\n";
+    const dataRow = `"${new Date().toLocaleString()}","${modeInfo.key}",${gridNum},${subSize},"${scLog}","${slLog}","${gimmicks.replace(/"/g, '""')}","${document.getElementById('timer-display')?.innerText}","${document.getElementById('counter-display')?.innerText}","${JSON.stringify(targetBoard).replace(/"/g, '""')}"`;
+
+    const blob = new Blob([header + dataRow], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = getExportFileName(type);
+    link.click();
+}
+
+/**
+ * 現在のゲーム状態をシステムログとして保存する
+ * @param {boolean} isComplete - コンプリートしたかどうかのフラグ
+ */
+function saveSystemLog(isComplete = false) {
+    const scLog = document.getElementById('scramble-input').value;
+    const slLog = document.getElementById('solve-log').value;
+    const time = document.getElementById('timer-display').innerText;
+    const moves = document.getElementById('counter-display').innerText;
+
+    // 現在のギミック状態
+    const gimmicks = {
+        rotate: !!document.querySelector('button[onclick="startRotateCountdown()"].active-toggle-red'),
+        flash: window.isFlashMode,
+        searchlight: window.isSearchlightMode
+    };
+
+    const logEntry = {
+        timestamp: new Date().toLocaleString(),
+        grid_size: gridNum,
+        sub_size: subSize,
+        scramble_log: scLog,
+        solve_history: slLog,
+        solve_time: time,
+        step_count: moves,
+        gimmicks: gimmicks,
+        target_state: targetBoard, // ターゲット配色そのものを保存
+        is_complete: isComplete
+    };
+
+    // localStorageから取得 (最大400件の全体枠、表示時に各モード100件でフィルタ)
+    let history = JSON.parse(localStorage.getItem('slp_history') || '[]');
+    
+    // 同一セッション（同じタイムスタンプや未完了の更新）の処理は今はシンプルに追加
+    history.push(logEntry);
+
+    // 全体で400件を超えないように制御（古いものから削除）
+    if (history.length > 400) history.shift();
+
+    localStorage.setItem('slp_history', JSON.stringify(history));
+
+    // リストの表示更新（Behavior）
+    if (typeof refreshHistoryList === 'function') refreshHistoryList();
+
+	refreshHistoryList();
+}
+
+/**
+ * 履歴リストの更新：モードフィルタリングとターゲットプレビュー生成
+ */
+function refreshHistoryList() {
+    const container = document.getElementById('history-list');
+    if (!container) return;
+
+    // 1. 全履歴を取得
+    const history = JSON.parse(localStorage.getItem('slp_history') || '[]');
+    
+    // 2. 現在のモード（gridNum, subSize）に完全に一致するものだけを抽出
+    const filtered = history.filter(h => 
+        Number(h.grid_size) === gridNum && Number(h.sub_size) === subSize
+    ).reverse(); // 最新を上に
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<div style="color:#666; padding:10px; text-align:center;">No history for this mode.</div>';
         return;
     }
 
-    const blob = new Blob([element.value], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    
-    const timestamp = new Date().getTime();
-    a.href = url;
-    a.download = `slp_${type}_${timestamp}.csv`;
-    
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    // 3. 各エントリに対してHTMLを構築
+    container.innerHTML = filtered.map((data, index) => {
+        const dataStr = JSON.stringify(data).replace(/'/g, "\\'");
+        
+        // ターゲットプレビュー(アイコン)の生成
+        const miniPreviewHtml = createMiniPreview(data.target_state);
+
+        return `
+            <div class="history-item" onclick='loadFilteredHistory(${dataStr})' 
+                 style="display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #333; cursor:pointer;">
+                <div class="mini-target-icon" style="flex-shrink:0;">${miniPreviewHtml}</div>
+                <div style="flex-grow:1; font-size:12px;">
+                    <div style="color:#aaa;">${data.timestamp}</div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span style="color:#00ffcc; font-weight:bold;">${data.solve_time}</span>
+                        <span style="color:#888;">${data.step_count} steps</span>
+                        <span style="color:${data.is_complete ? '#2ecc71' : '#e74c3c'};">${data.is_complete ? '● FIN' : '○ MID'}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
+
+/**
+ * ターゲット配色データから極小のHTMLプレビューアイコンを生成
+ */
+function createMiniPreview(state) {
+    if (!state) return '';
+    const size = state.length;
+    const cellSize = 3; // アイコン内の1セルのpxサイズ
+    
+    let html = `<div style="display:grid; grid-template-columns:repeat(${size}, ${cellSize}px); gap:1px; background:#444; padding:1px; border-radius:1px;">`;
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            // style.cssのc0, c1...クラスを流用
+            html += `<div class="c${state[r][c]}" style="width:${cellSize}px; height:${cellSize}px;"></div>`;
+        }
+    }
+    html += `</div>`;
+    return html;
+}
+
+/**
+ * ソルブ中のインターフェースロック制御
+ * 生存させるもの：タイマー、リセット、3点メニュー(header内)
+ */
+function setInterfaceLock(isLocked) {
+    const targetSelectors = [
+        'button[onclick="copyCurrentToTarget()"]', // コピーボタン
+        'button[onclick="startRotateCountdown()"]', // 回転
+        'button[onclick="toggleFlash()"]',          // フラッシュ
+        'button[onclick="toggleSearchlight()"]',    // サーチライト
+        '#shuffle-btn',                             // Scrambleボタン
+        '#mode-select',                             // モード選択
+        '#scramble-count',                          // 回数入力
+        '#replay-trigger'                           // 再生（リプレイ）ボタン ★追加
+    ];
+    
+    targetSelectors.forEach(selector => {
+        const el = document.querySelector(selector);
+        if (el) {
+            el.disabled = isLocked;
+            el.style.opacity = isLocked ? "0.3" : "1";
+            el.style.cursor = isLocked ? "not-allowed" : "pointer";
+            el.style.pointerEvents = isLocked ? "none" : "auto";
+        }
+    });
+
+    // ログボタン(LOG)もソルブ中はロック
+    const logBtn = document.querySelector('.log-btn');
+    if (logBtn) {
+        logBtn.disabled = isLocked;
+        logBtn.style.opacity = isLocked ? "0.3" : "1";
+        logBtn.style.pointerEvents = isLocked ? "none" : "auto";
+    }
+}
+
+/**
+ * ログからデータを読み込み、盤面とターゲットビューを再現する
+ */
+function loadFilteredHistory(data) {
+    if (!data) return;
+
+    // 1. ターゲット配色の再現（Modelの更新とメイン画面への反映）
+    // ログに保存された配色を、現在の正解（TARGET VIEW）としてセット
+    targetBoard = JSON.parse(JSON.stringify(data.target_state));
+    renderPreview();
+
+    // 2. 棋譜のロード（Scramble BoxとSolve Logへ）
+    const scrambleInput = document.getElementById('scramble-input');
+    const solveLog = document.getElementById('solve-log');
+    if (scrambleInput) scrambleInput.value = data.scramble_log || "";
+    if (solveLog) solveLog.value = data.solve_history || "";
+
+    // 3. ログダイアログ内のギミックアイコン（🔄🔦⚡）の点灯状態を同期
+    // これにより、そのログがどの制約下で行われたかを明示する
+    updateGimmickHistoryIcons(data.gimmicks);
+    
+    // 不要になったダイアログ内大型プレビューの削除（もし存在すれば）
+    const oldPreview = document.getElementById('log-large-preview');
+    if (oldPreview) oldPreview.remove();
+
+    if (typeof addLog === 'function') addLog(`Loaded target and logs from ${data.timestamp}`);
+}
+
+/**
+ * ダイアログ内：ターゲット配色の大型プレビュー表示
+ */
+function displayLargeTargetPreview(state) {
+    const iconArea = document.getElementById('history-gimmick-display');
+    if (!iconArea) return;
+
+    // 既存のプレビューがあれば削除して重複を防ぐ
+    const oldPreview = document.getElementById('log-large-preview');
+    if (oldPreview) oldPreview.remove();
+
+    const size = state.length;
+    // モードに合わせてセルサイズを調整（2x2なら大きく、4x4なら小さく）
+    const cellSize = size > 6 ? 10 : 16; 
+    
+    const previewWrapper = document.createElement('div');
+    previewWrapper.id = 'log-large-preview';
+    previewWrapper.style.cssText = `
+        display: grid; 
+        grid-template-columns: repeat(${size}, ${cellSize}px); 
+        gap: 2px; 
+        background: #000; 
+        padding: 5px; 
+        border: 2px solid #0f0; /* 目標物として強調 */
+        border-radius: 4px;
+        box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    `;
+
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            const cell = document.createElement('div');
+            cell.className = `c${state[r][c]}`;
+            cell.style.width = cell.style.height = `${cellSize}px`;
+            previewWrapper.appendChild(cell);
+        }
+    }
+
+    // ギミックアイコンの左側（先頭）に挿入
+    iconArea.insertBefore(previewWrapper, iconArea.firstChild);
+}
+
+/**
+ * ログに記録されたギミック状態をアイコンの不透明度で表現
+ */
+function updateGimmickHistoryIcons(gimmicks) {
+    if (!gimmicks) return;
+    const gRotate = document.getElementById('g-rotate');
+    const gSpotlight = document.getElementById('g-spotlight');
+    const gFlash = document.getElementById('g-flash');
+
+    if (gRotate) gRotate.style.opacity = gimmicks.rotate ? "1" : "0.2";
+    if (gSpotlight) gSpotlight.style.opacity = gimmicks.searchlight ? "1" : "0.2";
+    if (gFlash) gFlash.style.opacity = gimmicks.flash ? "1" : "0.2";
+}
+
+/**
+ * 解析用初期盤面構築
+ */
+function initBoardForAnalyze() {
+    // 盤面をターゲット（正解状態）に同期
+    board = JSON.parse(JSON.stringify(targetBoard));
+    
+    // Scrambleを実行して「解く前の状態」にする
+    // ここで reproduceScramble() を呼び出し、boardを崩す
+    reproduceScramble(); 
+}
+
+/**
+ * 記号（A-R1等）を解析して1手だけ動かす
+ */
+function executeSingleMove(moveStr, isReverseAction) {
+    const cmd = moveStr.trim().toLowerCase();
+    if (!cmd.includes('-')) return;
+
+    const [label, action] = cmd.split('-');
+    let lineIdx = isNaN(label) ? label.charCodeAt(0) - 97 : parseInt(label) - 1;
+    let isV = !isNaN(label);
+    let dir = action[0].toUpperCase();
+    let steps = parseInt(action.substring(1)) * subSize;
+
+    // Backボタン時は方向を反転させる
+    let finalRev = (dir === 'R' || dir === 'D');
+    if (isReverseAction) finalRev = !finalRev;
+
+    for (let i = 0; i < steps; i++) {
+        moveLogic(lineIdx, isV, finalRev);
+    }
+    render();
+    checkComplete();
+}
+
+/**
+ * Analyzeモード開始：0/56（崩れた開始状態）からスタートする。
+ * 内部で一旦完成状態にしてから、全手順分「巻き戻し」て初期画面を作る。
+ */
+function startAnalyzeMode() {
+    const solveLog = document.getElementById('solve-log').value;
+    if (!solveLog) return;
+
+    // 1. 状態の初期化：0手目から開始
+    window.replaySteps = solveLog.split(',').filter(s => s.trim() !== "");
+    window.currentReplayIdx = window.replaySteps.length; // 一旦最大値へ
+    window.isReplayMode = true;
+
+    // 2. 盤面の再現：完成状態から「巻き戻し」てソルブ開始時の盤面を作る
+    board = JSON.parse(JSON.stringify(targetBoard));
+
+    // 全手順分を逆実行し、盤面を「0手目（崩れた状態）」へ物理的に戻す
+    while (window.currentReplayIdx > 0) {
+        window.currentReplayIdx--;
+        const move = window.replaySteps[window.currentReplayIdx];
+        executeSingleMove(move, true); // 逆実行（巻き戻し）
+    }
+
+    // この時点で window.currentReplayIdx は 0 になっている
+
+    // 3. UI表示切り替え
+    toggleLogPanel();
+    showMediaControls(true);
+    render();
+    updateReplayDisplay();
+}
+
+/**
+ * Nextボタン（右）：手順を1手進め、盤面を「完成方向」に近づける（正方向実行）
+ */
+function replayStepNext() {
+    if (!window.isReplayMode || window.currentReplayIdx >= window.replaySteps.length) return;
+
+    const move = window.replaySteps[window.currentReplayIdx];
+    executeSingleMove(move, false); // 正方向（解決）
+    window.currentReplayIdx++;
+    updateReplayDisplay();
+}
+
+/**
+ * Backボタン（左）：手順を1手戻し、盤面を「過去（崩れた方向）」に戻す（逆方向実行）
+ */
+function replayStepBack() {
+    if (!window.isReplayMode || window.currentReplayIdx <= 0) return;
+
+    window.currentReplayIdx--;
+    const move = window.replaySteps[window.currentReplayIdx];
+    executeSingleMove(move, true); // 逆方向（巻き戻し）
+    updateReplayDisplay();
+}
+
+/**
+ * リプレイ表示の更新：0/56(崩れ) -> 56/56(完成)
+ */
+function updateReplayDisplay() {
+    const idxEl = document.getElementById('replay-index');
+    const totalEl = document.getElementById('replay-total');
+    const moveEl = document.getElementById('current-move-display');
+
+    if (idxEl) idxEl.innerText = window.currentReplayIdx;
+    if (totalEl) totalEl.innerText = window.replaySteps.length;
+    
+    const isComplete = (window.currentReplayIdx === window.replaySteps.length);
+
+    if (moveEl) {
+        moveEl.innerText = isComplete ? "COMPLETE" : (window.replaySteps[window.currentReplayIdx] || "END");
+    }
+
+    // ボタンの活性制御
+    const nextBtn = document.querySelector('button[onclick="replayStepNext()"]');
+    const backBtn = document.querySelector('button[onclick="replayStepBack()"]');
+    if (nextBtn) nextBtn.disabled = isComplete;
+    if (backBtn) backBtn.disabled = (window.currentReplayIdx <= 0);
+
+    // 完成時のみ演出
+    if (isComplete) {
+        document.getElementById('status-board')?.classList.add('show');
+    } else {
+        document.getElementById('status-board')?.classList.remove('show');
+    }
+}
+
+/**
+ * リプレイモード終了 (Exit)
+ */
+function toggleReplayMode() {
+    // 既存のロジックを整理
+    window.isReplayMode = false;
+    showMediaControls(false);
+
+    if (window.autoPlayTimer) {
+        clearInterval(window.autoPlayTimer);
+        window.autoPlayTimer = null;
+    }
+    
+    // 盤面をリセット（または現状維持か選択可能ですが、一旦ニュートラルに戻します）
+    initBoard();
+    if (typeof addLog === 'function') addLog("Exited replay mode.");
+}
+
+
+/**
+ * メディアコントロールの表示制御（Behavior）
+ */
+function showMediaControls(show) {
+    const controls = document.getElementById('media-controls');
+    const replayBtn = document.getElementById('replay-trigger');
+    const titleContainer = document.querySelector('.title-container');
+
+    if (show) {
+        controls.style.display = 'flex';
+        controls.classList.add('active');
+        if (replayBtn) replayBtn.classList.add('active-toggle');
+        if (titleContainer) titleContainer.style.opacity = "0.1"; // タイトルを薄くして視認性確保
+    } else {
+        controls.style.display = 'none';
+        controls.classList.remove('active');
+        if (replayBtn) replayBtn.classList.remove('active-toggle');
+        if (titleContainer) titleContainer.style.opacity = "1";
+    }
+}
+
