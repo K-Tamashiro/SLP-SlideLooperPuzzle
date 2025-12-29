@@ -591,7 +591,15 @@ transform-origin: center center !important;
 	filter: brightness(1.3) saturate(1.2);/* 消灯時の余韻を少し長く（0.4s）して目に優しく */
 	transition: all 0.4s ease-out;
 }
-
+.cell.flash-active::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(255, 255, 255, 0.6); /* 白色のオーバーレイ */
+    box-shadow: 0 0 15px 5px rgba(255, 255, 255, 0.8);
+    z-index: 10;
+    pointer-events: none;
+}
 .active-toggle-red {
 	background-color: rgba(255, 0, 0, 0.4) !important;
 	box-shadow: 0 0 10px #ff0000 !important;
@@ -637,7 +645,7 @@ transform-origin: center center !important;
         align-items: flex-start;
     }
     .action-icons {
-        grid-template-columns: repeat(3, 40px); /* 3列2段 */
+        grid-template-columns: repeat(4, 40px); /* 3列2段 */
     }
 }
 
@@ -902,4 +910,76 @@ transform-origin: center center !important;
 
 #log-check-icon {
     font-size: 16px;
+}
+#target-preview {
+    width: 120px; /* サムネイルサイズ固定 */
+    height: 120px;
+    overflow: hidden;
+    background-color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.video-tile {
+    /* MediaManagerから供給されるフレーム画像を参照 */
+    background-image: var(--current-video-frame);
+}
+
+/* V2用アップロードパネルのスタイル */
+.v2-upload-panel {
+    margin: 10px 0;
+    padding: 10px;
+    background: rgba(40, 40, 40, 0.9);
+    border-radius: 8px;
+    border: 1px solid #444;
+}
+
+.v2-status {
+    font-size: 11px;
+    color: #888;
+    margin-top: 5px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* 既存のreplay-statusとの混同を避ける */
+#current-v2-mode {
+    color: #00ffcc;
+    font-weight: bold;
+}
+/* 既存のクラスを流用しつつ、V2特有の調整 */
+.media-overlay-top {
+    /* 既存のスタイルが適用されます */
+    transition: all 0.3s ease;
+}
+
+#v2-media-uploader .m-btn {
+    min-width: 80px;
+}
+
+#v2-media-uploader .replay-status {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: #888;
+}
+
+/* 統一されたアクティブ（ON）状態 */
+.icon-btn.active {
+    background-color: #008800 !important; /* 濃い緑 */
+    box-shadow: inset 0 0 5px #0f0, 0 0 10px rgba(0, 255, 0, 0.3);
+    border-color: #0f0 !important;
+}
+
+.icon-btn.active svg {
+    stroke: #0f0 !important;
+    filter: drop-shadow(0 0 2px #0f0);
+}
+
+.preview-cell {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: none;
 }

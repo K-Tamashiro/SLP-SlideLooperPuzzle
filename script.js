@@ -20,6 +20,9 @@ let startTime = 0;
 let timerId = null;
 let rotateTimerId = null;
 let isLogEnabled = true; // デフォルトは有効
+
+
+
 /**
  * --- 1. 初期化・モード管理 ---
  */
@@ -292,10 +295,6 @@ function resetStats() {
     if (timerBtn) timerBtn.classList.remove('active-toggle');
 }
 
-/**
- * --- 3. 描画・プレビュー・座標 ---
- */
-
 function render() {
     const container = document.getElementById('board'); 
     if (!container) return;
@@ -303,25 +302,58 @@ function render() {
     container.style.gap = `${GAP_FACE}px`; 
     container.innerHTML = '';
 
+    const totalCells = subSize * gridNum;
+
     for (let f = 0; f < gridNum * gridNum; f++) {
         const faceEl = document.createElement('div');
-        faceEl.className = 'face'; faceEl.id = `face-${f}`;
+        faceEl.className = 'face'; 
+        faceEl.id = `face-${f}`;
         faceEl.style.gridTemplateColumns = `repeat(${subSize}, ${cellSizePixel}px)`;
-        const fr = Math.floor(f / gridNum) * subSize, fc = (f % gridNum) * subSize;
+        
+        const fr = Math.floor(f / gridNum) * subSize;
+        const fc = (f % gridNum) * subSize;
+
         for (let r = 0; r < subSize; r++) {
             for (let c = 0; c < subSize; c++) {
                 const cell = document.createElement('div');
-                const row = fr + r, col = fc + c;
-                cell.dataset.row = row; cell.dataset.col = col;
-                cell.className = `cell c${board[row][col]}`;
+                const col = fc + c;
+                const row = fr + r;
+                
+                cell.dataset.row = row; 
+                cell.dataset.col = col;
+                const value = board[row][col]; // 現在この位置にあるタイルの値
+
+                if (window.mediaManager && window.mediaManager.mode !== 'color' && window.mediaManager.mediaSrc) {
+                    // ★重要：タイル移動に対応するため「そのタイル本来の絶対座標」を計算
+                    // targetBoard[row][col] は初期状態の 0,0,1,1... を保持しているため、
+                    // それを利用して「どのFaceの、どの位置(r,c)のタイルか」を特定し、絶対通し番号に変換
+                    const originalFace = value;
+                    const faceR = Math.floor(originalFace / gridNum);
+                    const faceC = originalFace % gridNum;
+                    
+                    // 初期配置におけるこのタイルの絶対座標を復元
+                    const originalAbsRow = faceR * subSize + r;
+                    const originalAbsCol = faceC * subSize + c;
+                    const originalAbsValue = originalAbsRow * totalCells + originalAbsCol;
+
+                    window.mediaManager.applyMediaStyle(cell, originalAbsValue);
+                    cell.className = 'cell';
+                    // cell.innerText = value;
+                } else {
+                    cell.className = `cell c${value}`;
+                    // cell.innerText = value;
+                }
+                cell.innerText = "";
+
                 cell.style.width = cell.style.height = `${cellSizePixel}px`;
-                // 修正：フラッシュモード判定を追加
+
+                // render() 内のイベント付与部分
                 cell.onmousedown = (e) => {
-                    if(typeof isFlashMode !== 'undefined' && isFlashMode) triggerFlash(board[row][col]);
+                    if(typeof isFlashMode !== 'undefined' && isFlashMode) triggerFlash(value);
                     handleStart(row, col, f, e.clientX, e.clientY, 'mouse', e);
                 };
                 cell.ontouchstart = (e) => {
-                    if(typeof isFlashMode !== 'undefined' && isFlashMode) triggerFlash(board[row][col]);
+                    if(typeof isFlashMode !== 'undefined' && isFlashMode) triggerFlash(value);
                     handleStart(row, col, f, e.touches[0].clientX, e.touches[0].clientY, 'touch', e);
                 };
                 faceEl.appendChild(cell);
@@ -331,24 +363,57 @@ function render() {
     }
 }
 
+/**
+ * ターゲットプレビューの描画（メディアモード対応）
+ * 正方形トリミング（objectFit: cover）を適用
+ */
 function renderPreview() {
     const container = document.getElementById('preview');
     if (!container || !targetBoard) return;
-    const totalSize = subSize * gridNum;
-    
-    container.style.display = 'grid';
-    // ターゲットビューのサイズ調整（8x8などの多セル対応）
-    const pSize = totalSize > 6 ? 8 : 12;
-    container.style.gridTemplateColumns = `repeat(${totalSize}, ${pSize}px)`;
-    container.style.gap = '1px';
-    container.innerHTML = '';
 
-    for (let r = 0; r < totalSize; r++) {
-        for (let c = 0; c < totalSize; c++) {
-            const cell = document.createElement('div');
-            cell.className = `preview-cell c${targetBoard[r][c]}`;
-            cell.style.width = cell.style.height = `${pSize}px`;
-            container.appendChild(cell);
+    container.innerHTML = '';
+    
+    const totalSize = subSize * gridNum;
+    const pSize = totalSize > 6 ? 8 : 12;
+    const gap = 1;
+    const gridPx = (pSize * totalSize) + (gap * (totalSize - 1));
+
+    // 親コンテナのサイズを正方形に固定
+    container.style.width = `${gridPx}px`;
+    container.style.height = `${gridPx}px`;
+
+    if (window.mediaManager && window.mediaManager.mode !== 'color' && window.mediaManager.mediaSrc) {
+        container.style.display = 'flex';
+        container.style.alignItems = 'center';
+        container.style.justifyContent = 'center';
+        container.style.overflow = 'hidden';
+        
+        const el = window.mediaManager.mode === 'image' ? new Image() : document.createElement('video');
+        el.src = window.mediaManager.mediaSrc;
+        
+        // 修正ポイント：100%の枠内でアスペクト比を維持しつつ中央を切り抜く
+        el.style.width = '100%';
+        el.style.height = '100%';
+        el.style.objectFit = 'cover'; // contain から cover に変更
+
+        if (window.mediaManager.mode === 'video') {
+            el.autoplay = true; el.muted = true; el.loop = true; el.playsInline = true;
+        }
+        container.appendChild(el);
+    } else {
+        container.style.display = 'grid';
+        container.style.gridTemplateColumns = `repeat(${totalSize}, ${pSize}px)`;
+        container.style.gap = `${gap}px`;
+
+        for (let r = 0; r < totalSize; r++) {
+            for (let c = 0; c < totalSize; c++) {
+                const cell = document.createElement('div');
+                cell.className = `preview-cell c${targetBoard[r][c]}`;
+                cell.style.width = `${pSize}px`;
+                cell.style.height = `${pSize}px`;
+                cell.innerText = ""; 
+                container.appendChild(cell);
+            }
         }
     }
 }
@@ -675,49 +740,55 @@ function shuffle() {
     const count = parseInt(document.getElementById('scramble-count').value) || 15;
     resetStats();
 
-    // --- 1. 盤面データの論理計算のみを先に実行（描画を挟まない） ---
+    // --- 1. 盤面データの論理計算のみを先に実行 ---
     for (let i = 0; i < count; i++) {
         const isV = Math.random() > 0.5;
         const isRev = Math.random() > 0.5;
         const lineIdx = Math.floor(Math.random() * (subSize * gridNum));
         
-        // subSize分（1枠分）の移動を1つの論理ステップとして実行
         for (let j = 0; j < subSize; j++) {
             moveLogic(lineIdx, isV, isRev);
         }
     }
 
     // --- 2. ターゲット（正解配置）の枠単位置換を計算 ---
-    const totalFaces = gridNum * gridNum;
-    let faces = Array.from({length: totalFaces}, (_, i) => i);
-    for (let i = 0; i < 20; i++) {
-        const isV = Math.random() > 0.5;
-        const isRev = Math.random() > 0.5;
-        const line = Math.floor(Math.random() * gridNum);
-        let idxs = [];
-        if (isV) for (let g = 0; g < gridNum; g++) idxs.push(g * gridNum + line);
-        else for (let g = 0; g < gridNum; g++) idxs.push(line * gridNum + g);
+    // ★修正：画像モード以外（カラーモード）の時のみ実行する
+    if (!window.mediaManager || window.mediaManager.mode === 'color') {
+        const totalFaces = gridNum * gridNum;
+        let faces = Array.from({length: totalFaces}, (_, i) => i);
+        for (let i = 0; i < 20; i++) {
+            const isV = Math.random() > 0.5;
+            const isRev = Math.random() > 0.5;
+            const line = Math.floor(Math.random() * gridNum);
+            let idxs = [];
+            if (isV) for (let g = 0; g < gridNum; g++) idxs.push(g * gridNum + line);
+            else for (let g = 0; g < gridNum; g++) idxs.push(line * gridNum + g);
 
-        if (isRev) {
-            let temp = faces[idxs[0]];
-            for (let j = 0; j < gridNum - 1; j++) faces[idxs[j]] = faces[idxs[j+1]];
-            faces[idxs[gridNum-1]] = temp;
-        } else {
-            let temp = faces[idxs[gridNum-1]];
-            for (let j = gridNum - 1; j > 0; j--) faces[idxs[j]] = faces[idxs[j-1]];
-            faces[idxs[0]] = temp;
+            if (isRev) {
+                let temp = faces[idxs[0]];
+                for (let j = 0; j < gridNum - 1; j++) faces[idxs[j]] = faces[idxs[j+1]];
+                faces[idxs[gridNum-1]] = temp;
+            } else {
+                let temp = faces[idxs[gridNum-1]];
+                for (let j = gridNum - 1; j > 0; j--) faces[idxs[j]] = faces[idxs[j-1]];
+                faces[idxs[0]] = temp;
+            }
         }
+
+        // ターゲットボードの更新（カラーモード用）
+        const totalSize = subSize * gridNum;
+        targetBoard = Array.from({length: totalSize}, (_, r) => 
+            Array.from({length: totalSize}, (_, c) => faces[Math.floor(r / subSize) * gridNum + Math.floor(c / subSize)])
+        );
+    } else {
+        // ★画像モードの場合：targetBoard は初期状態（完成図）のまま一切変更しない
+        // initBoard で生成された絶対座標の並びを維持する
     }
 
     // --- 3. 最後に1回だけDOMを更新する ---
-    const totalSize = subSize * gridNum;
-    targetBoard = Array.from({length: totalSize}, (_, r) => 
-        Array.from({length: totalSize}, (_, c) => faces[Math.floor(r / subSize) * gridNum + Math.floor(c / subSize)])
-    );
-
     renderPreview(); 
     render(); 
-    checkComplete(); // 最終状態の1回のみ判定
+    checkComplete(); 
 }
 
 /**
@@ -808,12 +879,30 @@ function toggleFlash() {
     if (btn) btn.classList.toggle('active-toggle', window.isFlashMode);
 }
 
-function triggerFlash(colorIdx) {
-    const colorClass = `c${colorIdx}`;
-    document.querySelectorAll('#board .cell').forEach(cell => {
-        if (cell.classList.contains(colorClass)) {
+function triggerFlash(clickedValue) {
+    if (clickedValue === undefined) return;
+
+    // 盤面上の全セルを走査
+    document.querySelectorAll('.cell').forEach(cell => {
+        const r = parseInt(cell.dataset.row);
+        const c = parseInt(cell.dataset.col);
+        
+        // 現在の盤面座標(r, c)にあるタイルの値を取得
+        const currentValue = board[r][c];
+
+        // クリックされた値と現在のマスの値が一致すればフラッシュ
+        // カラーモードなら Face番号(0,0,1,1...)、画像モードなら絶対ID(0,1,2,3...)で判定
+        if (currentValue === clickedValue) {
             cell.classList.add('flash-active');
-            setTimeout(() => cell.classList.remove('flash-active'), 1200);
+            
+            // 既存タイマーをクリア
+            const t = cell.getAttribute('data-f-t');
+            if (t) clearTimeout(parseInt(t));
+
+            const timer = setTimeout(() => {
+                cell.classList.remove('flash-active');
+            }, 300);
+            cell.setAttribute('data-f-t', timer);
         }
     });
 }
@@ -1756,3 +1845,272 @@ function toggleLogSwitch() {
     }
 }
 
+/**
+ * MediaManager: アスペクト比を計算し、タイルへの投影を最適化する
+ */
+class MediaManager {
+    constructor() {
+        this.mode = 'color';
+        this.mediaElement = null;
+        this.mediaSrc = null;
+        this.baseScale = 1; // 拡大率
+        this.offsetX = 0;   // 中心合わせ用X
+        this.offsetY = 0;   // 中心合わせ用Y
+    }
+
+    async setupMedia(file) {
+        const url = URL.createObjectURL(file);
+        this.mediaSrc = url;
+
+        if (file.type.startsWith('image/')) {
+            this.mode = 'image';
+            this.mediaElement = new Image();
+            this.mediaElement.src = url;
+            await this.mediaElement.decode();
+            this.calculateContainOffset(this.mediaElement.width, this.mediaElement.height);
+        } else if (file.type.startsWith('video/')) {
+            this.mode = 'video';
+            this.mediaElement = document.createElement('video');
+            this.mediaElement.src = url;
+            this.mediaElement.muted = true;
+            this.mediaElement.loop = true;
+            this.mediaElement.playsInline = true;
+            this.mediaElement.onloadedmetadata = () => {
+                this.calculateContainOffset(this.mediaElement.videoWidth, this.mediaElement.videoHeight);
+                render(); 
+            };
+            await this.mediaElement.load();
+        }
+        updateV2StatusUI(this.mode);
+        renderPreview();
+        render();
+    }
+
+    /**
+     * メディアが盤面(正方形)に対してどう収まるか計算する
+     */
+    calculateContainOffset(w, h) {
+        // 短い方の辺を基準に100%に合わせる（Center Crop）
+        const minSide = Math.min(w, h);
+        this.baseScale = 1 / (minSide / Math.max(w, h)); // 比率
+        
+        // 中心座標のズレを計算 (0〜100%の範囲でオフセット)
+        if (w > h) {
+            this.offsetX = ((w - h) / 2 / w) * 100;
+            this.offsetY = 0;
+        } else {
+            this.offsetX = 0;
+            this.offsetY = ((h - w) / 2 / h) * 100;
+        }
+    }
+
+// 引数を value から row, col に変更
+applyMediaStyle(cell, value) {
+    if (!this.mediaElement || !this.mediaSrc || value === undefined) return;
+
+    const totalCells = subSize * gridNum; 
+    const correctR = Math.floor(value / totalCells);
+    const correctC = value % totalCells;
+
+    const w = this.mediaElement.naturalWidth || this.mediaElement.videoWidth || 100;
+    const h = this.mediaElement.naturalHeight || this.mediaElement.videoHeight || 100;
+    const totalBoardPx = cellSizePixel * totalCells;
+    const mediaAspect = w / h;
+    
+    let drawW, drawH;
+    if (mediaAspect > 1) {
+        drawH = totalBoardPx; drawW = totalBoardPx * mediaAspect;
+    } else {
+        drawW = totalBoardPx; drawH = totalBoardPx / mediaAspect;
+    }
+
+    const offX = (drawW - totalBoardPx) / 2;
+    const offY = (drawH - totalBoardPx) / 2;
+
+    const posX = -(correctC * cellSizePixel + offX);
+    const posY = -(correctR * cellSizePixel + offY);
+
+    cell.style.setProperty('background-image', `url(${this.mediaSrc})`, 'important');
+    cell.style.setProperty('background-size', `${drawW}px ${drawH}px`, 'important');
+    cell.style.setProperty('background-position', `${posX}px ${posY}px`, 'important');
+    cell.style.setProperty('background-repeat', 'no-repeat', 'important');
+    resetColorTargetView();
+
+}
+}
+// グローバルインスタンスの生成
+window.mediaManager = new MediaManager();
+
+/**
+ * updateVideoTiles: 盤面上の全動画タイルをソース動画と同期
+ */
+function updateVideoTiles() {
+    if (window.mediaManager.mode !== 'video' || !window.mediaManager.mediaElement) return;
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const video = window.mediaManager.mediaElement;
+    
+    const draw = () => {
+        if (window.mediaManager.mode !== 'video') return;
+        
+        // 全ての video-tile クラスを持つセルに現在のフレームを投影
+        const tiles = document.querySelectorAll('.video-tile');
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.5); // 低負荷用の圧縮
+
+        // ※パフォーマンス向上のため、CSS変数を利用した一括制御を推奨
+        document.documentElement.style.setProperty('--current-video-frame', `url(${dataUrl})`);
+        
+        requestAnimationFrame(draw);
+    };
+    
+    // ※実際の実装では、Background-imageに直接Videoを流し込む手法が
+    // モダンブラウザでは効率的なため、CSS-Paint-APIまたはCanvas転写を検討
+}
+
+/**
+ * handleMediaUpload の末尾に追加
+ */
+async function handleMediaUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (window.mediaManager.mediaSrc) {
+        URL.revokeObjectURL(window.mediaManager.mediaSrc);
+    }
+
+    await window.mediaManager.setupMedia(file);
+    
+    // UI更新と盤面の再描画を強制
+    document.getElementById('current-v2-mode').innerText = window.mediaManager.mode.toUpperCase();
+    // 画像が選択・ロードされたらパネルを閉じる
+    if (document.getElementById('v2-media-uploader').style.display !== 'none') {
+        toggleV2Panel();
+    }
+    
+    renderPreview();
+    render(); // 既存のrender()が呼ばれ、その中でapplyMediaStyleが走る
+}
+
+
+function resetToColorMode() {
+    window.mediaManager.mode = 'color';
+    if (window.mediaManager.mediaSrc) {
+        URL.revokeObjectURL(window.mediaManager.mediaSrc);
+        window.mediaManager.mediaSrc = null;
+    }
+    
+    // 全タイルのインラインスタイルを「属性ごと」削除して初期状態に戻す
+    document.querySelectorAll('.cell').forEach(cell => {
+        cell.removeAttribute('style'); 
+        // 必要な基本サイズだけ再セット（renderが上書きするが念のため）
+        cell.style.width = cell.style.height = `${cellSizePixel}px`;
+    });
+
+    const modeSpan = document.getElementById('current-v2-mode');
+    if (modeSpan) {
+        modeSpan.innerText = 'COLOR';
+        modeSpan.style.color = '#888';
+    }
+    // 画像が選択・ロードされたらパネルを閉じる
+    if (document.getElementById('v2-media-uploader').style.display !== 'none') {
+        toggleV2Panel();
+    }
+    renderPreview();
+    render();
+}
+
+/**
+ * V2メディアパネルの表示/非表示を切り替え、画像モード時は回転ギミックをロックする
+ */
+function toggleV2Panel() {
+    const panel = document.getElementById('v2-media-uploader');
+    const toggleBtn = document.getElementById('v2-panel-toggle');
+    const rotateBtn = document.getElementById('rotate-btn'); 
+    
+    if (!panel || !toggleBtn) return;
+
+    // 現在のパネルの表示/非表示を判定
+    const isHidden = (panel.style.display === 'none' || panel.style.display === '');
+
+    if (isHidden) {
+        // 画像パネルを開く
+        panel.style.display = 'block';
+        toggleBtn.classList.add('active');
+
+        // 回転ギミックの強制解除
+        isRotateMode = false; // フラグを強制OFF
+        if (rotateBtn) {
+            rotateBtn.disabled = true; // ボタンを物理ロック
+            rotateBtn.classList.remove('active'); // 発光解除
+            rotateBtn.style.opacity = '0.3'; // 非活性を視覚化
+            rotateBtn.style.pointerEvents = 'none'; // クリックを完全遮断
+        }
+    } else {
+        // 画像パネルを閉じる
+        panel.style.display = 'none';
+        toggleBtn.classList.remove('active');
+
+        // 回転ボタンのロック解除
+        if (rotateBtn) {
+            rotateBtn.disabled = false;
+            rotateBtn.style.opacity = '1';
+            rotateBtn.style.pointerEvents = 'auto';
+        }
+        // ★ 追加：パネルを閉じた際にフラッシュモードを強制的にONにする
+        if (typeof isFlashMode !== 'undefined') {
+            isFlashMode = true;
+            // フラッシュボタンの見た目も更新（IDが 'flash-btn' の場合）
+            const flashBtn = document.querySelector('button[onclick="toggleFlash()"]');
+            if (flashBtn) flashBtn.classList.add('active');
+        }
+    }
+    resetColorTargetView();
+}
+/**
+ * handleMediaUpload 内の表示更新
+ */
+function updateV2StatusUI(mode) {
+    const modeSpan = document.getElementById('current-v2-mode');
+    if (modeSpan) {
+        modeSpan.innerText = mode.toUpperCase();
+        modeSpan.style.color = (mode === 'color') ? '#888' : '#00ffcc';
+    }
+}
+/**
+ * メディア（画像/動画）がロードされた際のコールバック
+ */
+function onMediaLoaded(src) {
+    // 1. メディアマネージャーにソースをセット
+    if (window.mediaManager) {
+        window.mediaManager.mediaSrc = src;
+    }
+
+    // 2. ターゲットビューと正解判定データをリセット
+    // 第1引数を true にすることで targetBoard を現在の構成で再生成する
+    initBoard(true);
+
+    // 3. プレビューを再描画
+    renderPreview();
+    
+    // 4. (任意) 進行中の統計やログもクリア
+    clearSolveLog();
+    resetStats();
+    resetColorTargetView();
+}
+/**
+ * カラーモードのターゲットビュー（正解図）のみを初期状態にリセットする
+ */
+function resetColorTargetView() {
+    const totalSize = subSize * gridNum;
+    // 1. targetBoard を初期の整列状態 (0,0,1,1...) で再定義
+    targetBoard = Array.from({length: totalSize}, (_, r) => 
+        Array.from({length: totalSize}, (_, c) => 
+            Math.floor(r / subSize) * gridNum + Math.floor(c / subSize)
+        )
+    );
+
+    // 2. プレビュー描画のみを更新
+    // これにより画像モードなら一枚絵、カラーモードなら整列したグリッドが表示される
+    renderPreview();
+}
