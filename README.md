@@ -1,49 +1,61 @@
 <h1 align="center">SLP - Slide Looper Puzzle</h1>
 
 <p align="center">
-  <b>A logic puzzle to reconstruct patterns by sliding blocks.</b><br>
+  <b>ZebraSoft - Version 1.0</b><br>
   <br>
   <b>🔴 Play Demo: <a href="https://blog.zebrasoft.co.jp/game/">https://blog.zebrasoft.co.jp/game/</a></b>
   <br><br>
-  <img src="https://img.shields.io/badge/Version-0.9_(Pre--release)-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.0-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Brand-ZebraSoft-black?style=flat-square" alt="Brand">
   <img src="https://img.shields.io/badge/Author-Tamayan-green?style=flat-square" alt="Author">
 </p>
 
 <br>
 
-## 🧩 Overview
+## 🇯🇵 日本語 (Japanese)
 
-**SLP (Slide Looper Puzzle)** is a logic puzzle game where you reconstruct a target pattern by sliding blocks.
+### 🧩 ゲーム概要
+**SLP (Slide Looper Puzzle)** は、行や列をスライドさせてターゲットとなるパターンを再構築する論理パズルゲームです。スピードキューブのような連動性と、トーラス構造のスライディングパズルの戦略性を併せ持っています。
 
-Every puzzle is algorithmically generated using only valid operations, ensuring that **a solution always exists** for every problem.
+### 🎮 遊び方
+* **基本操作**: 行または列をマウスドラッグやスワイプでブロック単位にスライドします。
+* **枠移動操作**: PCでは **Shift + ドラッグ**、スマートフォンでは **長押し** で枠単位の移動が可能です。
+* **高度な操作 (PCのみ)**: **Ctrl + ドラッグ** で1ユニット単位の微調整が可能です。
+* **クリア条件**: 盤面を画面右側の **"TARGET VIEW"** と同じ配置に揃えるとクリアとなります。
+
+### 🚀 ゲームギミック
+* **Auto-Rotation**: 一定時間ごとに盤面全体が90°回転します。
+* **Searchlight**: 操作中、周囲が暗幕に包まれ視界が制限されます。
+* **Flash**: セルをクリックすると、同色のセルが一時的に発光します。
+
+### 💻 動作環境
+* **OS**: Windows / macOS / Linux
+* **対応ブラウザ**: Google Chrome / Edge / Firefox (HTML5対応ブラウザ)
+
+---
+
+## 🇺🇸 英語 (English)
+
+### 🧩 Overview
+**SLP (Slide Looper Puzzle)** is a logic puzzle game where you reconstruct a target pattern by sliding rows and columns. It combines the mechanics of speedcubing with the strategic depth of torus-structured sliding puzzles.
+
+### 🎮 How to Play
+* **Basic Controls**: Slide rows or columns by block units via dragging or swiping.
+* **Frame Controls**: Move by frame units using **Shift + Drag** on PC or **Long Press** on smartphones.
+* **Advanced Controls (PC only)**: Use **Ctrl + Drag** to perform fine adjustments by 1 unit.
+* **Clear Condition**: The game is cleared when your board matches the configuration shown in the **"TARGET VIEW"** on the right side of the screen.
+
+### 🚀 Game Gimmicks
+* **Auto-Rotation**: The entire board rotates 90° at regular intervals.
+* **Searchlight**: View is restricted by a dark overlay during operations.
+* **Flash**: Clicking a cell causes all cells of the same color to flash briefly.
+
+### 💻 System Requirements
+* **OS**: Windows / macOS / Linux
+* **Browsers**: Google Chrome / Edge / Firefox (HTML5 compatible)
 
 <br>
 
-## 🎮 How to Play
-
-### Basic Controls
-* **Drag** Slide rows or columns by block units.
-
-### Frame Controls
-* **Shift + Drag (PC)** Move the frame position.
-* **Long Press (Smartphone)** Move the frame position.
-
-### Advanced Controls (PC Only)
-* **Ctrl + Drag** Perform fine adjustments by 1 unit.
-
-### Clear Condition
-* The game is cleared when your board matches the configuration shown in the **"TARGET VIEW"** on the right side of the screen.
-
-<br>
-
-## 💻 System Requirements
-
-This game runs on HTML5-compatible browsers.
-
-| Category | Details |
-| :--- | :--- |
-| **OS** | Windows / macOS / Linux |
-| **Browsers** | Google Chrome / Edge / Firefox |
-
-<br>
+## 📜 Credit / License
+* **Planning & Development**: Tamayan / ZebraSoft
+* Copyright (C) 2025 ZebraSoft All Rights Reserved.
