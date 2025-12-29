@@ -1189,19 +1189,14 @@ function saveSystemLog(isComplete = false) {
 	refreshHistoryList();
 }
 
-/**
- * 5. Refresh history list with Delete button
- */
 function refreshHistoryList() {
     const container = document.getElementById('history-list');
     if (!container) return;
 
-    // 【論理修正】描画前に中身を完全に空にする
-    container.innerHTML = "";
+    container.innerHTML = ""; 
 
     const history = JSON.parse(localStorage.getItem('slp_history') || '[]');
     
-    // 現在のモードでフィルタリング（最新順）
     const filtered = history.filter(h => 
         Number(h.grid_size) === gridNum && Number(h.sub_size) === subSize
     ).reverse();
@@ -1212,15 +1207,23 @@ function refreshHistoryList() {
     }
 
     container.innerHTML = filtered.map((data) => {
-        // dataオブジェクトを安全に文字列化（削除用にタイムスタンプ等を使用）
         const entryId = data.timestamp; 
         const dataStr = JSON.stringify(data).replace(/'/g, "\\'");
+
+        // ステータスアイコンの判定
+        const statusIcon = data.is_complete ? "✅" : "⚠️";
+        const statusTitle = data.is_complete ? "Completed" : "Reset/Incomplete";
 
         return `
             <div class="history-item" style="display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #333; cursor:pointer;">
                 <div class="mini-target-icon" onclick='loadFilteredHistory(${dataStr})' style="flex-shrink:0;">
                     ${createMiniPreview(data.target_state)}
                 </div>
+                
+                <div style="font-size:14px; flex-shrink:0;" title="${statusTitle}">
+                    ${statusIcon}
+                </div>
+
                 <div style="flex-grow:1; font-size:12px;" onclick='loadFilteredHistory(${dataStr})'>
                     <div style="color:#aaa;">${data.timestamp}</div>
                     <div style="display:flex; justify-content:space-between;">
@@ -1228,8 +1231,9 @@ function refreshHistoryList() {
                         <span style="color:#888;">${data.step_count} steps</span>
                     </div>
                 </div>
+
                 <button onclick="deleteHistoryEntry('${entryId}')" 
-                        style="background:none; border:none; color:#e74c3c; cursor:pointer; font-size:16px; padding:5px;" 
+                        style="background:none; border:none; color:#e74c3c; cursor:pointer; font-size:16px; padding:5px; flex-shrink:0;" 
                         title="Delete this log">🗑️</button>
             </div>
         `;
@@ -1310,32 +1314,24 @@ function setInterfaceLock(isLocked) {
     }
 }
 
-/**
- * ログからデータを読み込み、盤面とターゲットビューを再現する
- */
 function loadFilteredHistory(data) {
     if (!data) return;
 
-    // 1. ターゲット配色の再現（Modelの更新とメイン画面への反映）
-    // ログに保存された配色を、現在の正解（TARGET VIEW）としてセット
     targetBoard = JSON.parse(JSON.stringify(data.target_state));
     renderPreview();
 
-    // 2. 棋譜のロード（Scramble BoxとSolve Logへ）
     const scrambleInput = document.getElementById('scramble-input');
     const solveLog = document.getElementById('solve-log');
     if (scrambleInput) scrambleInput.value = data.scramble_log || "";
     if (solveLog) solveLog.value = data.solve_history || "";
 
-    // 3. ログダイアログ内のギミックアイコン（🔄🔦⚡）の点灯状態を同期
-    // これにより、そのログがどの制約下で行われたかを明示する
+    // --- 追加：解析モード表示用にタイムスタンプをグローバル保持 ---
+    window.currentLogTime = data.solve_time;
+
     updateGimmickHistoryIcons(data.gimmicks);
     
-    // 不要になったダイアログ内大型プレビューの削除（もし存在すれば）
     const oldPreview = document.getElementById('log-large-preview');
     if (oldPreview) oldPreview.remove();
-
-    if (typeof addLog === 'function') addLog(`Loaded target and logs from ${data.timestamp}`);
 }
 
 /**
@@ -1469,31 +1465,31 @@ function executeSingleMove(moveStr, isReverseAction) {
 }
 
 /**
- * Analyzeモード開始：0/56（崩れた開始状態）からスタートする。
- * 内部で一旦完成状態にしてから、全手順分「巻き戻し」て初期画面を作る。
+ * startAnalyzeMode: タイマー表示をログの記録時刻に固定
  */
 function startAnalyzeMode() {
     const solveLog = document.getElementById('solve-log').value;
     if (!solveLog) return;
 
-    // 1. 状態の初期化：0手目から開始
+    // --- 追加：選択されたログのタイムをタイマー表示に反映 ---
+    const timerDisplay = document.getElementById('timer-display');
+    // loadFilteredHistory等で保持した直近の記録データがある場合、そのタイムをセット
+    if (timerDisplay && window.currentLogTime) {
+        timerDisplay.textContent = window.currentLogTime;
+    }
+
     window.replaySteps = solveLog.split(',').filter(s => s.trim() !== "");
-    window.currentReplayIdx = window.replaySteps.length; // 一旦最大値へ
+    window.currentReplayIdx = window.replaySteps.length; 
     window.isReplayMode = true;
 
-    // 2. 盤面の再現：完成状態から「巻き戻し」てソルブ開始時の盤面を作る
     board = JSON.parse(JSON.stringify(targetBoard));
 
-    // 全手順分を逆実行し、盤面を「0手目（崩れた状態）」へ物理的に戻す
     while (window.currentReplayIdx > 0) {
         window.currentReplayIdx--;
         const move = window.replaySteps[window.currentReplayIdx];
-        executeSingleMove(move, true); // 逆実行（巻き戻し）
+        executeSingleMove(move, true); 
     }
 
-    // この時点で window.currentReplayIdx は 0 になっている
-
-    // 3. UI表示切り替え
     toggleLogPanel();
     showMediaControls(true);
     render();
@@ -1524,16 +1520,24 @@ function replayStepBack() {
     updateReplayDisplay();
 }
 
-/**
- * リプレイ表示の更新：0/56(崩れ) -> 56/56(完成)
- */
 function updateReplayDisplay() {
     const idxEl = document.getElementById('replay-index');
     const totalEl = document.getElementById('replay-total');
     const moveEl = document.getElementById('current-move-display');
+    
+    // 盤面カウンターのDOM要素（ID: move-count または counter-display）
+    const boardCounter = document.getElementById('move-count') || document.getElementById('counter-display');
 
     if (idxEl) idxEl.innerText = window.currentReplayIdx;
     if (totalEl) totalEl.innerText = window.replaySteps.length;
+    
+    // --- 【修正】再生位置と盤面カウンターを完全同期 ---
+    if (boardCounter) {
+        // 表示を更新
+        boardCounter.innerText = window.currentReplayIdx.toString().padStart(3, '0');
+        // 内部変数 moveCount も同期（不整合を防止）
+        moveCount = window.currentReplayIdx;
+    }
     
     const isComplete = (window.currentReplayIdx === window.replaySteps.length);
     const isLogVisible = document.getElementById('log-overlay').style.display === 'block';
@@ -1542,13 +1546,11 @@ function updateReplayDisplay() {
         moveEl.innerText = isComplete ? "COMPLETE" : (window.replaySteps[window.currentReplayIdx] || "END");
     }
 
-    // ボタンの活性制御
     const nextBtn = document.querySelector('button[onclick="replayStepNext()"]');
     const backBtn = document.querySelector('button[onclick="replayStepBack()"]');
     if (nextBtn) nextBtn.disabled = isComplete;
     if (backBtn) backBtn.disabled = (window.currentReplayIdx <= 0);
 
-    // 完成時演出：ログパネルが表示されていない時のみ出す
     if (isComplete && !isLogVisible) {
         document.getElementById('status-board')?.classList.add('show');
     } else {
