@@ -19,7 +19,7 @@ let moveCount = 0;
 let startTime = 0;
 let timerId = null;
 let rotateTimerId = null;
-
+let isLogEnabled = true; // デフォルトは有効
 /**
  * --- 1. 初期化・モード管理 ---
  */
@@ -31,6 +31,47 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     initBoard();
 });
+
+/**
+ * Monitor Key States for UI Feedback
+ */
+window.addEventListener('keydown', (e) => {
+    updateKeyIndicator(e, true);
+});
+
+window.addEventListener('keyup', (e) => {
+    updateKeyIndicator(e, false);
+});
+
+/**
+ * フォーカスが外れた際にインジケーターを強制リセット（光りっぱなし防止）
+ */
+window.addEventListener('blur', () => {
+    document.querySelectorAll('.key-indicator').forEach(el => {
+        el.classList.remove('key-active');
+    });
+});
+
+/**
+ * インジケーターの表示更新
+ */
+function updateKeyIndicator(e, isActive) {
+    const indicators = document.querySelectorAll('.key-indicator');
+    indicators.forEach(el => {
+        const keyText = el.innerText.toUpperCase();
+        
+        // e.key の厳密な判定（Shift, Control）
+        if ((keyText === 'SHIFT' && e.key === 'Shift') || 
+            (keyText === 'CTRL' && e.key === 'Control')) {
+            
+            if (isActive) {
+                el.classList.add('key-active');
+            } else {
+                el.classList.remove('key-active');
+            }
+        }
+    });
+}
 window.onmousemove = (e) => handleMove(e.clientX, e.clientY);
 window.onmouseup = endDrag;
 window.ontouchmove = (e) => { if(isDragging) { if(e.cancelable) e.preventDefault(); handleMove(e.touches[0].clientX, e.touches[0].clientY); } };
@@ -46,7 +87,30 @@ window.endDrag = function() {
         document.getElementById('searchlight-overlay').classList.remove('searchlight-active');
     }
 };
+/**
+ * toggleTimer の修正：スイッチが無効なら起動させない
+ */
+const originalToggleTimer = toggleTimer;
+window.toggleTimer = function(forceState) {
+    const shouldStart = (forceState !== undefined) ? forceState : !timerId;
+    
+    // ログ無効かつ開始しようとしている場合は拒否
+    if (!isLogEnabled && shouldStart) {
+        if (typeof addLog === 'function') addLog("Recording is disabled.");
+        return;
+    }
+    
+    originalToggleTimer(forceState);
+};
 
+/**
+ * recordMove の修正：スイッチが無効なら記録しない
+ */
+const originalRecordMove = recordMove;
+window.recordMove = function(lineIdx, dir, steps, mode) {
+    if (!isLogEnabled) return;
+    originalRecordMove(lineIdx, dir, steps, mode);
+};
 
 function handleModeChange(mode) {
     // 現在タイマーが動いている、または1手以上動かしている場合は保存して締める
@@ -435,9 +499,11 @@ function createGhosts(axis) {
     });
 }
 
-
+/**
+ * endDrag: 既存の関数をこの内容で上書きしてください
+ */
 function endDrag() {
-	updateFrameHighlight(false); // 枠を消す
+    updateFrameHighlight(false);
     if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
     if (!isDragging || !dragAxis) { resetDragState(); return; }
     
@@ -458,10 +524,41 @@ function endDrag() {
                 recordMove(idx, dir, Math.abs(steps), moveMode);
                 for(let i = 0; i < loops; i++) moveLogic(idx, isV, steps < 0);
             }
-            checkComplete();
+
+            // ★ チートモード(Ctrl)使用時はセッションを強制終了
+            if (moveMode === 'cheat') {
+                forceStopSession();
+            } else {
+                checkComplete();
+            }
         }
         resetDragState();
     }, 100);
+}
+
+/**
+ * forceStopSession: セッションの強制終了ロジック
+ */
+function forceStopSession() {
+    // 1. タイマー停止
+    if (timerId) {
+        clearInterval(timerId);
+        timerId = null;
+    }
+    
+    // 2. UI状態のリセット
+    const timerBtn = document.querySelector('button[onclick="toggleTimer()"]');
+    if (timerBtn) timerBtn.classList.remove('active-toggle');
+    
+    stopRotateIntervalOnly();
+    setInterfaceLock(false);
+    
+    // 3. ログの整合性保持のため、未完了状態で一度保存
+    saveSystemLog(false);
+    
+    if (typeof addLog === 'function') {
+        addLog("Cheat move detected. Session terminated.");
+    }
 }
 
 function toggleLogPanel() {
@@ -1628,3 +1725,26 @@ function restoreHistory(event) {
     };
     reader.readAsText(file);
 }
+
+/**
+ * ログ記録スイッチの切り替え（アイコンボタン版）
+ */
+function toggleLogSwitch() {
+    isLogEnabled = !isLogEnabled;
+    const btn = document.getElementById('log-switch-btn');
+    const icon = document.getElementById('log-check-icon');
+    
+    if (isLogEnabled) {
+        btn.classList.add('active-rec');
+        icon.innerText = "☑"; // チェックあり
+        if (typeof addLog === 'function') addLog("Recording enabled.");
+    } else {
+        // 無効時はタイマーを強制停止
+        if (timerId) toggleTimer(false);
+        btn.classList.remove('active-rec');
+        icon.innerText = "☐"; // チェックなし
+        if (typeof addLog === 'function') addLog("Recording disabled.");
+    }
+}
+
+
