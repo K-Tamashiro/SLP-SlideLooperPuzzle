@@ -202,90 +202,178 @@ class MediaManager {
         this.mode = 'color';
         this.mediaElement = null;
         this.mediaSrc = null;
+        this.animationId = null;
     }
 
+    /**
+     * 画像・動画の統合セットアップ
+     */
     async setupMedia(file) {
-        const url = URL.createObjectURL(file);
-        this.mediaSrc = url;
-        if (file.type.startsWith('image/')) {
-            this.mode = 'image';
-            this.mediaElement = new Image();
-            this.mediaElement.src = url;
-            await this.mediaElement.decode();
-        } else if (file.type.startsWith('video/')) {
-            this.mode = 'video';
-            this.mediaElement = document.createElement('video');
-            this.mediaElement.src = url;
-            this.mediaElement.muted = true;
-            this.mediaElement.loop = true;
-            this.mediaElement.playsInline = true;
-            this.mediaElement.onloadedmetadata = () => render();
-            await this.mediaElement.load();
+        // 1. 既存プロセスの完全停止
+        this.stopDrawingLoop();
+        if (this.mediaElement instanceof HTMLVideoElement) {
+            this.mediaElement.pause();
+            this.mediaElement.src = "";
+            this.mediaElement.load();
         }
-        updateV2StatusUI(this.mode);
-        renderPreview();
-        render();
+
+        // 2. 新しいURLの生成
+        const oldUrl = this.mediaSrc;
+        const newUrl = URL.createObjectURL(file);
+        this.mediaSrc = newUrl;
+
+        try {
+            if (file.type.startsWith('image/')) {
+                this.mode = 'image';
+                const img = new Image();
+                img.src = newUrl;
+                await img.decode();
+                this.mediaElement = img;
+            } 
+            else if (file.type.startsWith('video/')) {
+                this.mode = 'video';
+                const v = document.createElement('video');
+                v.src = newUrl;
+                v.muted = true;
+                v.loop = true;
+                v.playsInline = true;
+                this.mediaElement = v;
+
+                await new Promise((resolve, reject) => {
+                    v.onloadedmetadata = () => v.play().then(resolve).catch(reject);
+                    v.onerror = reject;
+                });
+                // 動画のみループ開始
+                this.startDrawingLoop();
+            }
+
+            // 3. 全体の再描画
+            if (typeof updateV2StatusUI === 'function') updateV2StatusUI(this.mode);
+            renderPreview();
+            render();
+
+        } catch (e) {
+            console.error("Media setup failed:", e);
+        } finally {
+            // 4. 旧URLの解放
+            if (oldUrl) setTimeout(() => URL.revokeObjectURL(oldUrl), 500);
+        }
     }
 
-    applyMediaStyle(cell, value) {
-        if (!this.mediaElement || !this.mediaSrc || value === undefined) return;
-        const totalCells = subSize * gridNum; 
+    /**
+     * 動画描画ループ
+     */
+    startDrawingLoop() {
+        this.stopDrawingLoop();
+        const tick = () => {
+            if (this.mode === 'video') {
+                this.syncVideoToCanvases();
+                this.animationId = requestAnimationFrame(tick);
+            }
+        };
+        this.animationId = requestAnimationFrame(tick);
+    }
+
+    stopDrawingLoop() {
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+    }
+
+    /**
+     * 動画フレームの各Canvasへの転写
+     */
+    syncVideoToCanvases() {
+        if (this.mode !== 'video' || !this.mediaElement) return;
+        const v = this.mediaElement;
+        const canvases = document.querySelectorAll('.video-tile-canvas');
+        if (canvases.length === 0 || v.videoWidth === 0) return;
+
+        const totalCells = subSize * gridNum;
+        const minSide = Math.min(v.videoWidth, v.videoHeight);
+        const sx0 = (v.videoWidth - minSide) / 2;
+        const sy0 = (v.videoHeight - minSide) / 2;
+        const step = minSide / totalCells;
+
+        canvases.forEach(canvas => {
+            const ctx = canvas.getContext('2d', { alpha: false });
+            const r = parseInt(canvas.dataset.origR);
+            const c = parseInt(canvas.dataset.origC);
+
+            ctx.drawImage(
+                v,
+                sx0 + (c * step), sy0 + (r * step), step, step,
+                0, 0, canvas.width, canvas.height
+            );
+        });
+    }
+
+    /**
+     * 画像モード用CSS適用
+     */
+applyMediaStyle(cell, value) {
+        if (this.mode !== 'image' || !this.mediaElement || value === undefined) return;
+        
+        const totalCells = subSize * gridNum;
         const correctR = Math.floor(value / totalCells);
         const correctC = value % totalCells;
-        const w = this.mediaElement.naturalWidth || this.mediaElement.videoWidth || 100;
-        const h = this.mediaElement.naturalHeight || this.mediaElement.videoHeight || 100;
+        
+        const w = this.mediaElement.naturalWidth;
+        const h = this.mediaElement.naturalHeight;
+        if (!w || !h) return;
+
         const totalBoardPx = cellSizePixel * totalCells;
         const mediaAspect = w / h;
         let drawW, drawH;
+
         if (mediaAspect > 1) {
             drawH = totalBoardPx; drawW = totalBoardPx * mediaAspect;
         } else {
             drawW = totalBoardPx; drawH = totalBoardPx / mediaAspect;
         }
+
         const offX = (drawW - totalBoardPx) / 2;
         const offY = (drawH - totalBoardPx) / 2;
         const posX = -(correctC * cellSizePixel + offX);
         const posY = -(correctR * cellSizePixel + offY);
+
+        // インラインスタイルで強制適用
         cell.style.setProperty('background-image', `url(${this.mediaSrc})`, 'important');
         cell.style.setProperty('background-size', `${drawW}px ${drawH}px`, 'important');
         cell.style.setProperty('background-position', `${posX}px ${posY}px`, 'important');
         cell.style.setProperty('background-repeat', 'no-repeat', 'important');
     }
-
-    stopDrawingLoop() {
-        // (v-mov拡張前のため、現在はプレースホルダ)
-    }
 }
 
+// グローバル公開
+window.handleMediaUpload = async (e) => {
+    if (e.target.files[0] && window.mediaManager) await window.mediaManager.setupMedia(e.target.files[0]);
+    if (typeof toggleV2Panel === 'function') toggleV2Panel();
+};
+window.handleVideoUpload = async (e) => {
+    if (e.target.files[0] && window.mediaManager) await window.mediaManager.setupMedia(e.target.files[0]);
+    if (typeof toggleVideoPanel === 'function') toggleVideoPanel();
+};
+
 /**
- * メディアアップロード・選択時のハンドラ
+ * 動画ファイル選択時のハンドラ
+ * HTMLのonchangeから呼び出せるようにwindowに紐付ける
  */
-async function handleMediaUpload(event) {
+window.handleVideoUpload = async function(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    if (window.mediaManager.mediaSrc) {
-        URL.revokeObjectURL(window.mediaManager.mediaSrc);
+    // パネルを閉じる（ui-render.jsにある関数）
+    if (typeof toggleVideoPanel === 'function') {
+        toggleVideoPanel();
     }
 
-    // MediaManagerでのセットアップ実行
-    await window.mediaManager.setupMedia(file);
-    
-    // UI更新
-    const modeSpan = document.getElementById('current-v2-mode');
-    if (modeSpan) {
-        modeSpan.innerText = window.mediaManager.mode.toUpperCase();
+    if (window.mediaManager) {
+        await window.mediaManager.setupMedia(file);
     }
+};
 
-    // 画像・動画が選択されたらパネルを閉じる
-    const panel = document.getElementById('v2-media-uploader');
-    if (panel && panel.style.display !== 'none') {
-        if (typeof toggleV2Panel === 'function') toggleV2Panel();
-    }
-    
-    if (typeof renderPreview === 'function') renderPreview();
-    if (typeof render === 'function') render(); 
-}
 /**
  * handleMediaUpload 内の表示更新
  */
@@ -610,5 +698,33 @@ function playSound(type) {
         osc.stop(ctx.currentTime + 0.2);
     }
 }
+
+/**
+ * 動画モード用パネルの開閉
+ */
+function toggleVideoPanel() {
+    const vPanel = document.getElementById('v2-video-uploader');
+    const iPanel = document.getElementById('v2-media-uploader'); // 画像パネル
+    const vBtn = document.getElementById('v2-video-toggle');
+
+    if (!vPanel) return;
+
+    // 画像パネルが開いていれば閉じる
+    if (iPanel && iPanel.style.display !== 'none') {
+        toggleV2Panel(); 
+    }
+
+    const isHidden = (vPanel.style.display === 'none' || vPanel.style.display === '');
+
+    if (isHidden) {
+        vPanel.style.display = 'block';
+        vBtn.classList.add('active');
+    } else {
+        vPanel.style.display = 'none';
+        vBtn.classList.remove('active');
+    }
+}
+
+
 
 window.mediaManager = new MediaManager();

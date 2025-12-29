@@ -1,5 +1,5 @@
 /**
- * 盤面描画
+ * メイン盤面描画
  */
 function render() {
     const container = document.getElementById('board'); 
@@ -24,11 +24,17 @@ function render() {
                 const cell = document.createElement('div');
                 const col = fc + c;
                 const row = fr + r;
-                
-                cell.dataset.row = row; 
-                cell.dataset.col = col;
                 const value = board[row][col]; 
 
+                cell.dataset.row = row; 
+                cell.dataset.col = col;
+                
+                // --- 物理リセット ---
+                cell.innerHTML = '';
+                cell.className = 'cell'; // クラス初期化
+                cell.style.backgroundImage = 'none'; // 背景初期化
+
+                // メディアモード判定
                 if (window.mediaManager && window.mediaManager.mode !== 'color' && window.mediaManager.mediaSrc) {
                     const originalFace = value;
                     const faceR = Math.floor(originalFace / gridNum);
@@ -38,22 +44,41 @@ function render() {
                     const originalAbsCol = faceC * subSize + c;
                     const originalAbsValue = originalAbsRow * totalCells + originalAbsCol;
 
-                    window.mediaManager.applyMediaStyle(cell, originalAbsValue);
-                    cell.className = 'cell';
+                    if (window.mediaManager.mode === 'video') {
+                        const canvas = document.createElement('canvas');
+                        canvas.className = 'video-tile-canvas';
+                        canvas.dataset.origR = originalAbsRow;
+                        canvas.dataset.origC = originalAbsCol;
+                        canvas.width = canvas.height = cellSizePixel;
+                        cell.appendChild(canvas);
+                        cell.classList.add('video-tile');
+                    } else if (window.mediaManager.mode === 'image') {
+                        // --- 画像モード復帰の核心 ---
+                        cell.style.backgroundImage = ''; // 'none'を解除して上書き許可
+                        window.mediaManager.applyMediaStyle(cell, originalAbsValue);
+                    }
                 } else {
-                    cell.className = `cell c${value}`;
+                    // カラーモード
+                    cell.classList.add(`c${value}`);
                 }
-                cell.innerText = "";
+
                 cell.style.width = cell.style.height = `${cellSizePixel}px`;
 
-                cell.onmousedown = (e) => {
-                    if(typeof isFlashMode !== 'undefined' && isFlashMode) triggerFlash(value);
-                    handleStart(row, col, f, e.clientX, e.clientY, 'mouse', e);
+                // --- 同色フラッシュ機能の再実装 ---
+                const startAction = (clientX, clientY, type, e) => {
+                    // flash-system.js のトリガーを呼び出し
+                    if (typeof isFlashMode !== 'undefined' && isFlashMode && typeof triggerFlash === 'function') {
+                        triggerFlash(value);
+                    }
+                    handleStart(row, col, f, clientX, clientY, type, e);
                 };
+
+                cell.onmousedown = (e) => startAction(e.clientX, e.clientY, 'mouse', e);
                 cell.ontouchstart = (e) => {
-                    if(typeof isFlashMode !== 'undefined' && isFlashMode) triggerFlash(value);
-                    handleStart(row, col, f, e.touches[0].clientX, e.touches[0].clientY, 'touch', e);
+                    const touch = e.touches[0];
+                    startAction(touch.clientX, touch.clientY, 'touch', e);
                 };
+
                 faceEl.appendChild(cell);
             }
         }
@@ -67,34 +92,47 @@ function render() {
 function renderPreview() {
     const container = document.getElementById('preview');
     if (!container || !targetBoard) return;
-
     container.innerHTML = '';
     
+    // 元のサイズ計算ロジックを復元
     const totalSize = subSize * gridNum;
-    const pSize = totalSize > 6 ? 8 : 12;
+    const pSize = totalSize > 6 ? 8 : 12; // 1タイルのドットサイズ
     const gap = 1;
     const gridPx = (pSize * totalSize) + (gap * (totalSize - 1));
 
+    // コンテナ自体のサイズを厳格に固定
     container.style.width = `${gridPx}px`;
     container.style.height = `${gridPx}px`;
+    container.style.overflow = 'hidden';
 
     if (window.mediaManager && window.mediaManager.mode !== 'color' && window.mediaManager.mediaSrc) {
         container.style.display = 'flex';
         container.style.alignItems = 'center';
         container.style.justifyContent = 'center';
-        container.style.overflow = 'hidden';
         
-        const el = window.mediaManager.mode === 'image' ? new Image() : document.createElement('video');
-        el.src = window.mediaManager.mediaSrc;
-        el.style.width = '100%';
-        el.style.height = '100%';
-        el.style.objectFit = 'cover';
-
         if (window.mediaManager.mode === 'video') {
-            el.autoplay = true; el.muted = true; el.loop = true; el.playsInline = true;
+            const video = document.createElement('video');
+            video.src = window.mediaManager.mediaSrc;
+            video.autoplay = true; 
+            video.muted = true; 
+            video.loop = true; 
+            video.playsInline = true;
+            // 枠内に収めるためのスタイル
+            video.style.width = '100%';
+            video.style.height = '100%';
+            video.style.objectFit = 'cover';
+            container.appendChild(video);
+            video.play().catch(() => {});
+        } else {
+            const img = new Image();
+            img.src = window.mediaManager.mediaSrc;
+            img.style.width = '100%';
+            img.style.height = '100%';
+            img.style.objectFit = 'cover';
+            container.appendChild(img);
         }
-        container.appendChild(el);
     } else {
+        // カラーモード
         container.style.display = 'grid';
         container.style.gridTemplateColumns = `repeat(${totalSize}, ${pSize}px)`;
         container.style.gap = `${gap}px`;
@@ -105,13 +143,11 @@ function renderPreview() {
                 cell.className = `preview-cell c${targetBoard[r][c]}`;
                 cell.style.width = `${pSize}px`;
                 cell.style.height = `${pSize}px`;
-                cell.innerText = ""; 
                 container.appendChild(cell);
             }
         }
     }
 }
-
 /**
  * 座標ラベル描画
  */

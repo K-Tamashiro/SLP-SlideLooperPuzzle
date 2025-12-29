@@ -51,6 +51,7 @@
 			    STEP: <span id="replay-index">0</span> / <span id="replay-total">0</span>
 			</div>
 		</div>
+
 	<div id="v2-media-uploader" class="media-overlay-top" style="display: none; border: 1px solid #0f0; background: rgba(0, 40, 0, 0.9); box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);">
 		<div class="m-group">
 			<input type="file" id="media-upload" accept="image/*,video/*" style="display: none;" onchange="handleMediaUpload(event)">
@@ -61,6 +62,22 @@
 			V2 MODE: <span id="current-v2-mode">COLOR</span>
 		</div>
 	</div>
+
+	<div id="v2-video-uploader" class="v2-panel" style="display:none;">
+		<div class="v2-panel-header">VIDEO MODE</div>
+		<div class="v2-panel-body">
+			<button class="v2-btn" onclick="document.getElementById('v2-video-input').click()">
+				SELECT VIDEO FILE
+			</button>
+			<p class="v2-info">MP4 / WebM (Muted Auto-play)</p>
+		</div>
+	</div>
+
+	<input type="file" id="v2-video-input" 
+		accept="video/*" 
+		onchange="handleVideoUpload(event)" 
+		style="display:none;">
+
 	<div id="log-overlay" class="overlay">
 	    <div class="log-panel">
 	        <div id="mode-display-neon" style="text-align: center; margin-bottom: 5px;">
