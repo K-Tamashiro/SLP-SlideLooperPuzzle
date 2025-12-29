@@ -736,22 +736,28 @@ function checkComplete() {
     }
 
     if (isComplete && !skipCompleteOnce) {
+        // 【論理修正】解析モード中、またはRECオフ時は保存処理・終了演出を一切行わず終了
+        if (window.isReplayMode || !isLogEnabled) {
+            return;
+        }
+
         // 1. 通常タイマー停止
         toggleTimer(false);
 
         // 2. 回転ギミックが動いている場合は停止してスイッチオフ
         if (window.rotateTimerId) {
-            // startRotateCountdownを呼び出すことで、内部の停止ロジック（clearInterval, クラス除去）を走らせる
             startRotateCountdown();
         }
-		
-		saveSystemLog(true); // コンプリートフラグを立てて保存
         
-		// 3. コンプリート表示
+        // 履歴保存
+        saveSystemLog(true); 
+        
+        // 3. コンプリート表示（オーバーレイ表示）
         document.getElementById('status-board')?.classList.add('show');
         document.getElementById('status-preview')?.classList.add('show');
+
     } else {
-        // 未完成時は表示を消すのみ（ギミックの状態には触れない）
+        // 未完成時、または skipCompleteOnce が有効な時は表示を消す
         document.getElementById('status-board')?.classList.remove('show');
         document.getElementById('status-preview')?.classList.remove('show');
     }
@@ -856,7 +862,6 @@ function stopRotateIntervalOnly() {
     }
 }
 
-
 function executeRotateLoop() {
     const frame = document.getElementById('rotate-frame');
     const n = subSize * gridNum;
@@ -892,7 +897,6 @@ function executeRotateLoop() {
         }
     }, interval);
 }
-
 
 /**
  * サーチライトモードの切り替え
@@ -1076,7 +1080,7 @@ function importCSV(event) {
         const scrambleInput = document.getElementById('scramble-input');
         if (scrambleInput) {
             // Remove newlines and extra spaces
-            const content = e.target.result.trim().replace(/\r?\n|\r/g, "");
+            const content = e.target.result.replace(/[^A-Za-z0-9,\-]/g, "");
             scrambleInput.value = content;
             
             if (typeof addLog === 'function') {
@@ -1096,7 +1100,7 @@ function copySolveToScramble() {
     const solveLog = document.getElementById('solve-log');
     const scrambleInput = document.getElementById('scramble-input');
     if (solveLog && scrambleInput) {
-        scrambleInput.value = solveLog.value;
+        scrambleInput.value = solveLog.value.replace(/[^A-Za-z0-9,\-]/g, "");
         if (typeof addLog === 'function') addLog("Solve log copied to Scramble Box");
     }
 }
@@ -1191,6 +1195,9 @@ function saveSystemLog(isComplete = false) {
 function refreshHistoryList() {
     const container = document.getElementById('history-list');
     if (!container) return;
+
+    // 【論理修正】描画前に中身を完全に空にする
+    container.innerHTML = "";
 
     const history = JSON.parse(localStorage.getItem('slp_history') || '[]');
     
@@ -1746,5 +1753,4 @@ function toggleLogSwitch() {
         if (typeof addLog === 'function') addLog("Recording disabled.");
     }
 }
-
 
