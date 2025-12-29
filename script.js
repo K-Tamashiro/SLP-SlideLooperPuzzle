@@ -2067,6 +2067,7 @@ function toggleV2Panel() {
     }
     resetColorTargetView();
 }
+
 /**
  * handleMediaUpload 内の表示更新
  */
