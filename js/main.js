@@ -7,7 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 起動時にメニューを閉じる（hiddenクラスの切り替え）
     // 初期状態で表示されているなら、これで非表示に遷移する
-    document.querySelector('.menu-panel')?.classList.toggle('hidden');
+    // document.querySelector('.menu-panel')?.classList.toggle('hidden');
+    // const panel = document.querySelector('.menu-panel');
+    // panel.classList.toggle('open');
 });
 
 /**
@@ -173,7 +175,9 @@ window.resetToColorMode = function() {
  * 補助ユーティリティ
  */
 function toggleMenu() {
-    document.querySelector('.menu-panel')?.classList.toggle('hidden');
+    // document.querySelector('.menu-panel')?.classList.toggle('hidden');
+    const panel = document.querySelector('.menu-panel');
+    panel.classList.toggle('open');
 }
 
 function clearSolveLog() {

@@ -29,17 +29,48 @@ p[onclick] {
 	padding: 10px 0;/* 必要に応じてタイトル周りのみの余白を調整 */
 }
 
-/* メニューパネルのレイアウト修正 */
-/* メニューパネル全体の基本設定（中央揃えを優先） */
+/* メニューパネルのレイアウト */
 .menu-panel {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center; /* 中央に配置 */
+    /* オーバーレイのための絶対配置 */
+    position: absolute;
+    top: 65px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2000;
+
+    /* 非表示状態 */
+    display: none;
+
+    /* ネオン調の装飾 */
+    background: rgba(0, 20, 0, 0.95); /* 深い緑の背景 */
+    border: 2px solid #00ff41;       /* ネオン看板のような境界線 */
+    border-radius: 12px;
+    box-shadow: 0 0 15px #00ff41,    /* 外側の光 */
+                inset 0 0 10px #00ff41; /* 内側の光 */
+    
+    padding: 20px;
+    width: 90%;
+    max-width: 400px;
+    gap: 15px;
+    justify-content: center;
     align-items: center;
-    margin: 0 auto 15px auto; /* 左右マージンをautoにして中央寄せ */
-    width: 100%; 
-    max-width: 600px;
+}
+
+/* 表示時の制御 */
+.menu-panel.open {
+    display: flex;
+}
+
+/* 内部ボタンもネオン調に統一する場合 */
+.menu-panel button, 
+.menu-panel select, 
+.menu-panel input {
+    background: transparent;
+    border: 1px solid #00ff41;
+    color: #00ff41;
+    text-shadow: 0 0 5px #111412;
+    padding: 8px;
+    border-radius: 4px;
 }
 
 .mode-selector {
@@ -49,7 +80,10 @@ p[onclick] {
 
 #mode-select {
 	font-size: 14px;
-	min-width: 160px;
+	min-width: 48px;
+	max-width: 48px;
+	background-color: #001400; /* プルダウン展開時の背景 */
+    color: #00ff41;            /* プルダウン展開時の文字色 */
 	outline: none;
 }
 
