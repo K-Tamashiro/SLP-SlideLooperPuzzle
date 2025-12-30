@@ -582,15 +582,22 @@ transform-origin: center center !important;
 }
 /* セルの同色フラッシュ：輝度とエフェクトの減衰版 */
 
-.cell.flash-active {
-	z-index: 950;/* 枠線を白から少しグレー（#ddd）へ、太さを3pxから2pxへ */
-	outline: 2px solid #ddd;
-	outline-offset: -2px;/* 発光範囲（ぼかし）を縮小し、不透明度を下げる */
-	box-shadow: inset 0 0 10px 2px rgba(255, 255, 255, 0.6),
-        0 0 15px 5px rgba(255, 255, 255, 0.4);/* 輝度倍率を 2.0 から 1.3 程度に落とし、彩度を少し上げる */
-	filter: brightness(1.3) saturate(1.2);/* 消灯時の余韻を少し長く（0.4s）して目に優しく */
-	transition: all 0.4s ease-out;
+.flash-active {
+    position: relative;
+    /* 明るさを1.5倍程度に抑え、彩度を上げることで色を強調 */
+    filter: brightness(1.4) saturate(1.5) !important;
+    /* 外側への強い光（白）を避け、セルの内側に色を溜める */
+    box-shadow: inset 0 0 15px rgba(255, 255, 255, 0.6), 0 0 10px rgba(255, 255, 255, 0.3) !important;
+    z-index: 5;
+    transition: filter 0.2s ease, box-shadow 0.2s ease;
 }
+
+.video-tile.flash-active,
+.cell[style*="background-image"].flash-active {
+    filter: brightness(1.2) contrast(1.2) !important;
+    box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.5) !important;
+}
+
 .cell.flash-active::after {
     content: '';
     position: absolute;

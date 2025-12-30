@@ -11,7 +11,13 @@ window.addEventListener('DOMContentLoaded', () => {
     // 2. メディア入力(input[type="file"])の接続
     const mediaInput = document.getElementById('media-input');
     if (mediaInput) {
-        mediaInput.addEventListener('change', (e) => handleMediaUpload(e));
+        mediaInput.addEventListener('change', async (e) => {
+            if (e.target.files[0] && window.mediaManager) {
+                await window.mediaManager.setupMedia(e.target.files[0]);
+                // ★連続選択を可能にするためのリセット
+                e.target.value = ''; 
+            }
+        });
     }
 
     // 3. インポート・リストア用 input の接続
@@ -100,51 +106,46 @@ window.isFlashMode = false;
 window.resetToColorMode = function() {
     if (!window.mediaManager) return;
 
-    // 1. 全ての描画処理とループを即座に遮断
+    // 1. ループとモードを即座に遮断
     window.mediaManager.stopDrawingLoop();
     window.mediaManager.mode = 'color';
 
-    // 2. DOM内の全ビデオ要素とキャンバスの参照を「物理的に」切断
-    // これによりブラウザが blob URL を見に行く先を無くします
-    const videoElements = document.querySelectorAll('video');
-    videoElements.forEach(v => {
-        v.pause();
-        v.src = ""; // ソースを空文字にする
-        v.load();   // リソースを解放
-        v.remove(); // DOMから消す
-    });
+    // 2. DOMから古いメディア要素を物理的に全削除
+    const board = document.getElementById('board');
+    if (board) board.innerHTML = ''; 
 
-    const canvases = document.querySelectorAll('.video-tile-canvas');
-    canvases.forEach(c => {
-        const ctx = c.getContext('2d');
-        ctx.clearRect(0, 0, c.width, c.height); // 描画内容を消去
-        c.remove(); // DOMから消す
-    });
-
-    // 3. MediaManagerの内部状態をクリア
+    // 3. URL参照を「描画命令の前」に物理的に断つ
     const oldUrl = window.mediaManager.mediaSrc;
     window.mediaManager.mediaSrc = null;
+    
+    if (window.mediaManager.mediaElement instanceof HTMLVideoElement) {
+        window.mediaManager.mediaElement.pause();
+        window.mediaManager.mediaElement.src = "";
+    }
     window.mediaManager.mediaElement = null;
 
-    // 4. UIの更新
-    if (document.getElementById('current-v2-mode')) {
-        document.getElementById('current-v2-mode').innerText = 'COLOR';
+    // --- カラーモード復帰時に回転ボタンのロックを解除 ---
+    const rotateBtn = document.querySelector('button[onclick="startRotateCountdown()"]');
+    if (rotateBtn) {
+        rotateBtn.disabled = false;
+        rotateBtn.style.opacity = '1';
+        rotateBtn.style.pointerEvents = 'auto';
     }
-    if (document.getElementById('v2-video-uploader')) {
-        document.getElementById('v2-video-uploader').style.display = 'none';
-    }
+    // --------------------------------------------------
 
-    // 5. 盤面とプレビューを真っさらな状態で再描画
+    // 4. 更地になった状態で再描画を実行
     renderPreview();
     render();
 
-    // 6. 全ての参照がDOMから消えたことを確認して、最後にURLを破棄
+    // 5. UI更新
+    if (document.getElementById('current-v2-mode')) {
+        document.getElementById('current-v2-mode').innerText = 'COLOR';
+    }
+
+    // 6. 最後に安全にURLを解放
     if (oldUrl) {
-        // 500ms待つことでブラウザのクリーンアップ時間を確保
         setTimeout(() => {
-            try {
-                URL.revokeObjectURL(oldUrl);
-            } catch(e) {}
+            try { URL.revokeObjectURL(oldUrl); } catch(e) {}
         }, 500);
     }
 };

@@ -56,23 +56,42 @@ function initBoard(resetTarget = false) {
     renderCoordinates();
 }
 
+/**
+ * レイアウト計算（ブロック数に応じた動的スケーリング版）
+ */
 function calculateLayout() {
     const isMobile = window.innerWidth < 600;
-    const totalSize = subSize * gridNum;
-    const usableWidth = isMobile 
-        ? Math.min(window.innerWidth, document.documentElement.clientWidth) - 60 
+    const totalSize = subSize * gridNum; // 2x2なら4、3x3なら9
+    const containerWidth = isMobile 
+        ? Math.min(window.innerWidth, document.documentElement.clientWidth) - 40 // 余白を少し詰める
         : 500;
 
-    GAP_FACE = (gridNum <= 2) ? 4 : 6; 
+    // 1. 隙間（GAP）の動的設定
+    GAP_FACE = (gridNum <= 2) ? 8 : 4; 
     const totalFaceGaps = (gridNum - 1) * GAP_FACE;
     const totalCellGaps = (totalSize - gridNum) * GAP_CELL;
-    cellSizePixel = Math.floor((usableWidth - totalFaceGaps - totalCellGaps) / totalSize);
 
+    // 2. 利用可能な幅から1セルあたりの基本サイズを算出
+    cellSizePixel = Math.floor((containerWidth - totalFaceGaps - totalCellGaps) / totalSize);
+
+    // 3. ★重要：ブロック数に応じたサイズ制限の緩和
     if (isMobile) {
-        const maxCell = (totalSize > 6) ? 32 : 60;
-        cellSizePixel = Math.max(25, Math.min(maxCell, cellSizePixel));
+        let maxCell;
+        if (totalSize <= 4) {
+            // Easyモード(2x2)など、ブロックが少ない場合は大きく表示
+            maxCell = 85; 
+        } else if (totalSize <= 6) {
+            maxCell = 55;
+        } else if (totalSize <= 8) {
+            maxCell = 40;
+        } else {
+            maxCell = 35; // Hard以上
+        }
+        cellSizePixel = Math.max(30, Math.min(maxCell, cellSizePixel));
     } else {
-        cellSizePixel = Math.max(40, Math.min(55, cellSizePixel));
+        // デスクトップ版の制限緩和
+        const maxCell = (totalSize <= 4) ? 120 : 60;
+        cellSizePixel = Math.max(40, Math.min(maxCell, cellSizePixel));
     }
 }
 

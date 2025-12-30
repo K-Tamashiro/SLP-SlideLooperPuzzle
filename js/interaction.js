@@ -122,6 +122,19 @@ function createGhosts(axis) {
             cells.forEach((item, i) => {
                 const clone = item.el.cloneNode(true);
                 clone.style.opacity = '1';
+
+                // --- ★動画スナップショット適用ロジック ---
+                const originalCanvas = item.el.querySelector('canvas');
+                if (originalCanvas) {
+                    // クローン内の空のCanvasを削除
+                    clone.querySelectorAll('canvas').forEach(c => c.remove());
+                    // 元のCanvasの現在の見た目をデータURLとして抽出
+                    const dataUrl = originalCanvas.toDataURL();
+                    clone.style.backgroundImage = `url(${dataUrl})`;
+                    clone.style.backgroundSize = 'cover';
+                }
+                // ---------------------------------------
+
                 if (i > 0 && i % subSize === 0) {
                     if (axis === 'h') clone.style.marginLeft = `${GAP_FACE - GAP_CELL}px`;
                     else clone.style.marginTop = `${GAP_FACE - GAP_CELL}px`;
@@ -188,7 +201,7 @@ function triggerFlash(clickedValue) {
             if (t) clearTimeout(parseInt(t));
             const timer = setTimeout(() => {
                 cell.classList.remove('flash-active');
-            }, 3000);
+            }, 1500);
             cell.setAttribute('data-f-t', timer);
         }
     });
@@ -218,6 +231,15 @@ function rotateBoard() {
 }
 
 function startRotateCountdown() {
+    // メディアモード時は何もしない
+    if (window.mediaManager && window.mediaManager.mode !== 'color') {
+        if (typeof addLog === 'function') {
+            addLog("Rotation is disabled in Image/Video mode.");
+        }
+        alert("Rotation gimmick is not available in Image/Video mode.");
+        return;
+    }
+
     const btn = document.querySelector('button[onclick="startRotateCountdown()"]');
     if (!btn) return;
     const isReserved = btn.classList.contains('active-toggle-red');

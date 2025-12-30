@@ -209,18 +209,19 @@ class MediaManager {
      * 画像・動画の統合セットアップ
      */
     async setupMedia(file) {
+        // 1. 新規ロード前に、現在の描画ループとメモリを完全に「更地」にする
         this.stopDrawingLoop();
+        document.querySelectorAll('.ghost-strip').forEach(el => el.remove());
         
-        // 既存ビデオの完全停止
         if (this.mediaElement instanceof HTMLVideoElement) {
             this.mediaElement.pause();
-            this.mediaElement.removeAttribute('src'); // src属性自体を消す
+            this.mediaElement.src = ""; // 物理的に切断
             this.mediaElement.load();
         }
 
         const oldUrl = this.mediaSrc;
         const newUrl = URL.createObjectURL(file);
-        this.mediaSrc = newUrl; // ここで新しいURLを即座に保持
+        this.mediaSrc = newUrl; // 新しいURLに差し替え
 
         try {
             if (file.type.startsWith('image/')) {
@@ -229,6 +230,7 @@ class MediaManager {
                 img.src = newUrl;
                 await img.decode();
                 this.mediaElement = img;
+                if (typeof updateV2StatusUI === 'function') updateV2StatusUI('image');
             } 
             else if (file.type.startsWith('video/')) {
                 this.mode = 'video';
@@ -243,18 +245,46 @@ class MediaManager {
                     v.onloadedmetadata = () => v.play().then(resolve).catch(reject);
                     v.onerror = reject;
                 });
+                if (typeof updateV2StatusUI === 'function') updateV2StatusUI('video');
                 this.startDrawingLoop();
             }
+            // --- メディア選択時に回転ギミックを強制OFF & ロック ---
+            if (window.rotateTimerId) {
+                stopRotateIntervalOnly(); // 実行中のタイマー停止
+            }
+            const rotateBtn = document.querySelector('button[onclick="startRotateCountdown()"]');
+            if (rotateBtn) {
+                rotateBtn.classList.remove('active-toggle-red'); // 赤点灯解除
+                rotateBtn.disabled = true; // ボタン無効化
+                rotateBtn.style.opacity = '0.3';
+                rotateBtn.style.pointerEvents = 'none';
+            }
+            // --------------------------------------------------
+
+            // --- メディア選択時にフラッシュを強制ONにする ---
+            window.isFlashMode = true;
+            const flashBtn = document.querySelector('button[onclick="toggleFlash()"]');
+            if (flashBtn) flashBtn.classList.add('active-toggle');
+            // --------------------------------------------------
+
+            // 2. 盤面のタイルを物理的に一度リセットしてから再描画
+            const board = document.getElementById('board');
+            if (board) board.innerHTML = ''; 
+            
+            setInterfaceLock(!!timerId);
 
             renderPreview();
             render();
 
         } catch (e) {
-            console.error("Media setup error:", e);
+            console.error("Media setup failed:", e);
+            window.resetToColorMode();
         } finally {
-            // 解放を少し遅らせて、DOMの更新（render）が完了するのを待つ
+            // 3. 古いURLの破棄を、DOMが完全に書き換わるまで十分に遅らせる
             if (oldUrl && oldUrl !== newUrl) {
-                setTimeout(() => URL.revokeObjectURL(oldUrl), 1000);
+                setTimeout(() => {
+                    try { URL.revokeObjectURL(oldUrl); } catch(err) {}
+                }, 1000);
             }
         }
     }
@@ -285,9 +315,13 @@ class MediaManager {
      */
     syncVideoToCanvases() {
         if (this.mode !== 'video' || !this.mediaElement) return;
+        
         const v = this.mediaElement;
+        
         if (!(v instanceof HTMLVideoElement) || v.readyState < 2) return;
+        
         const canvases = document.querySelectorAll('.video-tile-canvas');
+
         if (v.readyState < 2) return;
         if (canvases.length === 0 || v.videoWidth === 0) return;
         
@@ -366,9 +400,22 @@ applyMediaStyle(cell, value) {
 
 // グローバル公開
 window.handleMediaUpload = async (e) => {
-    if (e.target.files[0] && window.mediaManager) await window.mediaManager.setupMedia(e.target.files[0]);
-    if (typeof toggleV2Panel === 'function') toggleV2Panel();
+    const file = e.target.files[0];
+    if (!file || !window.mediaManager) return;
+
+    // 1. セットアップを実行
+    await window.mediaManager.setupMedia(file);
+    
+    // 2. ★最重要：inputの値を空にする（これで同じファイルを2回目も選べるようになる）
+    e.target.value = '';
+
+    // 3. UIパネルの制御（開いていれば閉じる）
+    const vPanel = document.getElementById('v2-video-uploader');
+    const iPanel = document.getElementById('v2-media-uploader');
+    if (vPanel && vPanel.style.display !== 'none') toggleVideoPanel();
+    if (iPanel && iPanel.style.display !== 'none') toggleV2Panel();
 };
+
 window.handleVideoUpload = async (e) => {
     if (e.target.files[0] && window.mediaManager) await window.mediaManager.setupMedia(e.target.files[0]);
     if (typeof toggleVideoPanel === 'function') toggleVideoPanel();

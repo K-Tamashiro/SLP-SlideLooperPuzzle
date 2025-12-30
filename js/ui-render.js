@@ -1,9 +1,14 @@
 /**
  * メイン盤面描画
  */
+/**
+ * メイン盤面描画（画像・動画・カラー完全統合版）
+ */
 function render() {
     const container = document.getElementById('board'); 
     if (!container) return;
+    
+    // レイアウト設定
     container.style.gridTemplateColumns = `repeat(${gridNum}, 1fr)`; 
     container.style.gap = `${GAP_FACE}px`; 
     container.innerHTML = '';
@@ -29,22 +34,29 @@ function render() {
                 cell.dataset.row = row; 
                 cell.dataset.col = col;
                 
-                // --- 物理リセット ---
+                // --- 物理リセットと基本スタイル ---
                 cell.innerHTML = '';
-                cell.className = 'cell'; // クラス初期化
-                cell.style.backgroundImage = 'none'; // 背景初期化
+                cell.className = 'cell';
+                cell.style.width = cell.style.height = `${cellSizePixel}px`;
+                cell.style.backgroundImage = 'none';
 
-                // メディアモード判定
-                if (window.mediaManager && window.mediaManager.mode !== 'color' && window.mediaManager.mediaSrc) {
+                // --- メディア状態の取得 ---
+                const mm = window.mediaManager;
+                // 有効なリソースURLが存在するか厳格にチェック
+                const hasValidMedia = mm && mm.mediaSrc && mm.mediaSrc !== "";
+
+                if (hasValidMedia) {
+                    // 正解位置（ソース画像上の座標）の計算
                     const originalFace = value;
                     const faceR = Math.floor(originalFace / gridNum);
                     const faceC = originalFace % gridNum;
-                    
                     const originalAbsRow = faceR * subSize + r;
                     const originalAbsCol = faceC * subSize + c;
                     const originalAbsValue = originalAbsRow * totalCells + originalAbsCol;
 
-                    if (window.mediaManager.mode === 'video') {
+                    // --- モード別描画分岐 ---
+                    if (mm.mode === 'video') {
+                        // 動画モード：Canvasを生成して描画対象にする
                         const canvas = document.createElement('canvas');
                         canvas.className = 'video-tile-canvas';
                         canvas.dataset.origR = originalAbsRow;
@@ -52,23 +64,27 @@ function render() {
                         canvas.width = canvas.height = cellSizePixel;
                         cell.appendChild(canvas);
                         cell.classList.add('video-tile');
-                    } else if (window.mediaManager.mode === 'image') {
-                        // --- 画像モード復帰の核心 ---
-                        cell.style.backgroundImage = ''; // 'none'を解除して上書き許可
-                        window.mediaManager.applyMediaStyle(cell, originalAbsValue);
+                    } 
+                    else if (mm.mode === 'image') {
+                        // 画像モード：CSS 背景として適用
+                        mm.applyMediaStyle(cell, originalAbsValue);
+                    }
+                    else {
+                        // 万が一のフォールバック
+                        cell.classList.add(`c${value}`);
                     }
                 } else {
-                    // カラーモード
+                    // カラーモード（リセット時やメディア未選択時）
                     cell.classList.add(`c${value}`);
                 }
 
-                cell.style.width = cell.style.height = `${cellSizePixel}px`;
-
-                // --- 同色フラッシュ機能の再実装 ---
+                // --- イベント制御（フラッシュ & ドラッグ） ---
                 const startAction = (clientX, clientY, type, e) => {
-                    // flash-system.js のトリガーを呼び出し
-                    if (typeof isFlashMode !== 'undefined' && isFlashMode && typeof triggerFlash === 'function') {
-                        triggerFlash(value);
+                    // 1. フラグが物理的に TRUE の場合のみ実行
+                    if (window.isFlashMode === true) {
+                        if (typeof triggerFlash === 'function') {
+                            triggerFlash(value);
+                        }
                     }
                     handleStart(row, col, f, clientX, clientY, type, e);
                 };
@@ -92,70 +108,69 @@ function render() {
 function renderPreview() {
     const container = document.getElementById('preview');
     if (!container || !targetBoard) return;
-
     container.innerHTML = '';
-    
-    // 1. 外枠サイズを 120px の正方形に厳格固定
-    const fixedSize = 120; 
-    container.style.width = `${fixedSize}px`;
-    container.style.height = `${fixedSize}px`;
-    container.style.minWidth = `${fixedSize}px`;
-    container.style.minHeight = `${fixedSize}px`;
-    container.style.maxWidth = `${fixedSize}px`;  // ワイド化を防止
-    container.style.maxHeight = `${fixedSize}px`; // ワイド化を防止
-    
-    container.style.overflow = 'hidden';
-    container.style.position = 'relative';
-    container.style.margin = '0 auto';
-    container.style.border = '2px solid #444'; 
-    container.style.boxSizing = 'border-box'; // borderを含めてサイズ固定
 
-    const hasMedia = window.mediaManager && window.mediaManager.mode !== 'color' && window.mediaManager.mediaSrc;
+    // --- 1. サイズとアスペクト比の絶対固定 ---
+    const fixedSize = 130;
+    const style = container.style;
+    style.width = style.height = style.minWidth = style.minHeight = style.maxWidth = style.maxHeight = `${fixedSize}px`;
+    style.overflow = 'hidden';
+    style.position = 'relative';
+    style.margin = '0 auto';
+    style.border = '2px solid #444';
+    style.boxSizing = 'border-box';
+
+    const mm = window.mediaManager;
+    const hasMedia = mm && mm.mode !== 'color' && mm.mediaSrc;
 
     if (hasMedia) {
-        // --- メディアモード：中身を枠に閉じ込める ---
-        container.style.display = 'block';
-
-        const mediaEl = (window.mediaManager.mode === 'video') 
-            ? document.createElement('video') 
-            : new Image();
-
-        if (window.mediaManager.mediaSrc) {
-            mediaEl.src = window.mediaManager.mediaSrc;
-            
-            // スタイル：親の120pxを絶対に超えず、かつ埋め尽くす
+        // --- 2. メディア表示（画像・動画） ---
+        style.display = 'block';
+        const mediaEl = (mm.mode === 'video') ? document.createElement('video') : new Image();
+        
+        // 有効なURLがある場合のみ代入（blob:null対策）
+        const currentSrc = mm.mediaSrc;
+        if (currentSrc) {
+            mediaEl.src = currentSrc;
             mediaEl.style.width = '100%';
             mediaEl.style.height = '100%';
-            mediaEl.style.objectFit = 'cover'; // これでワイド動画も正方形に切り抜かれる
+            mediaEl.style.objectFit = 'cover'; // 正方形にクロップ
             mediaEl.style.display = 'block';
 
-            if (window.mediaManager.mode === 'video') {
-                mediaEl.autoplay = true;
+            if (mm.mode === 'video') {
                 mediaEl.muted = true;
                 mediaEl.loop = true;
                 mediaEl.playsInline = true;
                 mediaEl.play().catch(() => {});
             }
             container.appendChild(mediaEl);
+        } else {
+            drawColorGrid(container);
         }
     } else {
-        // --- カラーモード：グリッド表示 ---
-        container.style.display = 'grid';
-        const totalSize = subSize * gridNum;
-        
-        container.style.gridTemplateColumns = `repeat(${totalSize}, 1fr)`;
-        container.style.gridTemplateRows = `repeat(${totalSize}, 1fr)`;
-        container.style.gap = '1px'; 
-        container.style.backgroundColor = '#444';
+        // --- 3. カラーモード ---
+        drawColorGrid(container);
+    }
+}
 
-        for (let r = 0; r < totalSize; r++) {
-            for (let c = 0; c < totalSize; c++) {
-                const cell = document.createElement('div');
-                cell.className = `preview-cell c${targetBoard[r][c]}`;
-                cell.style.width = '100%';
-                cell.style.height = '100%';
-                container.appendChild(cell);
-            }
+/**
+ * カラーグリッド描画ロジック（サイズ維持）
+ */
+function drawColorGrid(container) {
+    container.style.display = 'grid';
+    const totalSize = subSize * gridNum;
+    container.style.gridTemplateColumns = `repeat(${totalSize}, 1fr)`;
+    container.style.gridTemplateRows = `repeat(${totalSize}, 1fr)`;
+    container.style.gap = '1px';
+    container.style.backgroundColor = '#444';
+
+    for (let r = 0; r < totalSize; r++) {
+        for (let c = 0; c < totalSize; c++) {
+            const cell = document.createElement('div');
+            cell.className = `preview-cell c${targetBoard[r][c]}`;
+            cell.style.width = '100%';
+            cell.style.height = '100%';
+            container.appendChild(cell);
         }
     }
 }
@@ -190,11 +205,11 @@ function renderCoordinates() {
 function setInterfaceLock(isLocked) {
     const targetSelectors = [
         'button[onclick="copyCurrentToTarget()"]',
-        'button[onclick="startRotateCountdown()"]',
+        'button[onclick="startRotateCountdown()"]', // 後で個別制御
         'button[onclick="toggleFlash()"]',
         'button[onclick="toggleSearchlight()"]',
-        'button[onclick="toggleV2Panel()"]', // 画像モードパネル
-        'button[onclick="toggleVideoPanel()"]', // 動画モードパネル
+        'button[onclick="toggleV2Panel()"]',
+        'button[onclick="toggleVideoPanel()"]',
         '#shuffle-btn',
         '#mode-select',
         '#scramble-count',
@@ -203,20 +218,31 @@ function setInterfaceLock(isLocked) {
     
     targetSelectors.forEach(selector => {
         const el = document.querySelector(selector);
-        if (el) {
-            el.disabled = isLocked;
-            el.style.opacity = isLocked ? "0.3" : "1";
-            el.style.cursor = isLocked ? "not-allowed" : "pointer";
-            el.style.pointerEvents = isLocked ? "none" : "auto";
-        }
-    });
+        if (!el) return;
 
-    const logBtn = document.querySelector('.log-btn');
-    if (logBtn) {
-        logBtn.disabled = isLocked;
-        logBtn.style.opacity = isLocked ? "0.3" : "1";
-        logBtn.style.pointerEvents = isLocked ? "none" : "auto";
+        // --- メディアモード時の回転ボタン専用ガード ---
+        if (selector.includes('startRotateCountdown') && window.mediaManager && window.mediaManager.mode !== 'color') {
+            el.disabled = true;
+            el.style.opacity = "0.3";
+            el.style.pointerEvents = "none";
+            return; // このボタンの処理はここで終了（isLockedの影響を受けさせない）
+        }
+
+        el.disabled = isLocked;
+        el.style.opacity = isLocked ? "0.3" : "1";
+        el.style.cursor = isLocked ? "not-allowed" : "pointer";
+        el.style.pointerEvents = isLocked ? "none" : "auto";
+    });
+}
+
+function toggleFlashMode() {
+    window.isFlashMode = !window.isFlashMode;
+    const btn = document.getElementById('flash-toggle-btn');
+    if (btn) {
+        btn.classList.toggle('active', window.isFlashMode);
     }
+    // 状態をログに記録（任意）
+    if (typeof addLog === 'function') addLog(`Flash Mode: ${window.isFlashMode}`);
 }
 
 /**
@@ -284,13 +310,7 @@ function toggleV2Panel() {
             rotateBtn.style.opacity = '1';
             rotateBtn.style.pointerEvents = 'auto';
         }
-        // ★ 追加：パネルを閉じた際にフラッシュモードを強制的にONにする
-        if (typeof isFlashMode !== 'undefined') {
-            isFlashMode = true;
-            // フラッシュボタンの見た目も更新（IDが 'flash-btn' の場合）
-            const flashBtn = document.querySelector('button[onclick="toggleFlash()"]');
-            if (flashBtn) flashBtn.classList.add('active');
-        }
     }
     resetColorTargetView();
+
 }
