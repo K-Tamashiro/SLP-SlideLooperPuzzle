@@ -3,7 +3,7 @@
 <p align="center">
   <b>ZebraSoft - Version 1.0</b><br>
   <br>
-  <b>🔴 Play Demo: <a href="https://blog.zebrasoft.co.jp/slp/">https://blog.zebrasoft.co.jp/slp/</a></b>
+  <b>🔴 Demo / PWA <a href="https://k-tamashiro.github.io/SLP-SlideLooperPuzzle/">https://k-tamashiro.github.io/SLP-SlideLooperPuzzle/</a></b>
   <br><br>
   <img src="https://img.shields.io/badge/Version-1.0-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Brand-ZebraSoft-black?style=flat-square" alt="Brand">
