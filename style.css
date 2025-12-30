@@ -22,7 +22,82 @@ body {
 	flex-wrap: wrap;
 	justify-content: center;
 }
+
 /* タイトル要素の余白をリセット */
+.title-text {
+    font-family: 'Segoe UI', sans-serif; /* あるいは近未来的なフォント */
+    font-weight: bold;
+    color: #00ff41;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+
+    /* ネオン発光：色の層を重ねる */
+    text-shadow: 
+        0 0 5px #00ff41,
+        0 0 10px #00ff41,
+        0 0 20px #00ff41;
+}
+.main-header {
+    /* 幅の厳密な制限 */
+    width: 100%;
+    max-width: 364px;
+    margin: 0 auto; /* 画面中央に配置 */
+    
+    /* 内部レイアウト */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 10px; /* 内部の左右余白 */
+    box-sizing: border-box; /* パディングを幅に含める */
+
+    /* ネオン調装飾 */
+    background-color: rgba(0, 10, 0, 0.9);
+    border-bottom: 2px solid #00ff41;
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.4);
+    height: 50px;
+}
+/* クリック時のインタラクション（タイトルクリックでメニューを開くため） */
+.title-container:active .title-text {
+    text-shadow: 0 0 30px #00ff41;
+    opacity: 0.8;
+}
+
+#menu-dots {
+    background: transparent;
+    border: 1px solid #00ff41;
+    color: #00ff41;
+    border-radius: 4px;
+    width: 32px;
+    height: 32px;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 5px #00ff41;
+    cursor: pointer;
+}
+
+.title-container {
+    flex: 1; /* 利用可能なスペースを占有 */
+    min-width: 0; /* 省略処理（ellipsis）を有効にするために必要 */
+    cursor: pointer;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.title-text {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis; /* 幅を超えた場合に「...」にする */
+    font-size: 16px; /* 364px内で収まりやすいサイズ */
+    color: #00ff41;
+    text-shadow: 0 0 8px #00ff41;
+}
+
+.header-side-right {
+    flex-shrink: 0; /* メニューボタンが潰れないように固定 */
+    margin-left: 10px;
+}
 
 p[onclick] {
 	margin: 0;
