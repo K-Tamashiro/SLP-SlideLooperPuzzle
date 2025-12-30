@@ -76,22 +76,42 @@ function calculateLayout() {
 
     // 3. ★重要：ブロック数に応じたサイズ制限の緩和
     if (isMobile) {
-        let maxCell;
-        if (totalSize <= 4) {
-            // Easyモード(2x2)など、ブロックが少ない場合は大きく表示
-            maxCell = 85; 
-        } else if (totalSize <= 6) {
-            maxCell = 55;
-        } else if (totalSize <= 8) {
-            maxCell = 40;
-        } else {
-            maxCell = 35; // Hard以上
+        switch (totalSize) {
+            case 4:  // Easy: 2x2 (sub:2, grid:2)
+                maxCell = 85; 
+                break;
+            case 6:  // Mid: 2x3 (sub:2, grid:3)
+                maxCell = 55;
+                break;
+            case 8:  // Advance: 2x4 (sub:2, grid:4)
+                maxCell = 40;
+                break;
+            case 9:  // Hard: 3x3 (sub:3, grid:3)
+                maxCell = 35;
+                break;
+            default: // その他特殊設定時
+                maxCell = 40;
         }
         cellSizePixel = Math.max(30, Math.min(maxCell, cellSizePixel));
     } else {
         // デスクトップ版の制限緩和
-        const maxCell = (totalSize <= 4) ? 120 : 60;
-        cellSizePixel = Math.max(40, Math.min(maxCell, cellSizePixel));
+            switch (totalSize) {
+                case 4:
+                    maxCell = 130;
+                    break;
+                case 6:
+                    maxCell = 90;
+                    break;
+                case 8:
+                    maxCell = 90;
+                    break;
+                case 9:
+                    maxCell = 90;
+                    break;
+                default:
+                    maxCell = 90;
+            }
+            cellSizePixel = Math.max(40, Math.min(maxCell, cellSizePixel));
     }
 }
 

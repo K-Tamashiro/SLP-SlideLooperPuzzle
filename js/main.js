@@ -1,3 +1,11 @@
+// グローバルスコープで宣言
+window.boardWrapper = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    // DOM読み込み完了時に一度だけ確定させる
+    window.boardWrapper = document.getElementById('board-wrapper');
+});
+
 /**
  * DOMロード時の初期化
  */
@@ -50,12 +58,22 @@ function updateKeyIndicator(e, isActive) {
     });
 }
 
+// スポットライト直径
+window.searchlightRadius = 0; // 0: OFF, 80: 小, 120: 中, 160: 大
+
 /**
- * ウィンドウレベルのイベント管理
+ * PC用：マウス移動ハンドラ（スライド操作 ＋ サーチライト追従）
  */
 window.onmousemove = (e) => {
-    handleMove(e.clientX, e.clientY);
-    updateSearchlight(e.clientX, e.clientY);
+    // 1. ボードのスライド操作を復旧
+    if (isDragging) {
+        handleMove(e.clientX, e.clientY);
+    }
+
+    // 2. サーチライトがONなら追従
+    if (window.isSearchlightMode) {
+        updateSearchlight(e.clientX, e.clientY);
+    }
 };
 
 window.onmouseup = () => {
@@ -79,11 +97,8 @@ window.ontouchmove = (e) => {
         // --- 2本指以上の時：スポットライト移動のみ ---
         if (e.cancelable) e.preventDefault();
         
-        // パズルのドラッグ（スライド）計算をスキップし、サーチライト座標のみ更新
+        // パズルのドラッグ計算をスキップし、サーチライト座標のみ更新
         updateSearchlight(curX, curY);
-        
-        // ゴーストが表示されている場合は、一旦非表示にするか動きを止めるため
-        // currentTranslate を更新せず、見た目の連続性を維持
     } else {
         // --- 1本指の時：通常のスライド操作 ＋ スポットライト追従 ---
         if (e.cancelable) e.preventDefault();

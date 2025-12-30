@@ -1038,3 +1038,27 @@ transform-origin: center center !important;
     margin-top: 15px;
     text-align: center;
 }
+/* サーチライトボタンの共通設定 */
+button[onclick="toggleSearchlight()"] {
+    position: relative; /* 擬似要素の基準にする */
+}
+
+/* 属性 data-label の値を文字として表示 */
+button[onclick="toggleSearchlight()"]::after {
+    content: attr(data-label); /* JSでセットした S, M, L がここに入る */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    
+    /* 文字のデザイン：大きく、太く、縁取り */
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 
+        1px 1px 0 #000, -1px -1px 0 #000,
+        1px -1px 0 #000, -1px 1px 0 #000,
+        0 0 8px rgba(0,0,0,0.8);
+    pointer-events: none; /* クリックを邪魔しない */
+    z-index: 2;
+}
