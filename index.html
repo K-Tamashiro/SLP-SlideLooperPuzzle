@@ -53,32 +53,52 @@
 		</div>
 
 	<div id="v2-media-uploader" class="media-overlay-top" style="display: none; border: 1px solid #0f0; background: rgba(0, 40, 0, 0.9); box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);">
-		<div class="m-group">
-			<input type="file" id="media-upload" accept="image/*,video/*" style="display: none;" onchange="handleMediaUpload(event)">
-			<button class="m-btn" onclick="document.getElementById('media-upload').click()" style="background: #222; border: 1px solid #444;">📁 Load</button>
-			<button class="m-btn stop" onclick="resetToColorMode()" style="background: #400; border: 1px solid #622;">🎨 Reset</button>
+			<div class="m-group">
+				<input type="file" id="media-upload" accept="image/*,video/*" style="display: none;" onchange="handleMediaUpload(event)">
+				<button class="m-btn" onclick="document.getElementById('media-upload').click()" style="background: #222; border: 1px solid #444;">📁 Load</button>
+				<button class="m-btn stop" onclick="resetToColorMode()" style="background: #400; border: 1px solid #622;">🎨 Reset</button>
+			</div>
+			<div style="font-size: 9px; color: #0f0; margin-bottom: 5px; opacity: 0.8; text-align: center;">
+				Supports Image & MP4 Video files
+			</div>
+			<div class="replay-status" style="border-top: 1px solid rgba(0, 255, 0, 0.3); padding-top: 5px; color: #0f0; text-shadow: 0 0 5px #0f0;">
+				V2 MODE: <span id="current-v2-mode">COLOR</span>
+			</div>
 		</div>
-		<div class="replay-status" style="border-top: 1px solid rgba(0, 255, 0, 0.3); padding-top: 5px; color: #0f0; text-shadow: 0 0 5px #0f0;">
-			V2 MODE: <span id="current-v2-mode">COLOR</span>
+
+		<div id="v2-video-uploader" class="v2-panel" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; border: 1px solid #0f0; background: rgba(0, 20, 0, 0.95); color: #0f0; width: 280px; box-shadow: 0 0 20px rgba(0,255,0,0.5);">
+			
+			<div class="v2-panel-header" style="border-bottom: 1px solid #0f0; padding: 10px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
+				<span>VIDEO SETTINGS</span>
+				<button onclick="toggleVideoPanel()" style="background: none; border: none; color: #0f0; font-size: 20px; cursor: pointer; padding: 0 5px;">&times;</button>
+			</div>
+
+			<div class="v2-panel-body" style="padding: 20px;">
+				<div style="margin-bottom: 5px; font-size: 11px; letter-spacing: 1px;">PLAYBACK SPEED</div>
+				<div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px;">
+					<input type="range" id="speed-slider" min="0.1" max="3.0" step="0.1" value="1.0" 
+						style="flex-grow: 1; accent-color: #0f0;"
+						oninput="if(window.mediaManager) { window.mediaManager.setPlaybackRate(this.value); document.getElementById('speed-val').innerText = parseFloat(this.value).toFixed(1) + 'x'; }">
+					<span id="speed-val" style="font-family: monospace; min-width: 40px; text-align: right;">1.0x</span>
+				</div>
+
+				<div style="margin-bottom: 5px; font-size: 11px; letter-spacing: 1px;">VOLUME</div>
+				<div style="display: flex; align-items: center; gap: 15px;">
+					<input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0" 
+						style="flex-grow: 1; accent-color: #0f0;"
+						oninput="if(window.mediaManager) { window.mediaManager.setVolume(this.value); document.getElementById('volume-val').innerText = Math.round(this.value * 100) + '%'; }">
+					<span id="volume-val" style="font-family: monospace; min-width: 40px; text-align: right;">0%</span>
+				</div>
+
+				<p style="font-size: 9px; margin-top: 20px; opacity: 0.6; text-align: center;">Tap [×] to close this panel.</p>
+			</div>
 		</div>
-	</div>
+		<input type="file" id="v2-video-input" 
+			accept="video/*" 
+			onchange="handleVideoUpload(event)" 
+			style="display:none;">
 
-	<div id="v2-video-uploader" class="v2-panel" style="display:none;">
-		<div class="v2-panel-header">VIDEO MODE</div>
-		<div class="v2-panel-body">
-			<button class="v2-btn" onclick="document.getElementById('v2-video-input').click()">
-				SELECT VIDEO FILE
-			</button>
-			<p class="v2-info">MP4 / WebM (Muted Auto-play)</p>
-		</div>
-	</div>
-
-	<input type="file" id="v2-video-input" 
-		accept="video/*" 
-		onchange="handleVideoUpload(event)" 
-		style="display:none;">
-
-	<div id="log-overlay" class="overlay">
+		<div id="log-overlay" class="overlay">
 	    <div class="log-panel">
 	        <div id="mode-display-neon" style="text-align: center; margin-bottom: 5px;">
 	            <span id="current-mode-badge" style="color:#0f0; border:2px solid #0f0; padding:4px 15px; border-radius:20px; font-weight:bold; box-shadow:0 0 10px #0f0;">

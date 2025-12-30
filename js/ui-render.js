@@ -87,67 +87,79 @@ function render() {
 }
 
 /**
- * ターゲットプレビュー描画
+ * ターゲットプレビュー描画（アスペクト比・サイズ完全固定版）
  */
 function renderPreview() {
     const container = document.getElementById('preview');
     if (!container || !targetBoard) return;
+
     container.innerHTML = '';
     
-    // 元のサイズ計算ロジックを復元
-    const totalSize = subSize * gridNum;
-    const pSize = totalSize > 6 ? 8 : 12; // 1タイルのドットサイズ
-    const gap = 1;
-    const gridPx = (pSize * totalSize) + (gap * (totalSize - 1));
-
-    // コンテナ自体のサイズを厳格に固定
-    container.style.width = `${gridPx}px`;
-    container.style.height = `${gridPx}px`;
+    // 1. 外枠サイズを 120px の正方形に厳格固定
+    const fixedSize = 120; 
+    container.style.width = `${fixedSize}px`;
+    container.style.height = `${fixedSize}px`;
+    container.style.minWidth = `${fixedSize}px`;
+    container.style.minHeight = `${fixedSize}px`;
+    container.style.maxWidth = `${fixedSize}px`;  // ワイド化を防止
+    container.style.maxHeight = `${fixedSize}px`; // ワイド化を防止
+    
     container.style.overflow = 'hidden';
+    container.style.position = 'relative';
+    container.style.margin = '0 auto';
+    container.style.border = '2px solid #444'; 
+    container.style.boxSizing = 'border-box'; // borderを含めてサイズ固定
 
-    if (window.mediaManager && window.mediaManager.mode !== 'color' && window.mediaManager.mediaSrc) {
-        container.style.display = 'flex';
-        container.style.alignItems = 'center';
-        container.style.justifyContent = 'center';
-        
-        if (window.mediaManager.mode === 'video') {
-            const video = document.createElement('video');
-            video.src = window.mediaManager.mediaSrc;
-            video.autoplay = true; 
-            video.muted = true; 
-            video.loop = true; 
-            video.playsInline = true;
-            // 枠内に収めるためのスタイル
-            video.style.width = '100%';
-            video.style.height = '100%';
-            video.style.objectFit = 'cover';
-            container.appendChild(video);
-            video.play().catch(() => {});
-        } else {
-            const img = new Image();
-            img.src = window.mediaManager.mediaSrc;
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.objectFit = 'cover';
-            container.appendChild(img);
+    const hasMedia = window.mediaManager && window.mediaManager.mode !== 'color' && window.mediaManager.mediaSrc;
+
+    if (hasMedia) {
+        // --- メディアモード：中身を枠に閉じ込める ---
+        container.style.display = 'block';
+
+        const mediaEl = (window.mediaManager.mode === 'video') 
+            ? document.createElement('video') 
+            : new Image();
+
+        if (window.mediaManager.mediaSrc) {
+            mediaEl.src = window.mediaManager.mediaSrc;
+            
+            // スタイル：親の120pxを絶対に超えず、かつ埋め尽くす
+            mediaEl.style.width = '100%';
+            mediaEl.style.height = '100%';
+            mediaEl.style.objectFit = 'cover'; // これでワイド動画も正方形に切り抜かれる
+            mediaEl.style.display = 'block';
+
+            if (window.mediaManager.mode === 'video') {
+                mediaEl.autoplay = true;
+                mediaEl.muted = true;
+                mediaEl.loop = true;
+                mediaEl.playsInline = true;
+                mediaEl.play().catch(() => {});
+            }
+            container.appendChild(mediaEl);
         }
     } else {
-        // カラーモード
+        // --- カラーモード：グリッド表示 ---
         container.style.display = 'grid';
-        container.style.gridTemplateColumns = `repeat(${totalSize}, ${pSize}px)`;
-        container.style.gap = `${gap}px`;
+        const totalSize = subSize * gridNum;
+        
+        container.style.gridTemplateColumns = `repeat(${totalSize}, 1fr)`;
+        container.style.gridTemplateRows = `repeat(${totalSize}, 1fr)`;
+        container.style.gap = '1px'; 
+        container.style.backgroundColor = '#444';
 
         for (let r = 0; r < totalSize; r++) {
             for (let c = 0; c < totalSize; c++) {
                 const cell = document.createElement('div');
                 cell.className = `preview-cell c${targetBoard[r][c]}`;
-                cell.style.width = `${pSize}px`;
-                cell.style.height = `${pSize}px`;
+                cell.style.width = '100%';
+                cell.style.height = '100%';
                 container.appendChild(cell);
             }
         }
     }
 }
+
 /**
  * 座標ラベル描画
  */

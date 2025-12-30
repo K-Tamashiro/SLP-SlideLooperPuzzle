@@ -95,6 +95,61 @@ window.ontouchend = () => {
 window.isFlashMode = false;
 
 /**
+ * カラーモードへの完全リセット
+ */
+window.resetToColorMode = function() {
+    if (!window.mediaManager) return;
+
+    // 1. 全ての描画処理とループを即座に遮断
+    window.mediaManager.stopDrawingLoop();
+    window.mediaManager.mode = 'color';
+
+    // 2. DOM内の全ビデオ要素とキャンバスの参照を「物理的に」切断
+    // これによりブラウザが blob URL を見に行く先を無くします
+    const videoElements = document.querySelectorAll('video');
+    videoElements.forEach(v => {
+        v.pause();
+        v.src = ""; // ソースを空文字にする
+        v.load();   // リソースを解放
+        v.remove(); // DOMから消す
+    });
+
+    const canvases = document.querySelectorAll('.video-tile-canvas');
+    canvases.forEach(c => {
+        const ctx = c.getContext('2d');
+        ctx.clearRect(0, 0, c.width, c.height); // 描画内容を消去
+        c.remove(); // DOMから消す
+    });
+
+    // 3. MediaManagerの内部状態をクリア
+    const oldUrl = window.mediaManager.mediaSrc;
+    window.mediaManager.mediaSrc = null;
+    window.mediaManager.mediaElement = null;
+
+    // 4. UIの更新
+    if (document.getElementById('current-v2-mode')) {
+        document.getElementById('current-v2-mode').innerText = 'COLOR';
+    }
+    if (document.getElementById('v2-video-uploader')) {
+        document.getElementById('v2-video-uploader').style.display = 'none';
+    }
+
+    // 5. 盤面とプレビューを真っさらな状態で再描画
+    renderPreview();
+    render();
+
+    // 6. 全ての参照がDOMから消えたことを確認して、最後にURLを破棄
+    if (oldUrl) {
+        // 500ms待つことでブラウザのクリーンアップ時間を確保
+        setTimeout(() => {
+            try {
+                URL.revokeObjectURL(oldUrl);
+            } catch(e) {}
+        }, 500);
+    }
+};
+
+/**
  * 補助ユーティリティ
  */
 function toggleMenu() {

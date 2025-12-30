@@ -209,18 +209,18 @@ class MediaManager {
      * 画像・動画の統合セットアップ
      */
     async setupMedia(file) {
-        // 1. 既存プロセスの完全停止
         this.stopDrawingLoop();
+        
+        // 既存ビデオの完全停止
         if (this.mediaElement instanceof HTMLVideoElement) {
             this.mediaElement.pause();
-            this.mediaElement.src = "";
+            this.mediaElement.removeAttribute('src'); // src属性自体を消す
             this.mediaElement.load();
         }
 
-        // 2. 新しいURLの生成
         const oldUrl = this.mediaSrc;
         const newUrl = URL.createObjectURL(file);
-        this.mediaSrc = newUrl;
+        this.mediaSrc = newUrl; // ここで新しいURLを即座に保持
 
         try {
             if (file.type.startsWith('image/')) {
@@ -243,20 +243,19 @@ class MediaManager {
                     v.onloadedmetadata = () => v.play().then(resolve).catch(reject);
                     v.onerror = reject;
                 });
-                // 動画のみループ開始
                 this.startDrawingLoop();
             }
 
-            // 3. 全体の再描画
-            if (typeof updateV2StatusUI === 'function') updateV2StatusUI(this.mode);
             renderPreview();
             render();
 
         } catch (e) {
-            console.error("Media setup failed:", e);
+            console.error("Media setup error:", e);
         } finally {
-            // 4. 旧URLの解放
-            if (oldUrl) setTimeout(() => URL.revokeObjectURL(oldUrl), 500);
+            // 解放を少し遅らせて、DOMの更新（render）が完了するのを待つ
+            if (oldUrl && oldUrl !== newUrl) {
+                setTimeout(() => URL.revokeObjectURL(oldUrl), 1000);
+            }
         }
     }
 
@@ -287,14 +286,17 @@ class MediaManager {
     syncVideoToCanvases() {
         if (this.mode !== 'video' || !this.mediaElement) return;
         const v = this.mediaElement;
+        if (!(v instanceof HTMLVideoElement) || v.readyState < 2) return;
         const canvases = document.querySelectorAll('.video-tile-canvas');
+        if (v.readyState < 2) return;
         if (canvases.length === 0 || v.videoWidth === 0) return;
-
+        
         const totalCells = subSize * gridNum;
         const minSide = Math.min(v.videoWidth, v.videoHeight);
         const sx0 = (v.videoWidth - minSide) / 2;
         const sy0 = (v.videoHeight - minSide) / 2;
         const step = minSide / totalCells;
+
 
         canvases.forEach(canvas => {
             const ctx = canvas.getContext('2d', { alpha: false });
@@ -308,6 +310,12 @@ class MediaManager {
             );
         });
     }
+        // MediaManager クラス内に実装
+        setPlaybackRate(rate) {
+            if (this.mediaElement instanceof HTMLVideoElement) {
+                this.mediaElement.playbackRate = parseFloat(rate);
+            }
+        }
 
     /**
      * 画像モード用CSS適用
@@ -343,6 +351,16 @@ applyMediaStyle(cell, value) {
         cell.style.setProperty('background-size', `${drawW}px ${drawH}px`, 'important');
         cell.style.setProperty('background-position', `${posX}px ${posY}px`, 'important');
         cell.style.setProperty('background-repeat', 'no-repeat', 'important');
+    }
+    /**
+     * 音量の変更 (0.0 ～ 1.0)
+     */
+    setVolume(value) {
+        if (this.mediaElement instanceof HTMLVideoElement) {
+            this.mediaElement.volume = parseFloat(value);
+            // 音量が0より大きければミュートを解除、0ならミュートにする
+            this.mediaElement.muted = (this.mediaElement.volume === 0);
+        }
     }
 }
 
