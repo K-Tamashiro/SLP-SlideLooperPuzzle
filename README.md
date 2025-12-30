@@ -3,7 +3,7 @@
 <p align="center">
   <b>ZebraSoft - Version 1.0</b><br>
   <br>
-  <b>🔴 Play Demo: <a href="https://blog.zebrasoft.co.jp/game/">https://blog.zebrasoft.co.jp/game/</a></b>
+  <b>🔴 Play Demo: <a href="https://blog.zebrasoft.co.jp/slp/">https://blog.zebrasoft.co.jp/slp/</a></b>
   <br><br>
   <img src="https://img.shields.io/badge/Version-1.0-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/Brand-ZebraSoft-black?style=flat-square" alt="Brand">
@@ -11,8 +11,6 @@
 </p>
 
 <br>
-
-## 🇯🇵 日本語 (Japanese)
 
 ### 🧩 ゲーム概要
 **SLP (Slide Looper Puzzle)** は、行や列をスライドさせてターゲットとなるパターンを再構築する論理パズルゲームです。スピードキューブのような連動性と、トーラス構造のスライディングパズルの戦略性を併せ持っています。
@@ -33,8 +31,6 @@
 * **対応ブラウザ**: Google Chrome / Edge / Firefox (HTML5対応ブラウザ)
 
 ---
-
-## 🇺🇸 英語 (English)
 
 ### 🧩 Overview
 **SLP (Slide Looper Puzzle)** is a logic puzzle game where you reconstruct a target pattern by sliding rows and columns. It combines the mechanics of speedcubing with the strategic depth of torus-structured sliding puzzles.
