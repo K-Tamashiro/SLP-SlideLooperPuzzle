@@ -207,15 +207,26 @@ function triggerFlash(clickedValue) {
     });
 }
 
-/**
- * 特殊ギミック：回転
- */
+// interaction.js の冒頭に配置
+function updateFrameProgress(id, percent) {
+    const el = document.getElementById(`${id}-frame`);
+    if (!el) return;
+    el.style.opacity = percent > 0 ? '1' : '0';
+    el.style.background = `conic-gradient(currentColor ${percent}%, transparent ${percent}%)`;
+}
+
 function rotateBoard() {
     const wrapper = document.getElementById('board-wrapper');
+    
+    // 1. 物理的な回転演出を開始
     wrapper.classList.add('board-rotating');
+
+    // 2. アニメーション（0.4s）が終わるタイミングでデータの中身を書き換える
     setTimeout(() => {
+        // --- 内部ロジック実行 ---
         if (rotateTimerId) { clearInterval(rotateTimerId); rotateTimerId = null; }
         updateFrameProgress('rotate', 0);
+
         const totalSize = subSize * gridNum;
         let newBoard = Array.from({length: totalSize}, () => []);
         for (let r = 0; r < totalSize; r++) {
@@ -224,10 +235,15 @@ function rotateBoard() {
             }
         }
         board = newBoard;
+
+        // 3. 描画更新
         render();
         checkComplete();
+
+        // 4. 回転クラスを削除（位置を0度に戻すが、中身が既に回っているので見た目は維持される）
         wrapper.classList.remove('board-rotating');
-    }, 400);
+        
+    }, 400); // CSSの 0.4s と同期
 }
 
 function startRotateCountdown() {
@@ -264,71 +280,112 @@ function stopRotateIntervalOnly() {
     }
 }
 
+/**
+ * 回転ギミックの実行ループ：自動継続対応版
+ */
 function executeRotateLoop() {
     const frame = document.getElementById('rotate-frame');
     const n = subSize * gridNum;
     const perimeterCells = (n * 4) - 4;
-    const duration = perimeterCells * 3000;
-    const interval = 50;
+    const duration = perimeterCells * 3000; // 1セル3秒計算
+    const interval = 50; // 描画更新間隔
     let elapsed = 0;
+
     if (frame) {
         frame.style.display = 'block';
         frame.classList.add('fx-active');
     }
+
     window.rotateTimerId = setInterval(() => {
+        // コンプリートや停止時は即座に抜ける
         if (document.getElementById('status-board')?.classList.contains('show')) {
             stopRotateIntervalOnly();
             return;
         }
+
         elapsed += interval;
         const progress = 100 - (elapsed / duration * 100);
+
         if (frame) {
             const mask = `conic-gradient(black ${progress}%, transparent ${progress}%)`;
             frame.style.webkitMaskImage = mask;
             frame.style.maskImage = mask;
         }
+
         if (elapsed >= duration) {
-            rotateBoard();
-            elapsed = 0;
+            rotateBoard(); // 内部で一旦停止し、描画を更新
+            elapsed = 0;   // ループ
         }
     }, interval);
 }
 
+// グローバル変数として追加
+window.searchlightRadius = 0; // 0: OFF, 80: 小, 120: 中, 160: 大
+
+// 半径の定義: 0(OFF), 80(S), 130(M), 180(L)
+window.slRadius = window.slRadius || 0; 
+
 /**
- * 特殊ギミック：サーチライト
+ * 独立した描画関数：システムの状態に関わらず、指定座標にマスクを適用する
+ */
+function applySearchlightMask(x, y) {
+    if (!window.slRadius) return;
+    const overlay = document.getElementById('searchlight-overlay');
+    if (!overlay) return;
+
+    const wrapper = document.getElementById('board-wrapper');
+    const rect = wrapper.getBoundingClientRect();
+    const relX = x - rect.left;
+    const relY = y - rect.top;
+
+    const mask = `radial-gradient(circle ${window.slRadius}px at ${relX}px ${relY}px, transparent 95%, black 100%)`;
+    overlay.style.webkitMaskImage = mask;
+    overlay.style.maskImage = mask;
+    overlay.classList.add('fx-active');
+}
+
+/**
+ * 修正版 toggleSearchlight
  */
 function toggleSearchlight() {
-    window.isSearchlightMode = !window.isSearchlightMode;
+    const sizes = [0, 80, 130, 180];
+    const labels = ["", "S", "M", "L"];
+    const currentIndex = sizes.indexOf(window.slRadius || 0);
+    const nextIndex = (currentIndex + 1) % sizes.length;
+    
+    window.slRadius = sizes[nextIndex];
+    window.isSearchlightMode = (window.slRadius > 0);
+
     const btn = document.querySelector('button[onclick="toggleSearchlight()"]');
-    const overlay = document.getElementById('searchlight-overlay');
-    if (btn) btn.classList.toggle('active-toggle', window.isSearchlightMode);
+    if (btn) {
+        btn.classList.toggle('active-toggle', window.isSearchlightMode);
+        btn.setAttribute('data-label', labels[nextIndex]);
+    }
+
+    const wrapper = document.getElementById('board-wrapper');
+    let overlay = document.getElementById('searchlight-overlay');
+
     if (!window.isSearchlightMode) {
         if (overlay) overlay.remove();
         hideCompleteOverlays();
     } else {
         if (!overlay) {
-            const newOverlay = document.createElement('div');
-            newOverlay.id = 'searchlight-overlay';
-            newOverlay.className = 'searchlight-overlay';
-            document.getElementById('board-wrapper').appendChild(newOverlay);
+            overlay = document.createElement('div');
+            overlay.id = 'searchlight-overlay';
+            overlay.className = 'searchlight-overlay';
+            wrapper.appendChild(overlay);
         }
+        
+        // --- 独立したプレビュー実行 ---
+        // マウスが動いていなくても、盤面中央を基準に即座に表示を更新
+        const rect = wrapper.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        applySearchlightMask(centerX, centerY);
     }
 }
 
 function updateSearchlight(x, y) {
-    if (!window.isSearchlightMode) return;
-    const overlay = document.getElementById('searchlight-overlay');
-    if (!overlay) return;
-    if (!timerId) {
-        overlay.classList.remove('fx-active');
-        return;
-    }
-    const wrapper = document.getElementById('board-wrapper');
-    const rect = wrapper.getBoundingClientRect();
-    const relX = x - rect.left;
-    const relY = y - rect.top;
-    overlay.classList.add('fx-active');
-    const mask = `radial-gradient(circle 80px at ${relX}px ${relY}px, transparent 95%, black 100%)`;
-    overlay.style.webkitMaskImage = mask;
-    overlay.style.maskImage = mask;
+    if (!window.isSearchlightMode || !timerId) return;
+    applySearchlightMask(x, y);
 }
