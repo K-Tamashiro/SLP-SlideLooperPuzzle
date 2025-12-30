@@ -43,18 +43,6 @@ body {
     max-width: 364px;
     margin: 0 auto; /* 画面中央に配置 */
     
-    /* 内部レイアウト */
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 10px; /* 内部の左右余白 */
-    box-sizing: border-box; /* パディングを幅に含める */
-
-    /* ネオン調装飾 */
-    background-color: rgba(0, 10, 0, 0.9);
-    border-bottom: 2px solid #00ff41;
-    box-shadow: 0 0 15px rgba(0, 255, 65, 0.4);
-    height: 50px;
 }
 /* クリック時のインタラクション（タイトルクリックでメニューを開くため） */
 .title-container:active .title-text {
