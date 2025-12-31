@@ -75,6 +75,7 @@ function saveSystemLog(isComplete = false) {
         timestamp: new Date().toLocaleString(),
         grid_size: gridNum,
         sub_size: subSize,
+        media_mode: window.mediaManager ? window.mediaManager.mode : 'color', // 追加
         scramble_log: scLog,
         solve_history: slLog,
         solve_time: time,
@@ -101,23 +102,47 @@ function saveSystemLog(isComplete = false) {
 	refreshHistoryList();
 }
 
+/**
+ * 履歴リストの表示更新（全モード混在・アイコン出し分け版）
+ */
 function refreshHistoryList() {
     const container = document.getElementById('history-list');
     if (!container) return;
     container.innerHTML = ""; 
+
     const history = JSON.parse(localStorage.getItem('slp_history') || '[]');
-    const filtered = history.filter(h => Number(h.grid_size) === gridNum && Number(h.sub_size) === subSize).reverse();
+    
+    // フィルタリング：盤面サイズ(grid_size, sub_size)の一致のみを確認（モードは混ぜる）
+    const filtered = history.filter(h => {
+        return Number(h.grid_size) === gridNum && Number(h.sub_size) === subSize;
+    }).reverse();
+
     if (filtered.length === 0) {
         container.innerHTML = '<div style="color:#666; padding:20px; text-align:center;">No history for this mode.</div>';
         return;
     }
+
     container.innerHTML = filtered.map((data) => {
         const entryId = data.timestamp; 
         const dataStr = JSON.stringify(data).replace(/'/g, "\\'");
+
+        // 各ログデータに保存されているモード（media_mode）に基づいてアイコンを決定
+        let iconContent = "";
+        const logMode = data.media_mode || 'color'; // 保存されていない古いログはcolor扱い
+
+        if (logMode === 'image') {
+            iconContent = `<div style="font-size:20px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; background:#1a1a1a; border-radius:4px;" title="Image Mode">🖼️</div>`;
+        } else if (logMode === 'video') {
+            iconContent = `<div style="font-size:20px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; background:#1a1a1a; border-radius:4px;" title="Video Mode">▶️</div>`;
+        } else {
+            // カラーモード：保存されている配色（target_state）からミニプレビューを生成
+            iconContent = createMiniPreview(data.target_state);
+        }
+
         return `
             <div class="history-item" style="display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #333; cursor:pointer;">
                 <div class="mini-target-icon" onclick='loadFilteredHistory(${dataStr})' style="flex-shrink:0;">
-                    ${createMiniPreview(data.target_state)}
+                    ${iconContent}
                 </div>
                 <div style="font-size:14px; flex-shrink:0;">${data.is_complete ? "✅" : "⚠️"}</div>
                 <div style="flex-grow:1; font-size:12px;" onclick='loadFilteredHistory(${dataStr})'>
@@ -140,17 +165,38 @@ function startAnalyzeMode() {
     if (!solveLog) return;
     const timerDisplay = document.getElementById('timer-display');
     if (timerDisplay && window.currentLogTime) timerDisplay.textContent = window.currentLogTime;
+    
     window.replaySteps = solveLog.split(',').filter(s => s.trim() !== "");
     window.currentReplayIdx = window.replaySteps.length; 
     window.isReplayMode = true;
-    board = JSON.parse(JSON.stringify(targetBoard));
+
+    // --- 修正：targetBoard（数値またはオブジェクト）を正しく正規化してboardにコピー ---
+    const totalSize = subSize * gridNum;
+    board = Array.from({ length: totalSize }, (_, r) => 
+        Array.from({ length: totalSize }, (_, c) => {
+            const t = targetBoard[r][c];
+            // 既にオブジェクトならそのまま、数値ならオブジェクト化する
+            if (typeof t === 'object' && t !== null) {
+                return JSON.parse(JSON.stringify(t));
+            } else {
+                return {
+                    tileId: t, // 数値(1, 2, 3...)をIDとしてセット
+                    value: t,
+                    direction: 0 // 初期向き
+                };
+            }
+        })
+    );
+
+    // ログを逆順に適用して初期状態を復元
     while (window.currentReplayIdx > 0) {
         window.currentReplayIdx--;
         executeSingleMove(window.replaySteps[window.currentReplayIdx], true); 
     }
+    
     toggleLogPanel();
     showMediaControls(true);
-    render();
+    render(); // オブジェクト構造になったので正しく描画される
     updateReplayDisplay();
 }
 
@@ -256,14 +302,6 @@ class MediaManager {
             if (window.rotateTimerId) {
                 stopRotateIntervalOnly(); // 実行中のタイマー停止
             }
-            // const rotateBtn = document.querySelector('button[onclick="startRotateCountdown()"]');
-            // if (rotateBtn) {
-            //     rotateBtn.classList.remove('active-toggle-red'); // 赤点灯解除
-            //      rotateBtn.disabled = true; // ボタン無効化
-            //     rotateBtn.style.opacity = '0.3';
-            //     rotateBtn.style.pointerEvents = 'none';
-            // }
-            // --------------------------------------------------
 
             // --- メディア選択時にフラッシュを強制ONにする ---
             window.isFlashMode = true;
@@ -547,10 +585,21 @@ function toggleLogPanel() {
         }
     }
 }
+
 function loadFilteredHistory(data) {
     if (!data) return;
 
-    targetBoard = JSON.parse(JSON.stringify(data.target_state));
+    // --- デグレ防止：数値配列をオブジェクト構造へ正規化してから代入 ---
+    const rawTarget = JSON.parse(JSON.stringify(data.target_state));
+    targetBoard = rawTarget.map(row => 
+        row.map(cell => {
+            // すでにオブジェクトならそのまま
+            if (typeof cell === 'object' && cell !== null) return cell;
+            // 数値なら現在の仕様に合わせたオブジェクトを生成
+            return { tileId: cell, value: cell, direction: 0 };
+        })
+    );
+
     renderPreview();
 
     const scrambleInput = document.getElementById('scramble-input');
@@ -558,13 +607,13 @@ function loadFilteredHistory(data) {
     if (scrambleInput) scrambleInput.value = data.scramble_log || "";
     if (solveLog) solveLog.value = data.solve_history || "";
 
-    // --- 追加：解析モード表示用にタイムスタンプをグローバル保持 ---
     window.currentLogTime = data.solve_time;
 
     updateGimmickHistoryIcons(data.gimmicks);
     
     const oldPreview = document.getElementById('log-large-preview');
     if (oldPreview) oldPreview.remove();
+
 }
 
 /**
