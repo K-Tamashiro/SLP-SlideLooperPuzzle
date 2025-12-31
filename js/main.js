@@ -313,16 +313,43 @@ function toggleLogSwitch() {
         if (typeof addLog === 'function') addLog("Recording disabled.");
     }
 }
+
 /**
- * 現在の盤面をターゲットにコピーする（判定をスルーする）
+ * 現在の盤面をターゲットにコピーする
  */
 function copyCurrentToTarget() {
+    if (!board) return;
+    
+    // 現在の盤面（board）の値をターゲット（targetBoard）に完全に同期
     targetBoard = JSON.parse(JSON.stringify(board));
+    
+    // 同期した値をプレビューに即座に反映
     renderPreview();
     
-    // 次回の判定時のみ、一致していても表示をスルーする
+    // 判定を実行
     skipCompleteOnce = true;
     checkComplete();
+}
+
+/**
+ * カラーモードのターゲットスクランブル（内部データ同期版）
+ */
+function scrambleTargetBoard() {
+    const totalSize = subSize * gridNum;
+    if (!targetBoard) return;
+
+    // 見た目（value）だけでなく、判定用の tileId と direction も現在の配置として固定する
+    // これにより、プレビューに表示された「その瞬間の配置」が「正解（tileId連番かつ向き0）」として再定義されます
+    for (let r = 0; r < totalSize; r++) {
+        for (let c = 0; c < totalSize; c++) {
+            const correctId = r * totalSize + c;
+            if (targetBoard[r][c] && typeof targetBoard[r][c] === 'object') {
+                targetBoard[r][c].tileId = correctId;
+                targetBoard[r][c].direction = 0;
+            }
+        }
+    }
+    renderPreview();
 }
 
 function handleModeChange(mode) {
@@ -339,6 +366,7 @@ function handleModeChange(mode) {
     }
 }
 function changeMode(sSize, gNum) {
+    hideCompleteDisplay(); // 表示を消す
     subSize = sSize; 
     gridNum = gNum;
     initBoard(true);

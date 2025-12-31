@@ -209,6 +209,10 @@ class MediaManager {
      * 画像・動画の統合セットアップ
      */
     async setupMedia(file) {
+        // インスタンスがなければ生成
+        if (!window.rotationManager) {
+            window.rotationManager = new RotationManager(file.type.startsWith('video/') ? 'video' : 'image');
+        }
         // 1. 新規ロード前に、現在の描画ループとメモリを完全に「更地」にする
         this.stopDrawingLoop();
         document.querySelectorAll('.ghost-strip').forEach(el => el.remove());
@@ -252,13 +256,13 @@ class MediaManager {
             if (window.rotateTimerId) {
                 stopRotateIntervalOnly(); // 実行中のタイマー停止
             }
-            const rotateBtn = document.querySelector('button[onclick="startRotateCountdown()"]');
-            if (rotateBtn) {
-                rotateBtn.classList.remove('active-toggle-red'); // 赤点灯解除
-                rotateBtn.disabled = true; // ボタン無効化
-                rotateBtn.style.opacity = '0.3';
-                rotateBtn.style.pointerEvents = 'none';
-            }
+            // const rotateBtn = document.querySelector('button[onclick="startRotateCountdown()"]');
+            // if (rotateBtn) {
+            //     rotateBtn.classList.remove('active-toggle-red'); // 赤点灯解除
+            //      rotateBtn.disabled = true; // ボタン無効化
+            //     rotateBtn.style.opacity = '0.3';
+            //     rotateBtn.style.pointerEvents = 'none';
+            // }
             // --------------------------------------------------
 
             // --- メディア選択時にフラッシュを強制ONにする ---
@@ -315,88 +319,99 @@ class MediaManager {
      */
     syncVideoToCanvases() {
         if (this.mode !== 'video' || !this.mediaElement) return;
-        
         const v = this.mediaElement;
-        
-        if (!(v instanceof HTMLVideoElement) || v.readyState < 2) return;
-        
-        const canvases = document.querySelectorAll('.video-tile-canvas');
-
         if (v.readyState < 2) return;
-        if (canvases.length === 0 || v.videoWidth === 0) return;
-        
+
+        const canvases = document.querySelectorAll('.video-tile-canvas');
         const totalCells = subSize * gridNum;
         const minSide = Math.min(v.videoWidth, v.videoHeight);
+        
+        // sx0, sy0 を定義
         const sx0 = (v.videoWidth - minSide) / 2;
         const sy0 = (v.videoHeight - minSide) / 2;
         const step = minSide / totalCells;
 
-
         canvases.forEach(canvas => {
             const ctx = canvas.getContext('2d', { alpha: false });
-            const r = parseInt(canvas.dataset.origR);
-            const c = parseInt(canvas.dataset.origC);
+            const cellEl = canvas.closest('.cell');
+            const r = parseInt(cellEl.dataset.row);
+            const c = parseInt(cellEl.dataset.col);
+            
+            const piece = board[r][c];
+            const tId = piece.tileId; // 現在この位置にいるパーツの固有ID
+            
+            const totalCells = subSize * gridNum;
+            const origAbsR = Math.floor(tId / totalCells);
+            const origAbsC = tId % totalCells;
 
-            ctx.drawImage(
-                v,
-                sx0 + (c * step), sy0 + (r * step), step, step,
-                0, 0, canvas.width, canvas.height
+            const v = this.mediaElement;
+            const minSide = Math.min(v.videoWidth, v.videoHeight);
+            const sx0 = (v.videoWidth - minSide) / 2;
+            const sy0 = (v.videoHeight - minSide) / 2;
+            const step = minSide / totalCells;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            window.rotationManager.render(
+                ctx, piece, v, 
+                0, 0, canvas.width, canvas.height,
+                sx0 + (origAbsC * step), sy0 + (origAbsR * step), step, step
             );
         });
     }
-        // MediaManager クラス内に実装
-        setPlaybackRate(rate) {
-            if (this.mediaElement instanceof HTMLVideoElement) {
-                this.mediaElement.playbackRate = parseFloat(rate);
-            }
+
+    // MediaManager クラス内に実装
+    setPlaybackRate(rate) {
+        if (this.mediaElement instanceof HTMLVideoElement) {
+            this.mediaElement.playbackRate = parseFloat(rate);
         }
+    }
 
     /**
      * 画像モード用CSS適用
      */
-applyMediaStyle(cell, value) {
-        if (this.mode !== 'image' || !this.mediaElement || value === undefined) return;
-        
-        const totalCells = subSize * gridNum;
-        const correctR = Math.floor(value / totalCells);
-        const correctC = value % totalCells;
-        
-        const w = this.mediaElement.naturalWidth;
-        const h = this.mediaElement.naturalHeight;
-        if (!w || !h) return;
+    applyMediaStyle(cell, value) {
+            if (this.mode !== 'image' || !this.mediaElement || value === undefined) return;
+            
+            const totalCells = subSize * gridNum;
+            const correctR = Math.floor(value / totalCells);
+            const correctC = value % totalCells;
+            
+            const w = this.mediaElement.naturalWidth;
+            const h = this.mediaElement.naturalHeight;
+            if (!w || !h) return;
 
-        const totalBoardPx = cellSizePixel * totalCells;
-        const mediaAspect = w / h;
-        let drawW, drawH;
+            const totalBoardPx = cellSizePixel * totalCells;
+            const mediaAspect = w / h;
+            let drawW, drawH;
 
-        if (mediaAspect > 1) {
-            drawH = totalBoardPx; drawW = totalBoardPx * mediaAspect;
-        } else {
-            drawW = totalBoardPx; drawH = totalBoardPx / mediaAspect;
+            if (mediaAspect > 1) {
+                drawH = totalBoardPx; drawW = totalBoardPx * mediaAspect;
+            } else {
+                drawW = totalBoardPx; drawH = totalBoardPx / mediaAspect;
+            }
+
+            const offX = (drawW - totalBoardPx) / 2;
+            const offY = (drawH - totalBoardPx) / 2;
+            const posX = -(correctC * cellSizePixel + offX);
+            const posY = -(correctR * cellSizePixel + offY);
+
+            // インラインスタイルで強制適用
+            cell.style.setProperty('background-image', `url(${this.mediaSrc})`, 'important');
+            cell.style.setProperty('background-size', `${drawW}px ${drawH}px`, 'important');
+            cell.style.setProperty('background-position', `${posX}px ${posY}px`, 'important');
+            cell.style.setProperty('background-repeat', 'no-repeat', 'important');
         }
-
-        const offX = (drawW - totalBoardPx) / 2;
-        const offY = (drawH - totalBoardPx) / 2;
-        const posX = -(correctC * cellSizePixel + offX);
-        const posY = -(correctR * cellSizePixel + offY);
-
-        // インラインスタイルで強制適用
-        cell.style.setProperty('background-image', `url(${this.mediaSrc})`, 'important');
-        cell.style.setProperty('background-size', `${drawW}px ${drawH}px`, 'important');
-        cell.style.setProperty('background-position', `${posX}px ${posY}px`, 'important');
-        cell.style.setProperty('background-repeat', 'no-repeat', 'important');
-    }
-    /**
-     * 音量の変更 (0.0 ～ 1.0)
-     */
-    setVolume(value) {
-        if (this.mediaElement instanceof HTMLVideoElement) {
-            this.mediaElement.volume = parseFloat(value);
-            // 音量が0より大きければミュートを解除、0ならミュートにする
-            this.mediaElement.muted = (this.mediaElement.volume === 0);
+        /**
+         * 音量の変更 (0.0 ～ 1.0)
+         */
+        setVolume(value) {
+            if (this.mediaElement instanceof HTMLVideoElement) {
+                this.mediaElement.volume = parseFloat(value);
+                // 音量が0より大きければミュートを解除、0ならミュートにする
+                this.mediaElement.muted = (this.mediaElement.volume === 0);
+            }
         }
     }
-}
 
 // グローバル公開
 window.handleMediaUpload = async (e) => {

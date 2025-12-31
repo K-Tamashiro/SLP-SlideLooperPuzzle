@@ -21,7 +21,10 @@ let timerId = null;
 let rotateTimerId = null;
 let isLogEnabled = true; 
 let skipCompleteOnce = false;
+let rotationManager = null; // ローテーションマネージャー
+let completeTimerId = null;
 
+let debugmode = true;
 /**
  * 初期化
  */
@@ -42,11 +45,18 @@ function initBoard(resetTarget = false) {
             )
         );
     }
-
+    // 既存コードの後ろに追加
+    if (!rotationManager) {
+        rotationManager = new RotationManager(window.mediaManager ? window.mediaManager.mode : 'color');
+    }
     board = Array.from({length: totalSize}, (_, r) => 
-        Array.from({length: totalSize}, (_, c) => 
-            Math.floor(r / subSize) * gridNum + Math.floor(c / subSize)
-        )
+        Array.from({length: totalSize}, (_, c) => {
+            return {
+                value: Math.floor(r / subSize) * gridNum + Math.floor(c / subSize),
+                tileId: r * totalSize + c, // ソース画像上の絶対的な位置IDを追加
+                direction: 0
+            };
+        })
     );
 
     resetStats(); 
@@ -135,6 +145,7 @@ function moveLogic(idx, isV, isRev) {
  * シャッフル
  */
 function shuffle() {
+    hideCompleteDisplay(); // 表示を消す
     const count = parseInt(document.getElementById('scramble-count').value) || 15;
     resetStats();
 
@@ -179,45 +190,135 @@ function shuffle() {
 }
 
 /**
- * 判定
+ * 判定（合理性・視覚整合性を担保した最新版）
  */
 function checkComplete() {
-    if (!targetBoard) return;
+    if (!board || !targetBoard) return; 
+    const mm = window.mediaManager;
     const totalSize = subSize * gridNum;
-    let isComplete = true;
 
+    const currentIds = [];
+    const currentValues = [];
+    const firstPiece = board[0][0];
+    const baseDir = (firstPiece && typeof firstPiece === 'object') ? (firstPiece.direction % 4) : 0;
+    let isDirectionUnified = true;
+
+    // --- 1. 現状の抽出 ---
     for (let r = 0; r < totalSize; r++) {
         for (let c = 0; c < totalSize; c++) {
-            if (board[r][c] !== targetBoard[r][c]) { isComplete = false; break; }
+            const p = board[r][c];
+            if (!p) return;
+            currentIds.push((typeof p === 'object') ? p.tileId : p);
+            currentValues.push((typeof p === 'object') ? p.value : p);
+            
+            if ((typeof p === 'object') && (p.direction % 4) !== baseDir) {
+                isDirectionUnified = false;
+            }
         }
-        if (!isComplete) break;
     }
 
+    let isComplete = false;
+
+    if (mm && mm.mode === 'color') {
+        // --- カラーモード：視覚的一致を絶対視する ---
+        // ターゲットビューの配色配列（112233...）と、
+        // 盤面の「現在の色の並び（value）」が完全一致した時のみコンプリート。
+        // これにより、回転中であっても「見た目がターゲットと同じ」なら即座に判定。
+        const currentStr = currentValues.join(',');
+        const targetStr = targetBoard.flat().map(t => (typeof t === 'object' ? t.value : t)).join(',');
+        isComplete = (currentStr === targetStr);
+        
+    } else {
+        // --- 画像・動画モード：4つの回転パターンのいずれかに一致 ---
+        if (isDirectionUnified) {
+            const currentIdStr = currentIds.join(',');
+            const correctIdStr = getTargetIndices(baseDir);
+            if (currentIdStr === correctIdStr) {
+                isComplete = true;
+            }
+        }
+    }
+
+    // --- 演出・ガード条件（既存のものを完全担保） ---
     if (isComplete && !skipCompleteOnce) {
         if (window.isReplayMode || !isLogEnabled) return;
-        toggleTimer(false);
-        if (window.rotateTimerId) startRotateCountdown();
-        saveSystemLog(true); 
+        if (typeof toggleTimer === 'function') toggleTimer(false);
+        if (window.rotateTimerId && typeof startRotateCountdown === 'function') {
+            startRotateCountdown();
+        }
+        if (typeof saveSystemLog === 'function') saveSystemLog(true); 
+
+        // 既存の演出処理の末尾に追加
+        if (completeTimerId) clearTimeout(completeTimerId);
+        completeTimerId = setTimeout(() => {
+            hideCompleteDisplay();
+        }, 5000); // 5秒後に消去
+
         document.getElementById('status-board')?.classList.add('show');
         document.getElementById('status-preview')?.classList.add('show');
     } else {
         document.getElementById('status-board')?.classList.remove('show');
         document.getElementById('status-preview')?.classList.remove('show');
+        if (!isComplete) skipCompleteOnce = false;
+    }
+}
+
+/**
+ * コンプリート表示を強制的に閉じる
+ */
+function hideCompleteDisplay() {
+    document.getElementById('status-board')?.classList.remove('show');
+    document.getElementById('status-preview')?.classList.remove('show');
+    if (completeTimerId) {
+        clearTimeout(completeTimerId);
+        completeTimerId = null;
     }
 }
 
 /**
  * ターゲットリセット
+ * モードに応じて「色のグループ」または「純粋な連番」を生成する
  */
 function resetColorTargetView() {
     const totalSize = subSize * gridNum;
+    const mm = window.mediaManager;
+    const isMediaMode = mm && mm.mode !== 'color';
+
     targetBoard = Array.from({length: totalSize}, (_, r) => 
-        Array.from({length: totalSize}, (_, c) => 
-            Math.floor(r / subSize) * gridNum + Math.floor(c / subSize)
-        )
+        Array.from({length: totalSize}, (_, c) => {
+            if (isMediaMode) {
+                // 画像・動画モード：0, 1, 2... の連番
+                return r * totalSize + c;
+            } else {
+                // カラーモード：既存の色のグループ化ロジック
+                return Math.floor(r / subSize) * gridNum + Math.floor(c / subSize);
+            }
+        })
     );
+    hideCompleteDisplay(); // 表示を消す
     renderPreview();
 }
+
+/**
+ * 回転状態に応じた正解のtileId配列を生成する
+ * @param {number} dir - 0:0°, 1:90°, 2:180°, 3:270°
+ */
+function getTargetIndices(dir) {
+    const totalSize = subSize * gridNum;
+    const indices = [];
+    for (let r = 0; r < totalSize; r++) {
+        for (let c = 0; c < totalSize; c++) {
+            let srcR, srcC;
+            if (dir === 0) { [srcR, srcC] = [r, c]; }
+            else if (dir === 1) { [srcR, srcC] = [totalSize - 1 - c, r]; } // 90°
+            else if (dir === 2) { [srcR, srcC] = [totalSize - 1 - r, totalSize - 1 - c]; } // 180°
+            else { [srcR, srcC] = [c, totalSize - 1 - r]; } // 270°
+            indices.push(srcR * totalSize + srcC);
+        }
+    }
+    return indices.join(',');
+}
+
 /**
  * 全統計のリセット（Resetボタン）
  * サーチライトのオン/オフに関わらず、画面上の全オーバーレイを強制排除する
@@ -254,4 +355,24 @@ function resetStats() {
     // 6. タイマーボタンの光を消す
     const timerBtn = document.querySelector('button[onclick="toggleTimer()"]');
     if (timerBtn) timerBtn.classList.remove('active-toggle');
+}
+
+/**
+ * 現在の盤面（DOM）の状態を board 配列に同期する
+ * ※判定プロシージャが board[r][c] を参照できるようにするため
+ */
+function syncBoardFromDOM() {
+    const totalSize = subSize * gridNum;
+    const cells = document.querySelectorAll('.cell');
+    
+    cells.forEach(cell => {
+        const r = parseInt(cell.dataset.row);
+        const c = parseInt(cell.dataset.col);
+        
+        // cell.piece またはそれに準ずるプロパティからオブジェクトを取得
+        // 取得できない場合は、現在の cell の状態からオブジェクトを再構成
+        if (cell.piece) {
+            board[r][c] = cell.piece;
+        }
+    });
 }

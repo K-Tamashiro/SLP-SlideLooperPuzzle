@@ -1,7 +1,4 @@
 /**
- * メイン盤面描画
- */
-/**
  * メイン盤面描画（画像・動画・カラー完全統合版）
  */
 function render() {
@@ -26,11 +23,12 @@ function render() {
 
         for (let r = 0; r < subSize; r++) {
             for (let c = 0; c < subSize; c++) {
-                const cell = document.createElement('div');
                 const col = fc + c;
                 const row = fr + r;
-                const value = board[row][col]; 
-
+                const piece = board[row][col];
+                const value = piece.value;
+                
+                const cell = document.createElement('div');
                 cell.dataset.row = row; 
                 cell.dataset.col = col;
                 
@@ -58,6 +56,7 @@ function render() {
                     if (mm.mode === 'video') {
                         // 動画モード：Canvasを生成して描画対象にする
                         const canvas = document.createElement('canvas');
+                        
                         canvas.className = 'video-tile-canvas';
                         canvas.dataset.origR = originalAbsRow;
                         canvas.dataset.origC = originalAbsCol;
@@ -65,16 +64,35 @@ function render() {
                         cell.appendChild(canvas);
                         cell.classList.add('video-tile');
                     } 
-                    else if (mm.mode === 'image') {
-                        // 画像モード：CSS 背景として適用
-                        mm.applyMediaStyle(cell, originalAbsValue);
-                    }
-                    else {
-                        // 万が一のフォールバック
-                        cell.classList.add(`c${value}`);
+                    else if (mm.mode === 'image' && window.rotationManager) {
+                        const piece = board[row][col];
+                        const tId = piece.tileId; // パーツ固有の正解位置ID
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = canvas.height = cellSizePixel;
+                        const ctx = canvas.getContext('2d');
+
+                        const totalCells = subSize * gridNum;
+                        
+                        // tileId（初期のr*totalSize+c）からソース画像上の絶対行・列を算出
+                        const origAbsR = Math.floor(tId / totalCells);
+                        const origAbsC = tId % totalCells;
+
+                        const img = mm.mediaElement;
+                        const minSide = Math.min(img.naturalWidth, img.naturalHeight);
+                        const sx0 = (img.naturalWidth - minSide) / 2;
+                        const sy0 = (img.naturalHeight - minSide) / 2;
+                        const step = minSide / totalCells;
+
+                        window.rotationManager.render(
+                            ctx, piece, img, 
+                            0, 0, cellSizePixel, cellSizePixel,
+                            sx0 + (origAbsC * step), sy0 + (origAbsR * step), step, step
+                        );
+                        cell.appendChild(canvas);
                     }
                 } else {
-                    // カラーモード（リセット時やメディア未選択時）
+                // カラーモード（リセット時やメディア未選択時）
                     cell.classList.add(`c${value}`);
                 }
 
@@ -94,7 +112,12 @@ function render() {
                     const touch = e.touches[0];
                     startAction(touch.clientX, touch.clientY, 'touch', e);
                 };
-
+                cell.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    const p = board[row][col];
+                    rotationManager.rotate(p); // 90度回転
+                    render(); // 再描画
+                };
                 faceEl.appendChild(cell);
             }
         }
@@ -128,13 +151,12 @@ function renderPreview() {
         style.display = 'block';
         const mediaEl = (mm.mode === 'video') ? document.createElement('video') : new Image();
         
-        // 有効なURLがある場合のみ代入（blob:null対策）
         const currentSrc = mm.mediaSrc;
         if (currentSrc) {
             mediaEl.src = currentSrc;
             mediaEl.style.width = '100%';
             mediaEl.style.height = '100%';
-            mediaEl.style.objectFit = 'cover'; // 正方形にクロップ
+            mediaEl.style.objectFit = 'cover';
             mediaEl.style.display = 'block';
 
             if (mm.mode === 'video') {
@@ -149,12 +171,43 @@ function renderPreview() {
         }
     } else {
         // --- 3. カラーモード ---
+        // ここで targetBoard の現在の並びに基づき描画を行う
         drawColorGrid(container);
     }
 }
 
 /**
- * カラーグリッド描画ロジック（サイズ維持）
+ * カラーモード用のグリッド描画（状態反映版）
+ */
+function drawColorGridToContainer(container, currentBoardData, size) {
+    const n = subSize * gridNum;
+    const cellSize = size / n;
+    
+    container.style.display = 'grid';
+    container.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+    container.style.gridTemplateRows = `repeat(${n}, 1fr)`;
+
+    for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+            const piece = currentBoardData[r][c];
+            const cell = document.createElement('div');
+            cell.style.width = '100%';
+            cell.style.height = '100%';
+            
+            // piece.value (Face番号) に基づいた色を適用
+            if (piece) {
+                const colors = ['#FF5733', '#33FF57', '#3357FF', '#F3FF33', '#FF33F3', '#33FFF3'];
+                cell.style.backgroundColor = colors[piece.value % colors.length];
+            } else {
+                cell.style.backgroundColor = '#333';
+            }
+            container.appendChild(cell);
+        }
+    }
+}
+
+/**
+ * カラーグリッド描画ロジック（既存の構造を維持）
  */
 function drawColorGrid(container) {
     container.style.display = 'grid';
@@ -167,7 +220,12 @@ function drawColorGrid(container) {
     for (let r = 0; r < totalSize; r++) {
         for (let c = 0; c < totalSize; c++) {
             const cell = document.createElement('div');
-            cell.className = `preview-cell c${targetBoard[r][c]}`;
+            const piece = targetBoard[r][c];
+            
+            // オブジェクトから値を抽出し、既存の CSS クラス（c0, c1...）を適用
+            const val = (piece && typeof piece === 'object') ? piece.value : piece;
+            
+            cell.className = `preview-cell c${val}`;
             cell.style.width = '100%';
             cell.style.height = '100%';
             container.appendChild(cell);
@@ -291,14 +349,6 @@ function toggleV2Panel() {
         panel.style.display = 'block';
         toggleBtn.classList.add('active');
 
-        // 回転ギミックの強制解除
-        isRotateMode = false; // フラグを強制OFF
-        if (rotateBtn) {
-            rotateBtn.disabled = true; // ボタンを物理ロック
-            rotateBtn.classList.remove('active'); // 発光解除
-            rotateBtn.style.opacity = '0.3'; // 非活性を視覚化
-            rotateBtn.style.pointerEvents = 'none'; // クリックを完全遮断
-        }
     } else {
         // 画像パネルを閉じる
         panel.style.display = 'none';

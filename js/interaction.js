@@ -194,8 +194,8 @@ function triggerFlash(clickedValue) {
     document.querySelectorAll('.cell').forEach(cell => {
         const r = parseInt(cell.dataset.row);
         const c = parseInt(cell.dataset.col);
-        const currentValue = board[r][c];
-        if (currentValue === clickedValue) {
+        const piece = board[r][c];
+        if (piece && piece.value === clickedValue) {
             cell.classList.add('flash-active');
             const t = cell.getAttribute('data-f-t');
             if (t) clearTimeout(parseInt(t));
@@ -217,45 +217,44 @@ function updateFrameProgress(id, percent) {
 
 function rotateBoard() {
     const wrapper = document.getElementById('board-wrapper');
-    
-    // 1. 物理的な回転演出を開始
     wrapper.classList.add('board-rotating');
 
-    // 2. アニメーション（0.4s）が終わるタイミングでデータの中身を書き換える
     setTimeout(() => {
-        // --- 内部ロジック実行 ---
         if (rotateTimerId) { clearInterval(rotateTimerId); rotateTimerId = null; }
         updateFrameProgress('rotate', 0);
 
-        const totalSize = subSize * gridNum;
-        let newBoard = Array.from({length: totalSize}, () => []);
-        for (let r = 0; r < totalSize; r++) {
-            for (let c = 0; c < totalSize; c++) {
-                newBoard[c][totalSize - 1 - r] = board[r][c];
+        const n = subSize * gridNum;
+        let newBoard = Array.from({length: n}, () => new Array(n).fill(null));
+
+        for (let r = 0; r < n; r++) {
+            for (let c = 0; c < n; c++) {
+                const piece = board[r][c];
+                if (!piece) continue;
+
+                // 1. パーツ自体のミクロ回転（向きの変更）
+                if (window.rotationManager) {
+                    window.rotationManager.rotate(piece);
+                }
+
+                // 2 & 3. 枠内の位置入れ換え ＋ 枠自体の移動
+                // 物理インデックスを [r][c] から [c][(n-1)-r] へ転送
+                // これにより、図にある「左上(1) -> 右上(2) -> 右下(4) -> 左下(3)」の
+                // 枠内スワップが、盤面全体の回転と同期して強制的に実行されます
+                let targetRow = c;
+                let targetCol = (n - 1) - r;
+                
+                newBoard[targetRow][targetCol] = piece;
             }
         }
         board = newBoard;
 
-        // 3. 描画更新
-        render();
+        render(); 
         checkComplete();
-
-        // 4. 回転クラスを削除（位置を0度に戻すが、中身が既に回っているので見た目は維持される）
         wrapper.classList.remove('board-rotating');
-        
-    }, 400); // CSSの 0.4s と同期
+    }, 400);
 }
 
 function startRotateCountdown() {
-    // メディアモード時は何もしない
-    if (window.mediaManager && window.mediaManager.mode !== 'color') {
-        if (typeof addLog === 'function') {
-            addLog("Rotation is disabled in Image/Video mode.");
-        }
-        alert("Rotation gimmick is not available in Image/Video mode.");
-        return;
-    }
-
     const btn = document.querySelector('button[onclick="startRotateCountdown()"]');
     if (!btn) return;
     const isReserved = btn.classList.contains('active-toggle-red');
@@ -287,7 +286,12 @@ function executeRotateLoop() {
     const frame = document.getElementById('rotate-frame');
     const n = subSize * gridNum;
     const perimeterCells = (n * 4) - 4;
-    const duration = perimeterCells * 3000; // 1セル3秒計算
+    let duration = 0;
+    if (debugmode){
+        duration = perimeterCells * 500; // 1セル0.5秒計算 デバッグモード
+    } else{
+        duration = perimeterCells * 3000; // 1セル3秒計算
+    }
     const interval = 50; // 描画更新間隔
     let elapsed = 0;
 

@@ -1159,3 +1159,60 @@ button[onclick="toggleSearchlight()"]::after {
     pointer-events: none; /* クリックを邪魔しない */
     z-index: 2;
 }
+
+/* 統合されたコンテナ */
+.scramble-composite-box {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid #444; /* 他のicon-btnの枠線と共通 */
+    border-radius: 4px;
+    height: 38px; /* menu-panel内の他の要素と高さを揃える */
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* 数値入力部分（左側） */
+.scramble-number-field {
+    width: 48px;
+    height: 100%;
+    background: transparent;
+    border: none;
+    border-right: 1px solid #444; /* 中央の仕切り線 */
+    color: #fff;
+    text-align: center;
+    font-size: 14px;
+    outline: none;
+    -moz-appearance: textfield; /* Firefoxの矢印消去 */
+}
+
+/* Chrome/Edge/Safariの矢印消去（必要に応じて） */
+.scramble-number-field::-webkit-inner-spin-button,
+.scramble-number-field::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* 実行ボタン部分（右側） */
+.scramble-exec-btn {
+    width: 38px;
+    height: 100%;
+    background: transparent;
+    border: none;
+    color: #ccc;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.scramble-exec-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.scramble-exec-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #00f3ff; /* ネオンカラー（お使いのテーマに合わせて調整） */
+}
