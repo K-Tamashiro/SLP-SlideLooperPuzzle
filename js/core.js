@@ -24,7 +24,7 @@ let skipCompleteOnce = false;
 let rotationManager = null; // ローテーションマネージャー
 let completeTimerId = null;
 
-let debugmode = true;
+let debugmode = false;
 /**
  * 初期化
  */

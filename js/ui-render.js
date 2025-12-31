@@ -278,14 +278,6 @@ function setInterfaceLock(isLocked) {
         const el = document.querySelector(selector);
         if (!el) return;
 
-        // --- メディアモード時の回転ボタン専用ガード ---
-        if (selector.includes('startRotateCountdown') && window.mediaManager && window.mediaManager.mode !== 'color') {
-            el.disabled = true;
-            el.style.opacity = "0.3";
-            el.style.pointerEvents = "none";
-            return; // このボタンの処理はここで終了（isLockedの影響を受けさせない）
-        }
-
         el.disabled = isLocked;
         el.style.opacity = isLocked ? "0.3" : "1";
         el.style.cursor = isLocked ? "not-allowed" : "pointer";
@@ -332,7 +324,7 @@ function createMiniPreview(state) {
     return html;
 }
 /**
- * V2メディアパネルの表示/非表示を切り替え、画像モード時は回転ギミックをロックする
+ * V2メディアパネルの表示/非表示を切り替え
  */
 function toggleV2Panel() {
     const panel = document.getElementById('v2-media-uploader');
@@ -353,13 +345,6 @@ function toggleV2Panel() {
         // 画像パネルを閉じる
         panel.style.display = 'none';
         toggleBtn.classList.remove('active');
-
-        // 回転ボタンのロック解除
-        if (rotateBtn) {
-            rotateBtn.disabled = false;
-            rotateBtn.style.opacity = '1';
-            rotateBtn.style.pointerEvents = 'auto';
-        }
     }
     resetColorTargetView();
 
