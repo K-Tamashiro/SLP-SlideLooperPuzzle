@@ -114,8 +114,6 @@ function render() {
                 };
                 cell.oncontextmenu = (e) => {
                     e.preventDefault();
-                    const p = board[row][col];
-                    rotationManager.rotate(p); // 90度回転
                     render(); // 再描画
                 };
                 faceEl.appendChild(cell);
@@ -283,6 +281,13 @@ function setInterfaceLock(isLocked) {
         el.style.cursor = isLocked ? "not-allowed" : "pointer";
         el.style.pointerEvents = isLocked ? "none" : "auto";
     });
+    if(isLocked){
+        // メニューが開いていたらついでに閉じる
+        document.querySelector('.menu-panel')?.classList.toggle('hidden');
+        const panel = document.querySelector('.menu-panel');
+        panel.classList.toggle('open');
+    }
+
 }
 
 function toggleFlashMode() {
