@@ -77,8 +77,12 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
 			<button class="m-btn" onclick="replayStepNext()">Next ▶</button>
 		</div>
 		<div class="replay-status">
-			<span id="current-move-display" style="font-weight:bold; margin-right:10px; min-width:50px; display:inline-block; text-align:center;">---</span>
-			STEP: <span id="replay-index">0</span> / <span id="replay-total">0</span>
+			<div class="analyze-slider-container" style="margin: 10px 0; text-align: center;">
+    			<input type="range" id="analyze-slider" min="0" value="0" 
+       				style="width: 100%; cursor: pointer; pointer-events: auto; position: relative; z-index: 10001;">
+				<span id="current-move-display" style="font-weight:bold; margin-right:10px; min-width:50px; display:inline-block; text-align:center;">---</span>
+				STEP: <span id="replay-index">0</span> / <span id="replay-total">0</span>
+			</div>
 		</div>
 	</div>
 
@@ -205,7 +209,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
 		        </div>
 		        <div class="stat-item">
 		            <span class="label">MOVE</span>
-		            <span id="counter-display">000</span>
+		            <span id="counter-display">0000</span>
 		        </div>
 	            <div class="action-icons">
 	                <button class="icon-btn" onclick="copyCurrentToTarget()" title="Copy">

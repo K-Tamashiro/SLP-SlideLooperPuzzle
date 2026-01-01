@@ -23,6 +23,8 @@ let isLogEnabled = true;
 let skipCompleteOnce = false;
 let rotationManager = null; // ローテーションマネージャー
 let completeTimerId = null;
+// 解析用の初期状態を保存する変数
+let initialAnalyzeBoard = null;
 
 let debugmode = false;
 /**
@@ -350,7 +352,7 @@ function resetStats() {
     const timerEl = document.getElementById('timer-display');
     const counterEl = document.getElementById('counter-display');
     if (timerEl) timerEl.textContent = "00:00.000";
-    if (counterEl) counterEl.textContent = "000";
+    if (counterEl) counterEl.textContent = "0000";
     
     // 6. タイマーボタンの光を消す
     const timerBtn = document.querySelector('button[onclick="toggleTimer()"]');

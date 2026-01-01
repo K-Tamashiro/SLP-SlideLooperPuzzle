@@ -162,6 +162,7 @@ function refreshHistoryList() {
  */
 function startAnalyzeMode() {
     const solveLog = document.getElementById('solve-log').value;
+   
     if (!solveLog) return;
     const timerDisplay = document.getElementById('timer-display');
     if (timerDisplay && window.currentLogTime) timerDisplay.textContent = window.currentLogTime;
@@ -188,6 +189,39 @@ function startAnalyzeMode() {
         })
     );
 
+    // 3. スライダーの設定
+    const slider = document.getElementById('analyze-slider');
+    if (slider) {
+        slider.max = window.replaySteps.length;
+        
+        slider.oninput = function(e) {
+            const targetIdx = parseInt(e.target.value);
+            
+            // --- 盤面の状態を targetIdx まで強制的に追いつかせる ---
+            // 1手ずつ「実行」することで board 配列の中身を書き換える
+            while (window.currentReplayIdx < targetIdx) {
+                const moveStr = window.replaySteps[window.currentReplayIdx];
+                // isBack=false, isSilent=true(描画スキップ)で計算だけ実行
+                executeSingleMove(moveStr, false, true); 
+                window.currentReplayIdx++;
+            }
+            while (window.currentReplayIdx > targetIdx) {
+                window.currentReplayIdx--;
+                const moveStr = window.replaySteps[window.currentReplayIdx];
+                // isBack=true(逆回転)で計算だけ実行
+                executeSingleMove(moveStr, true, true); 
+            }
+
+            // --- 重要：計算が終わった後に「盤面」を再描画する ---
+            if (typeof render === 'function') {
+                render(); // これで board の中身が Canvas/DOM に反映される
+            }
+            
+            // カウンターやボタン状態の同期
+            updateReplayDisplay(); 
+        };
+    }
+    
     // ログを逆順に適用して初期状態を復元
     while (window.currentReplayIdx > 0) {
         window.currentReplayIdx--;
@@ -679,28 +713,41 @@ function updateReplayDisplay() {
     const idxEl = document.getElementById('replay-index');
     const totalEl = document.getElementById('replay-total');
     const moveEl = document.getElementById('current-move-display');
-    
-    // 盤面カウンターのDOM要素（ID: move-count または counter-display）
+    const slider = document.getElementById('analyze-slider'); // スライダーを取得
+
     const boardCounter = document.getElementById('move-count') || document.getElementById('counter-display');
 
     if (idxEl) idxEl.innerText = window.currentReplayIdx;
     if (totalEl) totalEl.innerText = window.replaySteps.length;
     
-    // --- 【修正】再生位置と盤面カウンターを完全同期 ---
+    // --- 【追加】スライダーのつまみの位置を同期 ---
+    if (slider) {
+        slider.value = window.currentReplayIdx; 
+    }
+    
     if (boardCounter) {
-        // 表示を更新
-        boardCounter.innerText = window.currentReplayIdx.toString().padStart(3, '0');
-        // 内部変数 moveCount も同期（不整合を防止）
-        moveCount = window.currentReplayIdx;
+        boardCounter.innerText = window.currentReplayIdx.toString().padStart(4, '0');
+        moveCount = window.currentReplayIdx; //
     }
     
     const isComplete = (window.currentReplayIdx === window.replaySteps.length);
     const isLogVisible = document.getElementById('log-overlay').style.display === 'block';
 
     if (moveEl) {
+        // 次に打つべき手を表示（完了時はCOMPLETE）
         moveEl.innerText = isComplete ? "COMPLETE" : (window.replaySteps[window.currentReplayIdx] || "END");
     }
-
+    if (boardCounter) {
+        // 4桁表示を確定
+        boardCounter.innerText = window.currentReplayIdx.toString().padStart(4, '0');
+        moveCount = window.currentReplayIdx; 
+    }
+    
+    if (slider) {
+        // ここでも max を同期させておけば、100で止まることはありません
+        slider.max = window.replaySteps.length;
+        slider.value = window.currentReplayIdx;
+    }
     const nextBtn = document.querySelector('button[onclick="replayStepNext()"]');
     const backBtn = document.querySelector('button[onclick="replayStepBack()"]');
     if (nextBtn) nextBtn.disabled = isComplete;
@@ -712,6 +759,7 @@ function updateReplayDisplay() {
         document.getElementById('status-board')?.classList.remove('show');
     }
 }
+
 /**
  * 4. Copy to Scramble: LiveログをInputボックスへコピー
  */
@@ -853,7 +901,4 @@ function toggleVideoPanel() {
         vBtn.classList.remove('active');
     }
 }
-
-
-
 window.mediaManager = new MediaManager();
