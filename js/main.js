@@ -78,6 +78,7 @@ window.onmousemove = (e) => {
 
 window.onmouseup = () => {
     endDrag();
+    stopContinuousStep(); // ★追加
     if (window.isSearchlightMode) {
         document.getElementById('searchlight-overlay')?.classList.remove('searchlight-active');
     }
@@ -109,10 +110,25 @@ window.ontouchmove = (e) => {
 
 window.ontouchend = () => {
     endDrag();
+    stopContinuousStep(); // ★追加
     if (window.isSearchlightMode) {
         document.getElementById('searchlight-overlay')?.classList.remove('searchlight-active');
     }
 };
+// HTMLの並び順（0番目がBack、2番目がNext）で取得
+const mBtns = document.querySelectorAll('.m-group .m-btn');
+const backBtn = mBtns[0];
+const nextBtn = mBtns[2];
+
+if (backBtn && nextBtn) {
+    // PC用
+    backBtn.addEventListener('mousedown', () => startContinuousStep('back'));
+    nextBtn.addEventListener('mousedown', () => startContinuousStep('next'));
+    
+    // スマホ用（スクロール防止しつつ長押し開始）
+    backBtn.addEventListener('touchstart', (e) => { startContinuousStep('back'); });
+    nextBtn.addEventListener('touchstart', (e) => { startContinuousStep('next'); });
+}
 window.isFlashMode = false;
 
 /**

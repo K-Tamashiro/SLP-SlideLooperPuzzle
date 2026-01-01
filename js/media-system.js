@@ -116,7 +116,7 @@ function refreshHistoryList() {
         container.innerHTML = '<div style="color:#666; padding:20px; text-align:center;">No Storage Data.</div>';
         return;
     }
-    
+
     const history = JSON.parse(localStorage.getItem('slp_history') || '[]');
     
     // フィルタリング：盤面サイズ(grid_size, sub_size)の一致のみを確認（モードは混ぜる）
@@ -947,4 +947,5 @@ function toggleVideoPanel() {
         vBtn.classList.remove('active');
     }
 }
+
 window.mediaManager = new MediaManager();

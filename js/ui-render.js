@@ -347,3 +347,31 @@ function toggleV2Panel() {
     resetColorTargetView();
 
 }
+let autoStepInterval = null;
+const LONG_PRESS_DELAY = 300; // 長押しと判定するまでの待ち時間(ms)
+const STEP_SPEED = 150;       // 連続進行の速さ(ms)
+
+function startContinuousStep(direction) {
+    if (autoStepInterval) return;
+
+    // 少し待ってから連続実行を開始（1回クリックとの誤爆防止）
+    autoStepInterval = setTimeout(() => {
+        autoStepInterval = setInterval(() => {
+            if (direction === 'next') {
+                if (window.currentReplayIdx >= window.replaySteps.length) return stopContinuousStep();
+                replayStepNext();
+            } else {
+                if (window.currentReplayIdx <= 0) return stopContinuousStep();
+                replayStepBack();
+            }
+        }, STEP_SPEED);
+    }, LONG_PRESS_DELAY);
+}
+
+function stopContinuousStep() {
+    if (autoStepInterval) {
+        clearTimeout(autoStepInterval);
+        clearInterval(autoStepInterval);
+        autoStepInterval = null;
+    }
+}
