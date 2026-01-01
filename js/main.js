@@ -77,8 +77,8 @@ window.onmousemove = (e) => {
 };
 
 window.onmouseup = () => {
-    endDrag();
-    stopContinuousStep(); // ★追加
+    if (typeof endDrag === 'function') endDrag();
+    if (typeof stopContinuousStep === 'function') stopContinuousStep();
     if (window.isSearchlightMode) {
         document.getElementById('searchlight-overlay')?.classList.remove('searchlight-active');
     }
@@ -109,12 +109,13 @@ window.ontouchmove = (e) => {
 };
 
 window.ontouchend = () => {
-    endDrag();
-    stopContinuousStep(); // ★追加
+    if (typeof endDrag === 'function') endDrag();
+    if (typeof stopContinuousStep === 'function') stopContinuousStep();
     if (window.isSearchlightMode) {
         document.getElementById('searchlight-overlay')?.classList.remove('searchlight-active');
     }
 };
+
 // HTMLの並び順（0番目がBack、2番目がNext）で取得
 const mBtns = document.querySelectorAll('.m-group .m-btn');
 const backBtn = mBtns[0];
@@ -125,9 +126,14 @@ if (backBtn && nextBtn) {
     backBtn.addEventListener('mousedown', () => startContinuousStep('back'));
     nextBtn.addEventListener('mousedown', () => startContinuousStep('next'));
     
-    // スマホ用（スクロール防止しつつ長押し開始）
-    backBtn.addEventListener('touchstart', (e) => { startContinuousStep('back'); });
-    nextBtn.addEventListener('touchstart', (e) => { startContinuousStep('next'); });
+    // スマホ用：{ passive: true } を追加して警告を解消し、レスポンスを向上させる
+    backBtn.addEventListener('touchstart', (e) => { 
+        startContinuousStep('back'); 
+    }, { passive: true });
+
+    nextBtn.addEventListener('touchstart', (e) => { 
+        startContinuousStep('next'); 
+    }, { passive: true });
 }
 window.isFlashMode = false;
 

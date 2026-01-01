@@ -164,12 +164,8 @@ function refreshHistoryList() {
     }).join('');
 }
 
-/**
- * 再生（解析）モード
- */
 function startAnalyzeMode() {
     const solveLog = document.getElementById('solve-log').value;
-   
     if (!solveLog) return;
     const timerDisplay = document.getElementById('timer-display');
     if (timerDisplay && window.currentLogTime) timerDisplay.textContent = window.currentLogTime;
@@ -178,59 +174,52 @@ function startAnalyzeMode() {
     window.currentReplayIdx = window.replaySteps.length; 
     window.isReplayMode = true;
 
-    // --- 修正：targetBoard（数値またはオブジェクト）を正しく正規化してboardにコピー ---
+    // --- 修正：targetBoard を 100% そのまま board に写し取る ---
     const totalSize = subSize * gridNum;
     board = Array.from({ length: totalSize }, (_, r) => 
         Array.from({ length: totalSize }, (_, c) => {
-            const t = targetBoard[r][c];
-            // 既にオブジェクトならそのまま、数値ならオブジェクト化する
-            if (typeof t === 'object' && t !== null) {
-                return JSON.parse(JSON.stringify(t));
-            } else {
-                return {
-                    tileId: t, // 数値(1, 2, 3...)をIDとしてセット
-                    value: t,
-                    direction: 0 // 初期向き
-                };
-            }
+            // このマスが本来持つべき「絶対インデックス」を計算
+            // 例：4x4なら、左上(0,0)は0、その隣(0,1)は1...
+            const absoluteIndex = r * totalSize + c;
+
+            return {
+                tileId: absoluteIndex, // renderが座標計算に使う数値
+                value: Math.floor(r / subSize) * gridNum + Math.floor(c / subSize), // Faceの数値
+                direction: 0
+            };
         })
     );
 
-    // 3. スライダーの設定
+    // --- 2. スライダーの設定（高速ワープ用） ---
     const slider = document.getElementById('analyze-slider');
     if (slider) {
         slider.max = window.replaySteps.length;
-        
         slider.oninput = function(e) {
             const targetIdx = parseInt(e.target.value);
-            
-            // 計算中は第3引数を true (isSilent) にして render() を完全に封じる
+            // 現在地から目標地点まで「描画なし(true)」で計算だけ実行
             while (window.currentReplayIdx < targetIdx) {
-                const moveStr = window.replaySteps[window.currentReplayIdx];
-                executeSingleMove(moveStr, false, true); // ★ここで render() は走らない
+                executeSingleMove(window.replaySteps[window.currentReplayIdx], false, true); 
                 window.currentReplayIdx++;
             }
             while (window.currentReplayIdx > targetIdx) {
                 window.currentReplayIdx--;
-                const moveStr = window.replaySteps[window.currentReplayIdx];
-                executeSingleMove(moveStr, true, true);  // ★逆方向も同様
+                executeSingleMove(window.replaySteps[window.currentReplayIdx], true, true); 
             }
-
-            // 全ての計算（2回ずつの移動）が終わった後に、ここで「1回だけ」描画する
-            render(); 
-            updateReplayDisplay();
+            render(); // 最後に1回だけ描画
+            updateReplayDisplay(); 
         };
     }
     
-    // ログを逆順に適用して初期状態を復元
+    // --- 3. 重要：ログを逆順に全適用して「初期状態」まで戻す ---
+    // ここで isSilent=true を渡さないと画像描画がバグる原因になります
     while (window.currentReplayIdx > 0) {
         window.currentReplayIdx--;
-        executeSingleMove(window.replaySteps[window.currentReplayIdx], true); 
+        executeSingleMove(window.replaySteps[window.currentReplayIdx], true, true); 
     }
     
     toggleLogPanel();
     showMediaControls(true);
-    render(); // オブジェクト構造になったので正しく描画される
+    render(); // 初期状態を画像として描画
     updateReplayDisplay();
 }
 
@@ -241,25 +230,20 @@ function replayStepNext() {
     let i = window.currentReplayIdx;
     const [firstLabel, firstAction] = steps[i].split('-');
 
-    // どこまで同じアクション（D1等）が続くかカウント
+    // 同じアクション（D1等）が続く分をカウント
     let count = 0;
     while (i + count < steps.length) {
         const [nextLabel, nextAction] = steps[i + count].split('-');
         if (nextAction !== firstAction) break;
         count++;
-        // 枠の最大数（3枠なら3）で止める場合はここを調整
-        if (count >= subSize * (gridNum / subSize)) { // 枠の構成数
-             // 実際には「同じアクションが連続する数」に任せるのが一番安全です
-        }
     }
 
-    // まとめて実行（最後以外は silent）
+    // まとめて実行（最後だけ描画）
     for (let k = 0; k < count; k++) {
         const isLast = (k === count - 1);
         executeSingleMove(steps[window.currentReplayIdx], false, !isLast);
         window.currentReplayIdx++;
     }
-
     updateReplayDisplay();
 }
 
@@ -282,7 +266,6 @@ function replayStepBack() {
         window.currentReplayIdx--;
         executeSingleMove(steps[window.currentReplayIdx], true, !isLast);
     }
-
     updateReplayDisplay();
 }
 

@@ -1,17 +1,17 @@
 /* --- Base Styles --- */
 body {
-	padding: 0 10px 10px 10px;/* 上部のみ 0 に設定 */
-	background: #121212;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	color: white;
-	font-family: sans-serif;
-	margin: 0;
-	padding: 10px;
-	user-select: none;
-	touch-action: none;
-	overflow-x: hidden;
+    background: #121212;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: white;
+    font-family: sans-serif;
+    margin: 0;
+    padding: 10px;
+    -webkit-user-select: none; /* Safari, iOS用警告解消 */
+    user-select: none;         /* 標準 */
+    touch-action: none;
+    overflow-x: hidden;
 }
 
 .header {
@@ -464,27 +464,7 @@ transform-origin: center center !important;
 
 /* --- Status Overlay --- */
 
-.status-overlay {
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background: rgba(46, 204, 113, 0.8);
-	color: white;
-	font-size: 24px;
-	font-weight: bold;/* 初期値は必ず none に。show クラスがある時だけ flex にする */
-	display: none !important;
-	align-items: center;
-	justify-content: center;
-	z-index: 1000;
-	border-radius: 6px;
-	pointer-events: none;
-}
 
-.status-overlay.show {
-	display: flex !important;
-}
 
 .side-panel {
 	display: flex;
@@ -814,11 +794,6 @@ transform-origin: center center !important;
     background: #400;
 }
 
-.replay-status {
-    font-family: 'Courier New', monospace;
-    color: #0f0;
-    font-size: 11px; /* ステータスも小さく */
-}
 
 .m-group {
     display: flex;
@@ -842,11 +817,7 @@ transform-origin: center center !important;
     background: #600;
 }
 
-.replay-status {
-    font-family: 'Courier New', monospace;
-    color: #0f0;
-    font-size: 14px;
-}
+
 .main-header {
     width: 100%;
     max-width: 600px;
@@ -1090,17 +1061,18 @@ transform-origin: center center !important;
 /* 動画パネルを画面中央に配置 */
 #v2-video-uploader {
     position: fixed;
-    top: 10px; /* 画面の最上部 */
+    top: 10px;
     left: 50%;
     transform: translateX(-50%);
     width: 280px;
-    background: rgba(10, 10, 10, 0.98); /* より深い黒で視認性を確保 */
+    background: rgba(10, 10, 10, 0.98);
     border: 1px solid #00ffcc;
     border-radius: 4px;
     box-shadow: 0 5px 25px rgba(0, 0, 0, 1);
-    z-index: 3000; /* 最前面 */
+    z-index: 3000;
     padding: 15px 20px;
-    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px); /* Safari用警告解消 */
+    backdrop-filter: blur(15px);         /* 標準 */
 }
 
 #v2-video-uploader .v2-panel-header {
@@ -1178,12 +1150,13 @@ button[onclick="toggleSearchlight()"]::after {
     height: 100%;
     background: transparent;
     border: none;
-    border-right: 1px solid #444; /* 中央の仕切り線 */
+    border-right: 1px solid #444;
     color: #fff;
     text-align: center;
     font-size: 14px;
     outline: none;
-    -moz-appearance: textfield; /* Firefoxの矢印消去 */
+    -moz-appearance: textfield; /* Firefox用 */
+    appearance: textfield;      /* Chrome, Edge, Safari用警告解消 */
 }
 
 /* Chrome/Edge/Safariの矢印消去（必要に応じて） */
@@ -1216,63 +1189,278 @@ button[onclick="toggleSearchlight()"]::after {
     background: rgba(255, 255, 255, 0.1);
     color: #00f3ff; /* ネオンカラー（お使いのテーマに合わせて調整） */
 }
-/* スライダー全体のコンテナ（余白の調整） */
-.slider-container {
-    padding: 15px 0;
+/* --- Complete!! --- */
+.status-overlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(46, 204, 113, 0.8);
+	color: white;
+	font-size: 24px;
+	font-weight: bold;/* 初期値は必ず none に。show クラスがある時だけ flex にする */
+	display: none !important;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+	border-radius: 6px;
+	pointer-events: none;
+}
+
+.status-overlay.show {
+	display: flex !important;
+}
+
+/* --- ZEROエラー維持用の隠し設定 --- */
+.v-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+/* --- 1. メニューパネル（コミット済み：タイトルの下） --- */
+.menu-panel {
+    display: none;
+    position: fixed;
+    top: 55px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    height: 46px;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    background: rgba(10, 10, 10, 0.98);
+    border: 1px solid #00ffcc;
+    border-radius: 4px;
+    z-index: 10005;
+    box-sizing: border-box;
+}
+
+.menu-panel.open {
+    display: flex !important;
+}
+
+/* --- 解析バー：タイトルの上（1行に強制収容） --- */
+/* 上部バー全体 */
+#media-controls {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+
+    width: 350px;          /* ← 盤面幅に合わせる */
+    max-width: 400px;      /* ← 念のため固定 */
+
+    display: none;         /* JSで flex */
+    flex-direction: column;
+    align-items: center;
+
+    padding: 6px 10px;
+    background: #000;
+    border-bottom: 2px solid #0f0;
+    z-index: 20000;
+    box-sizing: border-box;
+}
+/* 中央に寄せる主コンテンツ */
+#media-controls .analyze-slider-container {
+    width: 100%;
+    padding: 0 6px;          /* ← 光の逃げ代 */
+    box-sizing: border-box;
+    overflow: hidden;        /* ← 重要：はみ出し防止 */
+}
+/* === ボタン行 === */
+.m-group {
+    display: flex;              /* ← 横並びに戻す */
+    flex-direction: row;
+    justify-content: center;    /* ← 真ん中寄せ */
+    gap: 6px;
     width: 100%;
 }
 
-/* スライダー本体の基本デザイン */
+/* === シークバー＋テキスト === */
+.replay-status {
+    width: 100%;
+    margin-top: 6px;
+}
+
+/* シークバー行 */
+.analyze-slider-container {
+    display: flex;
+    flex-direction: column;     /* ← 下にテキスト */
+    align-items: center;
+    width: 100%;
+    gap: 4px;
+}
+
+/* シークバー */
+#analyze-slider {
+    width: 100%;
+    max-width: 800px;           /* 任意：見た目制御 */
+}
+
+/* テキスト */
+.replay-status {
+    width: 100%;
+    text-align: center;     /* ← 中央 */
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    color: #bfffbf;
+
+    text-shadow:
+        0 0 4px rgba(0,255,136,0.8),
+        0 0 10px rgba(0,255,136,0.5);
+}
+/* === ネオンボタン共通 === */
+.m-btn {
+    position: relative;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: bold;
+    color: #bfffbf;
+
+    background: linear-gradient(
+        180deg,
+        #0a0a0a 0%,
+        #101010 100%
+    );
+
+    border: 1px solid #00ff88;
+    border-radius: 6px;
+
+    box-shadow:
+        0 0 4px rgba(0,255,136,0.6),
+        0 0 10px rgba(0,255,136,0.35),
+        inset 0 0 6px rgba(0,255,136,0.25);
+
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+/* === ホバーで発光強化 === */
+.m-btn:hover {
+    color: #eaffea;
+    box-shadow:
+        0 0 6px rgba(0,255,136,0.9),
+        0 0 16px rgba(0,255,136,0.6),
+        inset 0 0 8px rgba(0,255,136,0.35);
+}
+
+/* === 押下時 === */
+.m-btn:active {
+    transform: translateY(1px);
+    box-shadow:
+        0 0 4px rgba(0,255,136,0.4),
+        inset 0 0 10px rgba(0,255,136,0.6);
+}
+
+/* === Exit（危険色ネオン） === */
+.m-btn.stop {
+    color: #ffdada;
+    border-color: #ff2a2a;
+
+    box-shadow:
+        0 0 4px rgba(255,42,42,0.7),
+        0 0 12px rgba(255,42,42,0.45),
+        inset 0 0 6px rgba(255,42,42,0.35);
+}
+
+.m-btn.stop:hover {
+    box-shadow:
+        0 0 6px rgba(255,42,42,0.9),
+        0 0 18px rgba(255,42,42,0.65),
+        inset 0 0 8px rgba(255,42,42,0.45);
+}
+/* ===== シークバー全体 ===== */
 #analyze-slider {
     -webkit-appearance: none;
     appearance: none;
     width: 100%;
-    height: 8px; /* バーの太さ */
-    background: #333; /* バーのベース色（暗め） */
-    border-radius: 4px;
-    outline: none;
-    cursor: pointer;
-    transition: background 0.3s;
+    height: 10px;
+    background: transparent;
 }
 
-/* スライダー全体のコンテナ調整 */
-.analyze-slider-container {
-    padding: 5px 15px;
-    background: rgba(0, 0, 0, 0.3); /* 少し背景を暗くして浮かび上がらせる */
-    border-radius: 8px;
-    border: 1px solid #333;
-}
-
-/* バーのデザイン */
-#analyze-slider {
-    -webkit-appearance: none;
+/* ===== トラック（バー） ===== */
+#analyze-slider::-webkit-slider-runnable-track {
     height: 6px;
-    background: #222; /* より深い黒 */
-    border-radius: 3px;
-    border: 1px solid #444;
+    background: linear-gradient(
+        90deg,
+        #00ff88,
+        #00ffaa
+    );
+    border-radius: 4px;
+    box-shadow:
+        0 0 6px rgba(0,255,136,0.8),
+        0 0 14px rgba(0,255,136,0.5);
 }
 
-/* つまみ（ノブ）のデザイン - タイマーの緑色に合わせる */
+#analyze-slider::-moz-range-track {
+    height: 6px;
+    background: linear-gradient(90deg, #00ff88, #00ffaa);
+    border-radius: 4px;
+    box-shadow:
+        0 0 6px rgba(0,255,136,0.8),
+        0 0 14px rgba(0,255,136,0.5);
+}
+
+/* ===== つまみ（ノブ） ===== */
 #analyze-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 18px;
-    height: 18px;
-    background: #00ff00; /* タイマーと同じ鮮やかな緑 */
-    border: 2px solid #fff;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    margin-top: -5px;
+
+    background: #0a0a0a;
+    border: 2px solid #00ff88;
     border-radius: 50%;
-    box-shadow: 0 0 12px rgba(0, 255, 0, 0.6);
+
+    box-shadow:
+        0 0 6px rgba(0,255,136,0.9),
+        0 0 14px rgba(0,255,136,0.7);
     cursor: pointer;
-    margin-top: -7px; /* バーの中央に配置 */
 }
 
-/* つまみを動かしている時 */
-#analyze-slider::-webkit-slider-thumb:active {
-    background: #fff;
-    box-shadow: 0 0 20px rgba(0, 255, 0, 1);
+#analyze-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: #0a0a0a;
+    border: 2px solid #00ff88;
+    border-radius: 50%;
+    box-shadow:
+        0 0 6px rgba(0,255,136,0.9),
+        0 0 14px rgba(0,255,136,0.7);
+    cursor: pointer;
+}
+/* === Media uploader ネオン強化 === */
+#v2-media-uploader .m-btn {
+    font-size: 14px;
+    padding: 7px 18px;
+
+    box-shadow:
+        0 0 6px rgba(0,255,136,0.8),
+        0 0 16px rgba(0,255,136,0.5),
+        inset 0 0 8px rgba(0,255,136,0.35);
 }
 
-/* STEP情報のテキスト色をタイマーに合わせる */
-.replay-status {
-    color: #00ff00;
-    font-family: 'Courier New', Courier, monospace; /* 固定幅フォントで計器感を出す */
+#v2-media-uploader .m-btn:hover {
+    box-shadow:
+        0 0 10px rgba(0,255,136,1),
+        0 0 24px rgba(0,255,136,0.7),
+        inset 0 0 10px rgba(0,255,136,0.45);
+}
+
+/* Reset は危険ネオン */
+#v2-media-uploader .m-btn.stop {
+    box-shadow:
+        0 0 6px rgba(255,60,60,0.9),
+        0 0 18px rgba(255,60,60,0.6),
+        inset 0 0 8px rgba(255,60,60,0.4);
 }
