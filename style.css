@@ -1270,7 +1270,7 @@ button[onclick="toggleSearchlight()"]::after {
     box-sizing: border-box;
 }
 /* 中央に寄せる主コンテンツ */
-#media-controls .analyze-slider-container {
+#media-controls {
     width: 100%;
     padding: 0 6px;          /* ← 光の逃げ代 */
     box-sizing: border-box;
@@ -1292,12 +1292,14 @@ button[onclick="toggleSearchlight()"]::after {
 }
 
 /* シークバー行 */
-.analyze-slider-container {
+.analyze-slider-container{
     display: flex;
     flex-direction: column;     /* ← 下にテキスト */
     align-items: center;
     width: 100%;
     gap: 4px;
+    padding: 0 6px;          /* ← 光の逃げ代 */
+    box-sizing: border-box;
 }
 
 /* シークバー */
