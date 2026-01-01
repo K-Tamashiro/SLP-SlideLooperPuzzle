@@ -1216,3 +1216,63 @@ button[onclick="toggleSearchlight()"]::after {
     background: rgba(255, 255, 255, 0.1);
     color: #00f3ff; /* ネオンカラー（お使いのテーマに合わせて調整） */
 }
+/* スライダー全体のコンテナ（余白の調整） */
+.slider-container {
+    padding: 15px 0;
+    width: 100%;
+}
+
+/* スライダー本体の基本デザイン */
+#analyze-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 8px; /* バーの太さ */
+    background: #333; /* バーのベース色（暗め） */
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+/* スライダー全体のコンテナ調整 */
+.analyze-slider-container {
+    padding: 5px 15px;
+    background: rgba(0, 0, 0, 0.3); /* 少し背景を暗くして浮かび上がらせる */
+    border-radius: 8px;
+    border: 1px solid #333;
+}
+
+/* バーのデザイン */
+#analyze-slider {
+    -webkit-appearance: none;
+    height: 6px;
+    background: #222; /* より深い黒 */
+    border-radius: 3px;
+    border: 1px solid #444;
+}
+
+/* つまみ（ノブ）のデザイン - タイマーの緑色に合わせる */
+#analyze-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    background: #00ff00; /* タイマーと同じ鮮やかな緑 */
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 12px rgba(0, 255, 0, 0.6);
+    cursor: pointer;
+    margin-top: -7px; /* バーの中央に配置 */
+}
+
+/* つまみを動かしている時 */
+#analyze-slider::-webkit-slider-thumb:active {
+    background: #fff;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 1);
+}
+
+/* STEP情報のテキスト色をタイマーに合わせる */
+.replay-status {
+    color: #00ff00;
+    font-family: 'Courier New', Courier, monospace; /* 固定幅フォントで計器感を出す */
+}

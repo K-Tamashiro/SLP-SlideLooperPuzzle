@@ -168,10 +168,22 @@ window.resetToColorMode = function() {
 /**
  * 補助ユーティリティ
  */
-function toggleMenu() {
-    // document.querySelector('.menu-panel')?.classList.toggle('hidden');
+/**
+ * メニューパネルの開閉制御
+ * @param {boolean|null} forceState - trueなら開く、falseなら閉じる、nullなら反転
+ */
+function toggleMenu(forceState = null) {
     const panel = document.querySelector('.menu-panel');
-    panel.classList.toggle('open');
+    if (!panel) return;
+
+    if (forceState === true) {
+        panel.classList.add('open');
+    } else if (forceState === false) {
+        panel.classList.remove('open');
+    } else {
+        // 引数がない場合は、これまでの通り反転(toggle)させる
+        panel.classList.toggle('open');
+    }
 }
 
 function clearSolveLog() {
@@ -238,29 +250,50 @@ function restoreHistory(event) {
     reader.onload = (e) => {
         try {
             const importedData = JSON.parse(e.target.result);
-            if (!Array.isArray(importedData)) throw new Error("Invalid format");
+            if (!Array.isArray(importedData)) return;
 
-            // 既存の履歴を確認
             const currentHistory = JSON.parse(localStorage.getItem('slp_history') || '[]');
             
-            // 統合（重複を避ける場合はタイムスタンプ等で比較が必要ですが、現在は単純追加）
-            const newHistory = [...importedData, ...currentHistory];
+            // --- 重複排除：timestamp文字列をそのままキーにする ---
+            const historyMap = new Map();
+            // 1. 既存データをいれる
+            currentHistory.forEach(item => { if(item.timestamp) historyMap.set(item.timestamp, item); });
+            // 2. インポートデータを上書き（または追加）
+            importedData.forEach(item => { if(item.timestamp) historyMap.set(item.timestamp, item); });
+
+            // 3. 配列に戻す（日付ソートせず、一旦そのまま保存）
+            const combinedHistory = Array.from(historyMap.values());
             
-            // 最大400件に制限
-            const limitedHistory = newHistory.slice(-400);
+            // 文字列比較で降順（新しい順）に並べ替え（"2024/..." なら文字列比較でいける）
+            combinedHistory.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
+            const limitedHistory = combinedHistory.slice(0, 400);
             
             localStorage.setItem('slp_history', JSON.stringify(limitedHistory));
             
+            // リスト更新を強制実行
             refreshHistoryList();
-            alert("History restored successfully.");
-            
+            // --- メッセージ復活：alertの代わりにこれを入れる ---
+            const statusElement = document.getElementById('status-board');
+            if (statusElement) {
+                statusElement.textContent = "History restored: " + limitedHistory.length + " entries";
+                statusElement.classList.add('show');
+                setTimeout(() => statusElement.classList.remove('show'), 3000);
+            } else {
+                // もし要素がなければ、最低限 console で成功を知らせる
+                console.log("History restored successfully.");
+                // または一時的に alert を戻して動作確認
+                // alert("History restored."); 
+            }
         } catch (err) {
-            alert("Error: Invalid backup file format.");
-            console.error(err);
+            console.error("Restore failed:", err);
+        } finally {
+            event.target.value = ''; 
         }
     };
     reader.readAsText(file);
 }
+
 /**
  * サイドメニューの再生ボタン押下時の挙動
  * 1. メディアコントロール表示中 -> 解析モードを終了してコントロールを消す

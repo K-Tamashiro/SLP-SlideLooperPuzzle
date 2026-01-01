@@ -249,7 +249,16 @@ function checkComplete() {
             startRotateCountdown();
         }
         if (typeof saveSystemLog === 'function') saveSystemLog(true); 
-
+        // --- 追記：履歴リストの即時更新 ---
+        // saveSystemLogで保存された直後のlocalStorageからリストを再生成する
+        if (typeof updateHistoryList === 'function') {
+            // 保存処理との競合を避けるため、極小のディレイを挟むとより確実です
+            setTimeout(() => {
+                updateHistoryList(); 
+                console.log("History list updated via completion.");
+            }, 100);
+        }
+        // ----------------------------------
         // 既存の演出処理の末尾に追加
         if (completeTimerId) clearTimeout(completeTimerId);
         completeTimerId = setTimeout(() => {

@@ -15,6 +15,7 @@ function toggleTimer(forceState) {
         setInterfaceLock(false);
     } else {
         if (timerId) return;
+        toggleMenu(false);
         startTime = performance.now();
         timerId = setInterval(() => {
             const diff = performance.now() - startTime;
@@ -110,6 +111,12 @@ function refreshHistoryList() {
     if (!container) return;
     container.innerHTML = ""; 
 
+    const rawHistory = localStorage.getItem('slp_history');
+    if (!rawHistory) {
+        container.innerHTML = '<div style="color:#666; padding:20px; text-align:center;">No Storage Data.</div>';
+        return;
+    }
+    
     const history = JSON.parse(localStorage.getItem('slp_history') || '[]');
     
     // フィルタリング：盤面サイズ(grid_size, sub_size)の一致のみを確認（モードは混ぜる）
@@ -197,28 +204,21 @@ function startAnalyzeMode() {
         slider.oninput = function(e) {
             const targetIdx = parseInt(e.target.value);
             
-            // --- 盤面の状態を targetIdx まで強制的に追いつかせる ---
-            // 1手ずつ「実行」することで board 配列の中身を書き換える
+            // 計算中は第3引数を true (isSilent) にして render() を完全に封じる
             while (window.currentReplayIdx < targetIdx) {
                 const moveStr = window.replaySteps[window.currentReplayIdx];
-                // isBack=false, isSilent=true(描画スキップ)で計算だけ実行
-                executeSingleMove(moveStr, false, true); 
+                executeSingleMove(moveStr, false, true); // ★ここで render() は走らない
                 window.currentReplayIdx++;
             }
             while (window.currentReplayIdx > targetIdx) {
                 window.currentReplayIdx--;
                 const moveStr = window.replaySteps[window.currentReplayIdx];
-                // isBack=true(逆回転)で計算だけ実行
-                executeSingleMove(moveStr, true, true); 
+                executeSingleMove(moveStr, true, true);  // ★逆方向も同様
             }
 
-            // --- 重要：計算が終わった後に「盤面」を再描画する ---
-            if (typeof render === 'function') {
-                render(); // これで board の中身が Canvas/DOM に反映される
-            }
-            
-            // カウンターやボタン状態の同期
-            updateReplayDisplay(); 
+            // 全ての計算（2回ずつの移動）が終わった後に、ここで「1回だけ」描画する
+            render(); 
+            updateReplayDisplay();
         };
     }
     
@@ -235,16 +235,54 @@ function startAnalyzeMode() {
 }
 
 function replayStepNext() {
-    if (!window.isReplayMode || window.currentReplayIdx >= window.replaySteps.length) return;
-    executeSingleMove(window.replaySteps[window.currentReplayIdx], false);
-    window.currentReplayIdx++;
+    if (!window.replaySteps || window.currentReplayIdx >= window.replaySteps.length) return;
+
+    const steps = window.replaySteps;
+    let i = window.currentReplayIdx;
+    const [firstLabel, firstAction] = steps[i].split('-');
+
+    // どこまで同じアクション（D1等）が続くかカウント
+    let count = 0;
+    while (i + count < steps.length) {
+        const [nextLabel, nextAction] = steps[i + count].split('-');
+        if (nextAction !== firstAction) break;
+        count++;
+        // 枠の最大数（3枠なら3）で止める場合はここを調整
+        if (count >= subSize * (gridNum / subSize)) { // 枠の構成数
+             // 実際には「同じアクションが連続する数」に任せるのが一番安全です
+        }
+    }
+
+    // まとめて実行（最後以外は silent）
+    for (let k = 0; k < count; k++) {
+        const isLast = (k === count - 1);
+        executeSingleMove(steps[window.currentReplayIdx], false, !isLast);
+        window.currentReplayIdx++;
+    }
+
     updateReplayDisplay();
 }
 
 function replayStepBack() {
-    if (!window.isReplayMode || window.currentReplayIdx <= 0) return;
-    window.currentReplayIdx--;
-    executeSingleMove(window.replaySteps[window.currentReplayIdx], true);
+    if (window.currentReplayIdx <= 0) return;
+
+    const steps = window.replaySteps;
+    let i = window.currentReplayIdx - 1;
+    const [firstLabel, firstAction] = steps[i].split('-');
+
+    let count = 0;
+    while (i - count >= 0) {
+        const [nextLabel, nextAction] = steps[i - count].split('-');
+        if (nextAction !== firstAction) break;
+        count++;
+    }
+
+    for (let k = 0; k < count; k++) {
+        const isLast = (k === count - 1);
+        window.currentReplayIdx--;
+        executeSingleMove(steps[window.currentReplayIdx], true, !isLast);
+    }
+
     updateReplayDisplay();
 }
 
@@ -618,6 +656,7 @@ function toggleLogPanel() {
             }
         }
     }
+    toggleMenu(false);
 }
 
 function loadFilteredHistory(data) {
@@ -666,8 +705,9 @@ function updateGimmickHistoryIcons(gimmicks) {
 
 /**
  * 記号（A-R1等）を解析して1手だけ動かす
+ * @param {boolean} isSilent - trueならrenderをスキップ
  */
-function executeSingleMove(moveStr, isReverseAction) {
+function executeSingleMove(moveStr, isReverseAction, isSilent = false) {
     const cmd = moveStr.trim().toLowerCase();
     if (!cmd.includes('-')) return;
 
@@ -675,17 +715,23 @@ function executeSingleMove(moveStr, isReverseAction) {
     let lineIdx = isNaN(label) ? label.charCodeAt(0) - 97 : parseInt(label) - 1;
     let isV = !isNaN(label);
     let dir = action[0].toUpperCase();
+
+    // --- ここを元に戻す（1つの棋譜命令に従う） ---
+    // もし棋譜の R1 が「1枠分」を指しているなら、ここが本来の移動量になります
     let steps = parseInt(action.substring(1)) * subSize;
 
-    // Backボタン時は方向を反転させる
     let finalRev = (dir === 'R' || dir === 'D');
     if (isReverseAction) finalRev = !finalRev;
 
+    // 棋譜に書かれた通りの回数分、配列を回す
     for (let i = 0; i < steps; i++) {
         moveLogic(lineIdx, isV, finalRev);
     }
-    render();
-    checkComplete();
+
+    // 1手分の処理が終わったら描画
+    if (!isSilent) {
+        render(); 
+    }
 }
 
 /**
