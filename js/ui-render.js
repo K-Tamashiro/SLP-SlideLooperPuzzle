@@ -1,6 +1,5 @@
 /**
  * メイン盤面描画（画像・動画・カラー完全統合版）
- * 1ブロック1メソッド：既存の render をこの内容で完全に置き換えてください。
  */
 function render() {
     const container = document.getElementById('board'); 
@@ -97,10 +96,21 @@ function render() {
                 };
 
                 cell.onmousedown = (e) => startAction(e.clientX, e.clientY, 'mouse', e);
-                cell.ontouchstart = (e) => {
+                const touchHandler = (e) => {
                     const touch = e.touches[0];
                     startAction(touch.clientX, touch.clientY, 'touch', e);
                 };
+
+                // passive: true を指定することでブラウザの警告を消し、スクロールを滑らかにします
+                cell.addEventListener('touchstart', (e) => {
+                    const touch = e.touches[0];
+                    startAction(touch.clientX, touch.clientY, 'touch', e);
+                }, { passive: true });
+
+                // マウスイベントも同様に
+                cell.addEventListener('mousedown', (e) => {
+                    startAction(e.clientX, e.clientY, 'mouse', e);
+                });
                 cell.oncontextmenu = (e) => {
                     e.preventDefault();
                     render();
@@ -160,36 +170,6 @@ function renderPreview() {
         // --- 3. カラーモード ---
         // ここで targetBoard の現在の並びに基づき描画を行う
         drawColorGrid(container);
-    }
-}
-
-/**
- * カラーモード用のグリッド描画（状態反映版）
- */
-function drawColorGridToContainer(container, currentBoardData, size) {
-    const n = subSize * gridNum;
-    const cellSize = size / n;
-    
-    container.style.display = 'grid';
-    container.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
-    container.style.gridTemplateRows = `repeat(${n}, 1fr)`;
-
-    for (let r = 0; r < n; r++) {
-        for (let c = 0; c < n; c++) {
-            const piece = currentBoardData[r][c];
-            const cell = document.createElement('div');
-            cell.style.width = '100%';
-            cell.style.height = '100%';
-            
-            // piece.value (Face番号) に基づいた色を適用
-            if (piece) {
-                const colors = ['#FF5733', '#33FF57', '#3357FF', '#F3FF33', '#FF33F3', '#33FFF3'];
-                cell.style.backgroundColor = colors[piece.value % colors.length];
-            } else {
-                cell.style.backgroundColor = '#333';
-            }
-            container.appendChild(cell);
-        }
     }
 }
 
@@ -295,22 +275,69 @@ function hideCompleteOverlays() {
 
 /**
  * ターゲット配色データから極小のHTMLプレビューアイコンを生成
+ * 数値配列とオブジェクト配列の両方に対応し、色の配置を正確に再現する
  */
 function createMiniPreview(state) {
-    if (!state) return '';
+    if (!state || !Array.isArray(state)) return '';
+    
     const size = state.length;
     const cellSize = 3; // アイコン内の1セルのpxサイズ
     
+    // グリッドレイアウトでターゲットの配色を再現
     let html = `<div style="display:grid; grid-template-columns:repeat(${size}, ${cellSize}px); gap:1px; background:#444; padding:1px; border-radius:1px;">`;
+    
     for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
-            // style.cssのc0, c1...クラスを流用
-            html += `<div class="c${state[r][c]}" style="width:${cellSize}px; height:${cellSize}px;"></div>`;
+            const entry = state[r][c];
+            let val;
+
+            // データの型を厳密に評価
+            if (entry !== null && typeof entry === 'object') {
+                // オブジェクト形式 {value: n, ...} の場合
+                val = entry.value;
+            } else {
+                // 数値単体の場合
+                val = entry;
+            }
+
+            // 抽出した数値に基づき、既存のCSSクラス(c0, c1...)を適用
+            // 数値が未定義の場合は透明または背景色
+            const colorClass = (val !== undefined && val !== null) ? `c${val}` : '';
+            html += `<div class="${colorClass}" style="width:${cellSize}px; height:${cellSize}px;"></div>`;
         }
     }
     html += `</div>`;
     return html;
 }
+
+/**
+ * 渡されたコンテナに、指定された状態(state)を描画する
+ * 既存の drawColorGrid のロジックをそのまま流用
+ */
+function drawStateToContainer(container, state) {
+    if (!container || !state) return;
+    container.innerHTML = '';
+    
+    const size = gridNum; 
+    // アイコンなので小さく。30pxの枠なら 30/gridNum
+    const cellSize = Math.floor(30 / size); 
+
+    container.style.display = 'grid';
+    container.style.gridTemplateColumns = `repeat(${size}, ${cellSize}px)`;
+    container.style.gap = '0';
+
+    // stateを1次元にしてループ
+    const flat = Array.isArray(state[0]) ? state.flat() : state;
+
+    flat.forEach(colorIdx => {
+        const cell = document.createElement('div');
+        cell.className = `c${colorIdx}`;
+        cell.style.width = `${cellSize}px`;
+        cell.style.height = `${cellSize}px`;
+        container.appendChild(cell);
+    });
+}
+
 /**
  * V2メディアパネルの表示/非表示を切り替え
  */

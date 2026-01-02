@@ -121,20 +121,29 @@ const mBtns = document.querySelectorAll('.m-group .m-btn');
 const backBtn = mBtns[0];
 const nextBtn = mBtns[2];
 
-if (backBtn && nextBtn) {
-    // PC用
-    backBtn.addEventListener('mousedown', () => startContinuousStep('back'));
-    nextBtn.addEventListener('mousedown', () => startContinuousStep('next'));
-    
-    // スマホ用：{ passive: true } を追加して警告を解消し、レスポンスを向上させる
-    backBtn.addEventListener('touchstart', (e) => { 
-        startContinuousStep('back'); 
-    }, { passive: true });
+// Ensure stopContinuousStep is globally available
+window.stopContinuousStep = function() {
+    if (autoStepInterval) {
+        clearTimeout(autoStepInterval);
+        clearInterval(autoStepInterval);
+        autoStepInterval = null;
+    }
+};
 
-    nextBtn.addEventListener('touchstart', (e) => { 
-        startContinuousStep('next'); 
-    }, { passive: true });
+// main.js 内のリプレイボタン制御
+// main.js のリプレイボタン部分
+if (backBtn && nextBtn) {
+    const touchOpts = { passive: true }; // これが重要
+
+    backBtn.addEventListener('touchstart', () => startContinuousStep('back'), touchOpts);
+    nextBtn.addEventListener('touchstart', () => startContinuousStep('next'), touchOpts);
+
+    // 画面のどこで指を離しても止まるように window に登録
+    ['mouseup', 'touchend', 'touchcancel'].forEach(evt => {
+        window.addEventListener(evt, window.stopContinuousStep, touchOpts);
+    });
 }
+
 window.isFlashMode = false;
 
 /**

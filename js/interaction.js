@@ -1,38 +1,101 @@
 /**
- * ドラッグ開始
+ * ドラッグ開始：警告の元となる振動を一旦停止し、確実に動かす
  */
 function handleStart(r, c, f, x, y, type, event) {
     if (isDragging) return;
-    isDragging = true; startX = x; startY = y; activeRow = r; activeCol = c;
+    isDragging = true; 
+    startX = x; 
+    startY = y; 
+    activeRow = r; 
+    activeCol = c;
     
     if (type === 'mouse') {
         moveMode = event.ctrlKey ? 'cheat' : (event.shiftKey ? 'frame' : 'standard');
         if (moveMode === 'frame') updateFrameHighlight(true);
     } else {
         moveMode = 'standard';
+
+        // 警告回避：ブラウザがクリックの瞬間でも拒否するため、一旦コメントアウトします
+        // try { if (navigator.vibrate) navigator.vibrate(10); } catch(e) {}
+        
+        if (longPressTimer) clearTimeout(longPressTimer);
         longPressTimer = setTimeout(() => { 
-            moveMode = 'frame'; 
-            if (navigator.vibrate) navigator.vibrate(50);
-            updateFrameHighlight(true); 
-        }, LONG_PRESS_MS);
+            if (isDragging && !dragAxis) { 
+                moveMode = 'frame';
+                updateFrameHighlight(true);
+            }
+        }, 250); 
     }
-    dragAxis = null; currentTranslate = 0;
+    dragAxis = null; 
+    currentTranslate = 0;
+}
+
+function updateFrameHighlight(isActive) {
+    let frame = document.getElementById('global-active-frame');
+    if (!frame) {
+        frame = document.createElement('div');
+        frame.id = 'global-active-frame';
+        document.body.appendChild(frame);
+    }
+
+    if (isActive && moveMode === 'frame') {
+        const fIdx = Math.floor(activeRow / subSize) * gridNum + Math.floor(activeCol / subSize);
+        const targetFace = document.getElementById(`face-${fIdx}`);
+        if (targetFace) {
+            const rect = targetFace.getBoundingClientRect();
+            
+            // 【雅な工夫】ピースより 4px 外側へ広げる
+            const offset = 4; 
+            
+            Object.assign(frame.style, {
+                display: 'block',
+                position: 'fixed',
+                zIndex: '3000',
+                pointerEvents: 'none',
+                // 座標をマイナスに、サイズをプラスにして「外側」を囲む
+                left: (rect.left - offset) + 'px',
+                top: (rect.top - offset) + 'px',
+                width: (rect.width + (offset * 2)) + 'px',
+                height: (rect.height + (offset * 2)) + 'px',
+                boxSizing: 'border-box',
+                
+                // 【視認性の真理】白を黒でサンドイッチする
+                border: '3px solid #ffffffff',      // メインの白枠
+                outline: '1px solid #000000',     // 白のさらに外側の黒い縁
+                boxShadow: 'inset 0 0 0 1px #000, 0 0 10px rgba(0,0,0,0.5)', // 白の内側にも黒縁、さらに外に影
+                
+                borderRadius: '6px'
+            });
+        }
+    } else {
+        if (frame) frame.style.display = 'none';
+    }
 }
 
 /**
- * ドラッグ移動
+ * ドラッグ移動：遊びを設けて長押しをキャンセルさせない
  */
 function handleMove(curX, curY) {
     if (!isDragging) return;
     const dx = curX - startX, dy = curY - startY;
+
     if (!dragAxis) {
-        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-            if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+        // デッドゾーン設定：10px動くまでは「静止」とみなして長押し判定を継続
+        const threshold = 10; 
+        if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+            // 閾値を超えたら長押しをキャンセル
+            if (longPressTimer) { 
+                clearTimeout(longPressTimer); 
+                longPressTimer = null; 
+            }
             dragAxis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
             createGhosts(dragAxis);
             if (moveMode === 'frame') updateFrameHighlight(true);
-        } else return;
+        } else {
+            return; // 遊びの範囲内なので何もしない
+        }
     }
+    
     currentTranslate = (dragAxis === 'h') ? dx : dy;
     const ts = (dragAxis === 'h') ? `translateX(${currentTranslate}px)` : `translateY(${currentTranslate}px)`;
     ghostStrips.forEach(s => s.style.transform = ts);
@@ -77,7 +140,7 @@ function endDrag() {
 }
 
 /**
- * ゴースト生成
+ * ゴースト生成：マージンと同期し、はみ出しを0にする修正版
  */
 function createGhosts(axis) {
     let indices = [];
@@ -88,9 +151,10 @@ function createGhosts(axis) {
         indices.push(axis === 'h' ? activeRow : activeCol);
     }
 
-    const wrapper = document.getElementById('board-wrapper');
+    // --- 修正箇所：基準を board-wrapper から board に変更 ---
+    const wrapper = document.getElementById('board'); 
     const wrapRect = wrapper.getBoundingClientRect();
-    const PADDING = 10;
+    const PADDING = 0; // マージン制御を直接反映させるため 0 に設定
 
     indices.forEach(idx => {
         const strip = document.createElement('div');
@@ -122,19 +186,13 @@ function createGhosts(axis) {
             cells.forEach((item, i) => {
                 const clone = item.el.cloneNode(true);
                 clone.style.opacity = '1';
-
-                // --- ★動画スナップショット適用ロジック ---
                 const originalCanvas = item.el.querySelector('canvas');
                 if (originalCanvas) {
-                    // クローン内の空のCanvasを削除
                     clone.querySelectorAll('canvas').forEach(c => c.remove());
-                    // 元のCanvasの現在の見た目をデータURLとして抽出
                     const dataUrl = originalCanvas.toDataURL();
                     clone.style.backgroundImage = `url(${dataUrl})`;
                     clone.style.backgroundSize = 'cover';
                 }
-                // ---------------------------------------
-
                 if (i > 0 && i % subSize === 0) {
                     if (axis === 'h') clone.style.marginLeft = `${GAP_FACE - GAP_CELL}px`;
                     else clone.style.marginTop = `${GAP_FACE - GAP_CELL}px`;
@@ -144,8 +202,9 @@ function createGhosts(axis) {
             return d;
         };
 
-        const boardW = wrapRect.width - (PADDING * 2);
-        const boardH = wrapRect.height - (PADDING * 2);
+        // --- 修正箇所：board 本体のサイズを基準にする ---
+        const boardW = wrapRect.width; 
+        const boardH = wrapRect.height;
 
         if (axis === 'v') {
             strip.style.flexDirection = 'column';
@@ -161,15 +220,6 @@ function createGhosts(axis) {
         ghostStrips.push(strip);
         cells.forEach(item => item.el.style.opacity = '0.2');
     });
-}
-
-function updateFrameHighlight(isActive) {
-    document.querySelectorAll('.face').forEach(f => f.classList.remove('active-frame'));
-    if (isActive && moveMode === 'frame') {
-        const fIdx = Math.floor(activeRow / subSize) * gridNum + Math.floor(activeCol / subSize);
-        const target = document.getElementById(`face-${fIdx}`);
-        if (target) target.classList.add('active-frame');
-    }
 }
 
 function resetDragState() {

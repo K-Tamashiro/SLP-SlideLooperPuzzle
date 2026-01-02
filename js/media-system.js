@@ -168,31 +168,37 @@ function refreshHistoryList() {
     window.currentFilteredHistory = filtered;
 }
 
+/**
+ * 解析モード開始：ターゲットの状態を起点としてリプレイを構築
+ */
 function startAnalyzeMode() {
     const solveLog = document.getElementById('solve-log').value;
     if (!solveLog) return;
     const timerDisplay = document.getElementById('timer-display');
     if (timerDisplay && window.currentLogTime) timerDisplay.textContent = window.currentLogTime;
     
-    //解析モードはログ保存オフ
+    // 解析モードはログ保存オフ
     setLogState(false);
 
     window.replaySteps = solveLog.split(',').filter(s => s.trim() !== "");
     window.currentReplayIdx = window.replaySteps.length; 
     window.isReplayMode = true;
 
-    // --- 修正：targetBoard を 100% そのまま board に写し取る ---
+    // --- 構造的修正：targetBoardの配色を維持しつつ、画像用の連番IDを再構築 ---
     const totalSize = subSize * gridNum;
     board = Array.from({ length: totalSize }, (_, r) => 
         Array.from({ length: totalSize }, (_, c) => {
-            // このマスが本来持つべき「絶対インデックス」を計算
-            // 例：4x4なら、左上(0,0)は0、その隣(0,1)は1...
-            const absoluteIndex = r * totalSize + c;
+            const absoluteIndex = r * totalSize + c; // 画像としての正しい位置ID
+            
+            // 当時のターゲットから「その位置にあるべきFace番号」を取得
+            const targetPiece = targetBoard[r][c];
+            const targetValue = (typeof targetPiece === 'object') ? targetPiece.value : targetPiece;
+            const targetDir = (typeof targetPiece === 'object') ? (targetPiece.direction || 0) : 0;
 
             return {
-                tileId: absoluteIndex, // renderが座標計算に使う数値
-                value: Math.floor(r / subSize) * gridNum + Math.floor(c / subSize), // Faceの数値
-                direction: 0
+                tileId: absoluteIndex, // 画像が綺麗に並ぶための連番
+                value: targetValue,    // 保存された当時の配色ターゲット
+                direction: targetDir   // 保存された当時の回転状態
             };
         })
     );
@@ -203,7 +209,6 @@ function startAnalyzeMode() {
         slider.max = window.replaySteps.length;
         slider.oninput = function(e) {
             const targetIdx = parseInt(e.target.value);
-            // 現在地から目標地点まで「描画なし(true)」で計算だけ実行
             while (window.currentReplayIdx < targetIdx) {
                 executeSingleMove(window.replaySteps[window.currentReplayIdx], false, true); 
                 window.currentReplayIdx++;
@@ -212,13 +217,12 @@ function startAnalyzeMode() {
                 window.currentReplayIdx--;
                 executeSingleMove(window.replaySteps[window.currentReplayIdx], true, true); 
             }
-            render(); // 最後に1回だけ描画
+            render(); 
             updateReplayDisplay(); 
         };
     }
     
     // --- 3. 重要：ログを逆順に全適用して「初期状態」まで戻す ---
-    // ここで isSilent=true を渡さないと画像描画がバグる原因になります
     while (window.currentReplayIdx > 0) {
         window.currentReplayIdx--;
         executeSingleMove(window.replaySteps[window.currentReplayIdx], true, true); 
@@ -226,7 +230,7 @@ function startAnalyzeMode() {
     
     toggleLogPanel();
     showMediaControls(true);
-    render(); // 初期状態を画像として描画
+    render(); 
     updateReplayDisplay();
 }
 
@@ -333,7 +337,7 @@ class MediaManager {
 
         const oldUrl = this.mediaSrc;
         const newUrl = URL.createObjectURL(file);
-        this.mediaSrc = newUrl; // 新しいURLに差し替え
+        this.mediaSrc = newUrl;
 
         try {
             if (file.type.startsWith('image/')) {

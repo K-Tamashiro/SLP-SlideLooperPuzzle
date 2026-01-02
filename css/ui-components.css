@@ -406,19 +406,78 @@ button {
 .scramble-composite-box {
     display: flex;
     align-items: center;
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid #444; /* 他のicon-btnの枠線と共通 */
+    gap: 4px; /* 入力欄とボタンの間の隙間 */
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid #0f0; /* 緑のボーダー */
     border-radius: 4px;
-    height: 38px; /* menu-panel内の他の要素と高さを揃える */
-    overflow: hidden;
-    box-sizing: border-box;
+    padding: 2px;
+    box-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
 }
 
+/* スピナー（数値入力フィールド）のネオン調スタイル */
+.scramble-number-field {
+    background: #000 !important; /* 灰色を廃止し黒に */
+    color: #0f0 !important; /* 文字をネオン緑に */
+    border: none !important; /* 親ボックスで線を描くため消す */
+    outline: none;
+    width: 45px;
+    text-align: center;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 14px;
+}
 
+/* Chrome/Safariなどのスピンボタン（上下矢印）を少し見やすく調整 */
+.scramble-number-field::-webkit-inner-spin-button,
+.scramble-number-field::-webkit-outer-spin-button {
+    filter: invert(1) hue-rotate(90deg) brightness(1.5); /* 矢印を緑っぽく調整 */
+    cursor: pointer;
+}
+
+/* セレクトボックスや他のボタンもネオン感を統一 */
+.neon-select, .icon-btn, .log-switch-btn {
+    border: 1px solid #0f0;
+    background: #000;
+    color: #0f0;
+    box-shadow: 0 0 5px rgba(0, 255, 0, 0.2);
+    transition: all 0.2s ease;
+}
+/* スクランブル実行ボタン自体の色をネオン調に固定 */
+.scramble-exec-btn {
+    background: transparent !important; /* 親の背景を活かす、または #000 */
+    border: none !important;            /* 親の枠線を使うのでボタン自身の枠は消す */
+    color: #0f0 !important;             /* アイコンの色をネオン緑に */
+    padding: 4px 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+/* ボタンの中のSVGアイコンのサイズ調整（必要に応じて） */
+.scramble-exec-btn svg {
+    width: 18px;
+    height: 18px;
+    filter: drop-shadow(0 0 2px rgba(0, 255, 0, 0.8)); /* アイコン自体を発光させる */
+}
+
+/* ホバー時の演出：発光を強くする */
 .scramble-exec-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #00f3ff; /* ネオンカラー */
+    background: rgba(0, 255, 0, 0.2) !important;
+    box-shadow: inset 0 0 5px rgba(0, 255, 0, 0.5);
 }
+
+/* アクティブ（クリック中）の演出 */
+.scramble-exec-btn:active {
+    transform: scale(0.9);
+    filter: brightness(1.5);
+}
+.neon-select:focus, .icon-btn:hover {
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.6);
+    background: rgba(0, 40, 0, 0.4);
+}
+
 
 .menu-panel {
     z-index: 10000 !important;
@@ -439,10 +498,10 @@ button {
     box-shadow: 0 0 15px #00ff41,    /* 外側の光 */
                 inset 0 0 10px #00ff41; /* 内側の光 */
     
-    padding: 5px;
+    padding: 5px 10px;
     width: 90%;
     max-width: 400px;
-    gap: 5px;
+    gap: 8px;
     justify-content: center;
     align-items: center;
 }
