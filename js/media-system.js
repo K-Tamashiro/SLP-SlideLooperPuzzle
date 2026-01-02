@@ -105,6 +105,7 @@ function saveSystemLog(isComplete = false) {
 
 /**
  * 履歴リストの表示更新（全モード混在・アイコン出し分け版）
+ * 1ブロック1メソッド：既存の refreshHistoryList をこの内容で完全に置き換えてください。
  */
 function refreshHistoryList() {
     const container = document.getElementById('history-list');
@@ -113,55 +114,58 @@ function refreshHistoryList() {
 
     const rawHistory = localStorage.getItem('slp_history');
     if (!rawHistory) {
-        container.innerHTML = '<div style="color:#666; padding:20px; text-align:center;">No Storage Data.</div>';
+        container.innerHTML = '<div class="history-empty">No Storage Data.</div>';
         return;
     }
 
-    const history = JSON.parse(localStorage.getItem('slp_history') || '[]');
+    const history = JSON.parse(rawHistory || '[]');
     
-    // フィルタリング：盤面サイズ(grid_size, sub_size)の一致のみを確認（モードは混ぜる）
+    // フィルタリング：盤面サイズの一致のみを確認
     const filtered = history.filter(h => {
         return Number(h.grid_size) === gridNum && Number(h.sub_size) === subSize;
     }).reverse();
 
     if (filtered.length === 0) {
-        container.innerHTML = '<div style="color:#666; padding:20px; text-align:center;">No history for this mode.</div>';
+        container.innerHTML = '<div class="history-empty">No history for this mode.</div>';
         return;
     }
 
-    container.innerHTML = filtered.map((data) => {
+    // 描画ループ
+    container.innerHTML = filtered.map((data, index) => {
         const entryId = data.timestamp; 
-        const dataStr = JSON.stringify(data).replace(/'/g, "\\'");
-
-        // 各ログデータに保存されているモード（media_mode）に基づいてアイコンを決定
+        
+        // アイコン決定
         let iconContent = "";
-        const logMode = data.media_mode || 'color'; // 保存されていない古いログはcolor扱い
+        const logMode = data.media_mode || 'color';
 
         if (logMode === 'image') {
-            iconContent = `<div style="font-size:20px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; background:#1a1a1a; border-radius:4px;" title="Image Mode">🖼️</div>`;
+            iconContent = `<div class="history-icon-box" title="Image Mode">🖼️</div>`;
         } else if (logMode === 'video') {
-            iconContent = `<div style="font-size:20px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; background:#1a1a1a; border-radius:4px;" title="Video Mode">▶️</div>`;
+            iconContent = `<div class="history-icon-box" title="Video Mode">▶️</div>`;
         } else {
-            // カラーモード：保存されている配色（target_state）からミニプレビューを生成
             iconContent = createMiniPreview(data.target_state);
         }
 
+        // HTML生成：JSオブジェクトの直接埋め込みを避け、data属性を使用する
         return `
-            <div class="history-item" style="display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #333; cursor:pointer;">
-                <div class="mini-target-icon" onclick='loadFilteredHistory(${dataStr})' style="flex-shrink:0;">
+            <div class="history-item" data-index="${index}">
+                <div class="mini-target-icon" onclick="loadHistoryByIndex(${index})">
                     ${iconContent}
                 </div>
-                <div style="font-size:14px; flex-shrink:0;">${data.is_complete ? "✅" : "⚠️"}</div>
-                <div style="flex-grow:1; font-size:12px;" onclick='loadFilteredHistory(${dataStr})'>
-                    <div style="color:#aaa;">${data.timestamp}</div>
-                    <div style="display:flex; justify-content:space-between;">
-                        <span style="color:#00ffcc; font-weight:bold;">${data.solve_time}</span>
-                        <span style="color:#888;">${data.step_count} steps</span>
+                <div class="history-status">${data.is_complete ? "✅" : "⚠️"}</div>
+                <div class="history-info" onclick="loadHistoryByIndex(${index})">
+                    <div class="history-date">${data.timestamp}</div>
+                    <div class="history-stats">
+                        <span class="history-time">${data.solve_time}</span>
+                        <span class="history-steps">${data.step_count} steps</span>
                     </div>
                 </div>
-                <button onclick="deleteHistoryEntry('${entryId}')" style="background:none; border:none; color:#e74c3c; cursor:pointer; font-size:16px;">🗑️</button>
+                <button class="history-delete-btn" onclick="deleteHistoryEntry('${entryId}')">🗑️</button>
             </div>`;
     }).join('');
+
+    // ※JS側でデータを引きやすくするため、filteredを一時的にグローバルへ保持
+    window.currentFilteredHistory = filtered;
 }
 
 function startAnalyzeMode() {
@@ -170,6 +174,9 @@ function startAnalyzeMode() {
     const timerDisplay = document.getElementById('timer-display');
     if (timerDisplay && window.currentLogTime) timerDisplay.textContent = window.currentLogTime;
     
+    //解析モードはログ保存オフ
+    setLogState(false);
+
     window.replaySteps = solveLog.split(',').filter(s => s.trim() !== "");
     window.currentReplayIdx = window.replaySteps.length; 
     window.isReplayMode = true;
@@ -738,54 +745,51 @@ function showMediaControls(show) {
     }
 }
 
+/**
+ * リプレイ表示の更新（解析モード専用：コンプリート表示を抑制）
+ * 1ブロック1メソッド：既存の updateReplayDisplay をこの内容で完全に置き換えてください。
+ */
 function updateReplayDisplay() {
     const idxEl = document.getElementById('replay-index');
     const totalEl = document.getElementById('replay-total');
     const moveEl = document.getElementById('current-move-display');
-    const slider = document.getElementById('analyze-slider'); // スライダーを取得
+    const slider = document.getElementById('analyze-slider');
 
     const boardCounter = document.getElementById('move-count') || document.getElementById('counter-display');
 
     if (idxEl) idxEl.innerText = window.currentReplayIdx;
     if (totalEl) totalEl.innerText = window.replaySteps.length;
     
-    // --- 【追加】スライダーのつまみの位置を同期 ---
     if (slider) {
         slider.value = window.currentReplayIdx; 
     }
     
     if (boardCounter) {
         boardCounter.innerText = window.currentReplayIdx.toString().padStart(4, '0');
-        moveCount = window.currentReplayIdx; //
+        moveCount = window.currentReplayIdx;
     }
     
-    const isComplete = (window.currentReplayIdx === window.replaySteps.length);
-    const isLogVisible = document.getElementById('log-overlay').style.display === 'block';
+    const isLastStep = (window.currentReplayIdx === window.replaySteps.length);
 
     if (moveEl) {
-        // 次に打つべき手を表示（完了時はCOMPLETE）
-        moveEl.innerText = isComplete ? "COMPLETE" : (window.replaySteps[window.currentReplayIdx] || "END");
-    }
-    if (boardCounter) {
-        // 4桁表示を確定
-        boardCounter.innerText = window.currentReplayIdx.toString().padStart(4, '0');
-        moveCount = window.currentReplayIdx; 
+        moveEl.innerText = isLastStep ? "FINISHED" : (window.replaySteps[window.currentReplayIdx] || "END");
     }
     
     if (slider) {
-        // ここでも max を同期させておけば、100で止まることはありません
         slider.max = window.replaySteps.length;
         slider.value = window.currentReplayIdx;
     }
+
     const nextBtn = document.querySelector('button[onclick="replayStepNext()"]');
     const backBtn = document.querySelector('button[onclick="replayStepBack()"]');
-    if (nextBtn) nextBtn.disabled = isComplete;
+    if (nextBtn) nextBtn.disabled = isLastStep;
     if (backBtn) backBtn.disabled = (window.currentReplayIdx <= 0);
 
-    if (isComplete && !isLogVisible) {
-        document.getElementById('status-board')?.classList.add('show');
-    } else {
-        document.getElementById('status-board')?.classList.remove('show');
+    // --- 修正：解析モード時は isComplete であっても status-board を表示しない ---
+    // 既存の演出コードを削除、または強制的に remove します
+    const statusBoard = document.getElementById('status-board');
+    if (statusBoard) {
+        statusBoard.classList.remove('show');
     }
 }
 

@@ -1,0 +1,371 @@
+/* --- レイアウト全体 --- */
+.content-wrapper {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
+}
+
+/* --- ヘッダー・タイトル (追加：センタリング) --- */
+.main-header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 50px;
+}
+.title-container {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    z-index: 1;
+    cursor: pointer;
+}
+
+/* --- メニューパネル (追加：ボタンサイズ適正化) --- */
+.menu-panel #log-switch-btn,
+.menu-panel .icon-btn,
+.menu-panel .neon-select,
+.menu-panel .scramble-number-field,
+.menu-panel .scramble-exec-btn {
+    height: 28px !important;
+    padding: 2px 6px !important;
+    font-size: 11px !important;
+    box-sizing: border-box !important;
+}
+.menu-panel svg { width: 16px !important; height: 16px !important; }
+
+/* --- Game Area (元の比率を完全維持) --- */
+.game-area {
+    margin-top: 5px;
+    display: grid;
+    grid-template-areas: ". axis-top" "axis-left board";
+    gap: 10px;
+    align-items: start;
+}
+
+.axis-h { grid-area: axis-top; display: grid; gap: 10px; justify-items: center; }
+.axis-v { grid-area: axis-left; display: grid; gap: 10px; align-items: center; }
+.axis-group-h { display: grid; gap: 2px; justify-items: center; }
+.axis-group-v { display: grid; gap: 2px; align-items: center; }
+
+.coord-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #bbb;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.board-wrapper {
+    grid-area: board;
+    background: #000;
+    padding: 0px;
+    border-radius: 8px;
+    position: relative;
+    width: fit-content;
+    overflow: hidden !important;
+}
+
+/* 念のため、グリッドコンテナ自体の位置も確定 */
+.grid-container {
+    display: grid;
+    width: max-content;
+    margin: 0 auto;
+    position: relative; /* ゴーストの描画基準 */
+}
+
+/* ゴースト自体の設定（位置計算がズレないよう維持） */
+.ghost-strip {
+    position: absolute;
+    display: flex;
+    gap: 0;
+    z-index: 100;
+    pointer-events: none;
+    will-change: transform;
+}
+
+.cell { border-radius: 3px; cursor: grab; }
+
+/* --- Face & Highlight (元の定義を維持) --- */
+.face {
+    display: grid;
+    gap: 2px;
+    position: relative;
+    box-sizing: border-box;
+    transition: box-shadow 0.2s ease, outline 0.2s ease;
+}
+
+.face.active-frame {
+    z-index: 2000;
+    outline: 4px solid #FFFFFF;
+    outline-offset: 2px;
+    border-radius: 4px;
+    box-shadow: 0 0 25px rgba(255, 255, 255, 1), 0 0 50px rgba(255, 255, 255, 0.5);
+}
+
+/* --- サイドパネル (PC版) --- */
+.side-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    width: 135px !important; 
+}
+
+.preview-area {
+    width: 100%;
+    padding: 8px 12px 8px 8px;
+    background: rgba(34, 34, 34, 0.6);
+    border: 1px solid #444;
+    border-radius: 8px;
+    box-sizing: border-box;
+}
+
+#preview {
+    width: 80px !important;
+    height: auto;
+    margin: 0;
+    display: block;
+}
+
+.stats-display {
+    width: 100%;
+    padding: 10px;
+    background: rgba(34, 34, 34, 0.6);
+    border: 1px solid #444;
+    border-radius: 8px;
+    box-sizing: border-box;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    font-family: monospace;
+    font-size: 12px;
+    margin-bottom: 4px;
+}
+
+.action-icons {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    width: 100%;
+    margin-top: 8px;
+}
+
+/* 1. RECボタン（log-switch-btn） */
+.menu-panel #log-switch-btn {
+    height: 28px !important;
+    padding: 0 8px !important;
+    font-size: 11px !important;
+    line-height: 28px !important;
+    white-space: nowrap !important;
+}
+
+/* 2. LOG表示・スクランブル実行ボタン（icon-btn, scramble-exec-btn） */
+.menu-panel .icon-btn,
+.menu-panel .scramble-exec-btn {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    padding: 4px !important;
+    box-sizing: border-box !important;
+}
+
+/* 3. セレクトボックス・数値入力欄 */
+.menu-panel .neon-select,
+.menu-panel .scramble-number-field {
+    height: 28px !important;
+    font-size: 11px !important;
+    padding: 0 4px !important;
+    box-sizing: border-box !important;
+}
+
+/* 4. ボタンの中のSVGアイコンがはみ出さないように固定 */
+.menu-panel svg {
+    width: 16px !important;
+    height: 16px !important;
+    display: block;
+    margin: auto;
+}
+.mode-selector {
+	display: flex;
+	gap: 5px;
+}
+
+.menu-log {
+	max-width: 28px;
+
+}
+
+#mode-select {
+	font-size: 14px;
+	min-width: 48px;
+	max-width: 100%;
+	background-color: #001400; /* プルダウン展開時の背景 */
+    color: #00ff41;            /* プルダウン展開時の文字色 */
+	outline: none;
+}
+
+#mode-select:focus {
+	border-color: #d35400;
+}
+
+.action-group {
+	display: flex;
+	gap: 5px;
+	align-items: center;
+}
+/* 数値入力ボックスのスタイル調整 */
+
+#scramble-count {
+	width: 45px;
+	background: #333;
+	color: white;
+	border: 1px solid #555;
+	padding: 6px;
+	border-radius: 4px;
+	text-align: center;
+}
+
+.menu-panel.hidden {
+	display: none !important;
+}
+
+.active-mode {
+	background: #d35400 !important;
+	font-weight: bold;
+}
+
+#shuffle-btn {
+	background: #27ae60;
+	font-weight: bold;
+}
+
+.content-wrapper {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	flex-wrap: wrap;
+	justify-content: center;
+	width: 100%;
+	max-width: 100vw;
+	box-sizing: border-box;
+}
+.replay-status {
+    width: 100%;
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+/* --- 5. ボタン光エフェクト (常時発光とトグルの優先順位修正) --- */
+
+/* 基本：常時緑に光るボタン */
+.icon-btn {
+    width: 100% !important;
+    aspect-ratio: 1 / 1;
+    background: #111;
+    border: 1px solid #0f0 !important;
+    padding: 8px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    /* 常時の緑ネオン */
+    box-shadow: 0 0 8px #0f0, inset 0 0 4px #0f0 !important;
+    transition: all 0.2s ease;
+    position: relative !important;
+}
+
+/* 回転・リセット等の「赤いボタン」の基本状態 */
+.icon-btn.rotate-btn, 
+.icon-btn[onclick*="reset"],
+.icon-btn[onclick*="shuffle"] {
+    border-color: #f00 !important;
+    box-shadow: 0 0 8px #f00, inset 0 0 4px #f00 !important;
+}
+
+/* 有効時（赤色に発光し続ける） */
+.icon-btn.active-toggle-red,
+.icon-btn.rotate-btn.active {
+    background: #9c2121 !important;
+    border-color: #ff0000 !important;
+    box-shadow: 0 0 15px rgba(255, 0, 0, 0.8), inset 0 0 10px rgba(255, 0, 0, 0.5) !important;
+}
+/* 有効時（緑色に発光し続ける） */
+.icon-btn.active-toggle,
+.icon-btn.active {
+    background: #17a217 !important;
+    border-color: #00ff00 !important;
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.8), inset 0 0 10px rgba(0, 255, 0, 0.5) !important;
+}
+
+/* ホバー時の反応 */
+.icon-btn:hover {
+    filter: brightness(1.2);
+}
+
+/* アイコンの色を現在の発光色（緑か赤）に追従させる */
+.icon-btn svg {
+    stroke: currentColor !important;
+}
+
+/* --- スマホ版 (元の数値を完全維持) --- */
+@media screen and (max-width: 768px) {
+    .side-panel {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        align-items: flex-start !important;
+        justify-content: center;
+        width: 100% !important;
+        margin: 10px auto !important;
+        gap: 8px;
+    }
+
+    .preview-area {
+        flex: 0 0 auto !important;
+        width: fit-content !important; 
+        padding: 4px !important;
+        min-width: 0;
+    }
+
+    .stats-display {
+        flex: 0 0 160px !important; 
+        padding: 5px !important;
+        margin-left: 0 !important;
+    }
+
+    .action-icons {
+        display: grid !important;
+        grid-template-columns: repeat(4, 34px) !important;
+        gap: 4px !important;
+        width: fit-content;
+    }
+
+    .icon-btn {
+        width: 37px !important;
+        height: 37px !important;
+        padding: 4px !important;
+    }
+
+    /* data-label の中身（LやS）を疑似要素として描画 */
+    .icon-btn[data-label]::after {
+        /* 見た目：どーんと大きく、かつアイコンも見えるように */
+        font-size: 20px !important; /* ボタンサイズに合わせて調整 */
+        font-family: "Arial Black", sans-serif !important;
+        font-weight: 900 !important;
+    }
+}

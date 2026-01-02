@@ -8,7 +8,10 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="icon" href="favicon.ico">
 	<title>SLP-SlideLooperPuzzle2</title>
-	<link rel="stylesheet" href="style.css?v=1.0.0">
+	<link rel="stylesheet" href="css/base-theme.css?v=1.0.0">
+	<link rel="stylesheet" href="css/board-layout.css?v=1.0.0">
+	<link rel="stylesheet" href="css/gimmick-effects.css?v=1.0.0">
+	<link rel="stylesheet" href="css/ui-components.css?v=1.0.0">
 	<link rel="manifest" href="manifest.json">
 	<script>
 		if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
@@ -34,7 +37,7 @@
 			<span id="log-check-icon">☑</span> REC
 		</button>
 
-		<button class="icon-btn" onclick="toggleLogPanel()" title="View LOG">
+		<button id="menu-log" class="icon-btn" onclick="toggleLogPanel()" title="View LOG">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 				<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
 				<polyline points="14 2 14 8 20 8"></polyline>
@@ -83,20 +86,20 @@
 			<button class="m-btn" onclick="replayStepNext()">Next ▶</button>
 		</div>
 		<div class="replay-status">
-			<div class="analyze-slider-container" style="margin: 10px 0; text-align: center;">
-				<input type="range" id="analyze-slider" min="0" value="0"
-					style="width: 100%; cursor: pointer; pointer-events: auto; position: relative; z-index: 10001;">
+			<div class="analyze-slider-container">
+				<input type="range" id="analyze-slider" min="0" value="0" 
+					aria-label="Replay seek bar">
 			</div>
-			<span id="current-move-display"
-				style="font-weight:bold; margin-right:10px; min-width:50px; display:inline-block; text-align:center;">---</span>
-			STEP: <span id="replay-index">0</span> / <span id="replay-total">0</span>
+			<div class="replay-info-text">
+				<span id="current-move-display">---</span>
+				<span class="step-label">STEP: <span id="replay-index">0</span> / <span id="replay-total">0</span></span>
+			</div>
 		</div>
 	</div>
 	<div id="v2-media-uploader" class="media-overlay-top"
 		style="display: none; border: 1px solid #0f0; background: rgba(0, 40, 0, 0.9); box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);">
 		<div class="m-group">
-			<input type="file" id="media-upload" accept="image/*,video/*" style="display: none;"
-				onchange="handleMediaUpload(event)">
+			<input type="file" id="media-upload" accept="image/*,video/*" style="display: none;" onchange="handleMediaUpload(event)" aria-label="Upload image or video file">
 			<button class="m-btn" onclick="document.getElementById('media-upload').click()">📁 Load</button>
 			<button class="m-btn stop" onclick="resetToColorMode()">🎨 Reset</button>
 		</div>
@@ -140,7 +143,8 @@
 			</p>
 		</div>
 	</div>
-	<input type="file" id="v2-video-input" accept="video/*" onchange="handleVideoUpload(event)" style="display:none;">
+	<input type="file" id="v2-video-input" accept="video/*" onchange="handleVideoUpload(event)" 
+       style="display:none;" aria-label="Video upload">
 
 	<div id="log-overlay" class="overlay">
 		<div class="log-panel">
@@ -194,8 +198,8 @@
 			</div>
 
 			<button class="close-btn" onclick="toggleLogPanel()">Close</button>
-			<input type="file" id="import-input" style="display:none" onchange="importCSV(event)">
-			<input type="file" id="restore-input" style="display:none" onchange="restoreHistory(event)">
+			<input type="file" id="import-input" style="display:none" onchange="importCSV(event)" aria-label="Import CSV">
+			<input type="file" id="restore-input" style="display:none" onchange="restoreHistory(event)" aria-label="Restore history">
 		</div>
 	</div>
 

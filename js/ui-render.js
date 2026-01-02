@@ -1,5 +1,6 @@
 /**
  * メイン盤面描画（画像・動画・カラー完全統合版）
+ * 1ブロック1メソッド：既存の render をこの内容で完全に置き換えてください。
  */
 function render() {
     const container = document.getElementById('board'); 
@@ -40,23 +41,17 @@ function render() {
 
                 // --- メディア状態の取得 ---
                 const mm = window.mediaManager;
-                // 有効なリソースURLが存在するか厳格にチェック
                 const hasValidMedia = mm && mm.mediaSrc && mm.mediaSrc !== "";
 
                 if (hasValidMedia) {
-                    // 正解位置（ソース画像上の座標）の計算
                     const originalFace = value;
                     const faceR = Math.floor(originalFace / gridNum);
                     const faceC = originalFace % gridNum;
                     const originalAbsRow = faceR * subSize + r;
                     const originalAbsCol = faceC * subSize + c;
-                    const originalAbsValue = originalAbsRow * totalCells + originalAbsCol;
 
-                    // --- モード別描画分岐 ---
                     if (mm.mode === 'video') {
-                        // 動画モード：Canvasを生成して描画対象にする
                         const canvas = document.createElement('canvas');
-                        
                         canvas.className = 'video-tile-canvas';
                         canvas.dataset.origR = originalAbsRow;
                         canvas.dataset.origC = originalAbsCol;
@@ -65,16 +60,12 @@ function render() {
                         cell.classList.add('video-tile');
                     } 
                     else if (mm.mode === 'image' && window.rotationManager) {
-                        const piece = board[row][col];
-                        const tId = piece.tileId; // パーツ固有の正解位置ID
-
+                        const tId = piece.tileId;
                         const canvas = document.createElement('canvas');
                         canvas.width = canvas.height = cellSizePixel;
                         const ctx = canvas.getContext('2d');
-
                         const totalCells = subSize * gridNum;
                         
-                        // tileId（初期のr*totalSize+c）からソース画像上の絶対行・列を算出
                         const origAbsR = Math.floor(tId / totalCells);
                         const origAbsC = tId % totalCells;
 
@@ -92,13 +83,11 @@ function render() {
                         cell.appendChild(canvas);
                     }
                 } else {
-                // カラーモード（リセット時やメディア未選択時）
                     cell.classList.add(`c${value}`);
                 }
 
                 // --- イベント制御（フラッシュ & ドラッグ） ---
                 const startAction = (clientX, clientY, type, e) => {
-                    // 1. フラグが物理的に TRUE の場合のみ実行
                     if (window.isFlashMode === true) {
                         if (typeof triggerFlash === 'function') {
                             triggerFlash(value);
@@ -114,7 +103,7 @@ function render() {
                 };
                 cell.oncontextmenu = (e) => {
                     e.preventDefault();
-                    render(); // 再描画
+                    render();
                 };
                 faceEl.appendChild(cell);
             }
@@ -132,7 +121,7 @@ function renderPreview() {
     container.innerHTML = '';
 
     // --- 1. サイズとアスペクト比の絶対固定 ---
-    const fixedSize = 130;
+    const fixedSize = 115;
     const style = container.style;
     style.width = style.height = style.minWidth = style.minHeight = style.maxWidth = style.maxHeight = `${fixedSize}px`;
     style.overflow = 'hidden';
@@ -257,11 +246,12 @@ function renderCoordinates() {
 
 /**
  * インターフェースのロック制御
+ * 1ブロック1メソッド：既存の setInterfaceLock を完全に置き換え、元の状態に戻します。
  */
 function setInterfaceLock(isLocked) {
     const targetSelectors = [
         'button[onclick="copyCurrentToTarget()"]',
-        'button[onclick="startRotateCountdown()"]', // 後で個別制御
+        'button[onclick="startRotateCountdown()"]',
         'button[onclick="toggleFlash()"]',
         'button[onclick="toggleSearchlight()"]',
         'button[onclick="toggleV2Panel()"]',
@@ -373,5 +363,25 @@ function stopContinuousStep() {
         clearTimeout(autoStepInterval);
         clearInterval(autoStepInterval);
         autoStepInterval = null;
+    }
+}
+
+/**
+ * 履歴のインデックスからデータをロード（JSONエスケープエラー回避用）
+ * 1ブロック1メソッド：新規追加してください。
+ */
+function loadHistoryByIndex(index) {
+    if (!window.currentFilteredHistory || !window.currentFilteredHistory[index]) {
+        console.error("History data not found for index:", index);
+        return;
+    }
+    
+    const data = window.currentFilteredHistory[index];
+    
+    // 既存の履歴ロード関数（loadFilteredHistory）を呼び出す
+    if (typeof loadFilteredHistory === 'function') {
+        loadFilteredHistory(data);
+    } else {
+        console.warn("loadFilteredHistory is not defined.");
     }
 }

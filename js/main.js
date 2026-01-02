@@ -295,18 +295,7 @@ function restoreHistory(event) {
             
             // リスト更新を強制実行
             refreshHistoryList();
-            // --- メッセージ復活：alertの代わりにこれを入れる ---
-            const statusElement = document.getElementById('status-board');
-            if (statusElement) {
-                statusElement.textContent = "History restored: " + limitedHistory.length + " entries";
-                statusElement.classList.add('show');
-                setTimeout(() => statusElement.classList.remove('show'), 3000);
-            } else {
-                // もし要素がなければ、最低限 console で成功を知らせる
-                console.log("History restored successfully.");
-                // または一時的に alert を戻して動作確認
-                // alert("History restored."); 
-            }
+
         } catch (err) {
             console.error("Restore failed:", err);
         } finally {
@@ -329,6 +318,8 @@ function toggleReplayMode() {
         // メディアコントロールが表示されていたら消す（解析モード終了）
         window.isReplayMode = false;
         showMediaControls(false);
+        // 解析モードを閉じる時 ログ保存をオンにする
+        setLogState(true);
         
         if (window.autoPlayTimer) {
             clearInterval(window.autoPlayTimer);
@@ -342,6 +333,7 @@ function toggleReplayMode() {
         toggleLogPanel();
     }
 }
+
 /**
  * ログ記録スイッチの切り替え（アイコンボタン版）
  */
@@ -359,6 +351,37 @@ function toggleLogSwitch() {
         if (timerId) toggleTimer(false);
         btn.classList.remove('active-rec');
         icon.innerText = "☐"; // チェックなし
+        if (typeof addLog === 'function') addLog("Recording disabled.");
+    }
+}
+
+/**
+ * ログ記録状態を外部から強制指定する
+ * @param {boolean} isEnabled - trueでON、falseでOFF
+ * 1ブロック1メソッド：これを追加して外部制御に使用してください。
+ */
+function setLogState(isEnabled) {
+    // 現在の状態と同じなら何もしない（無駄な処理を省く）
+    if (isLogEnabled === isEnabled) return;
+
+    // 状態を更新
+    isLogEnabled = isEnabled;
+    
+    const btn = document.getElementById('log-switch-btn');
+    const icon = document.getElementById('log-check-icon');
+
+    if (isLogEnabled) {
+        // --- 強制ONの処理 ---
+        if (btn) btn.classList.add('active-rec');
+        if (icon) icon.innerText = "☑";
+        if (typeof addLog === 'function') addLog("Recording enabled.");
+    } else {
+        // --- 強制OFFの処理 ---
+        if (timerId && typeof toggleTimer === 'function') {
+            toggleTimer(false);
+        }
+        if (btn) btn.classList.remove('active-rec');
+        if (icon) icon.innerText = "☐";
         if (typeof addLog === 'function') addLog("Recording disabled.");
     }
 }

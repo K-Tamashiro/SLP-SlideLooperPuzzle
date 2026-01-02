@@ -1,0 +1,119 @@
+/* --- Base Styles --- */
+body {
+    background: #121212;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: white;
+    font-family: sans-serif;
+    margin: 0;
+    padding: 10px;
+    -webkit-user-select: none; /* Safari, iOS用警告解消 */
+    user-select: none;         /* 標準 */
+    touch-action: none;
+    overflow-x: hidden;
+}
+
+/* タイトル要素の余白をリセット */
+.title-text {
+    font-family: 'Segoe UI', sans-serif; /* あるいは近未来的なフォント */
+    font-weight: bold;
+    color: #00ff41;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+
+    /* ネオン発光：色の層を重ねる */
+    text-shadow: 
+        0 0 5px #00ff41,
+        0 0 10px #00ff41,
+        0 0 20px #00ff41;
+}
+
+.title-text {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis; /* 幅を超えた場合に「...」にする */
+    font-size: 16px; /* 364px内で収まりやすいサイズ */
+    color: #00ff41;
+    text-shadow: 0 0 8px #00ff41;
+}
+
+p[onclick] {
+    margin: 0;
+    padding: 10px 0;/* 必要に応じてタイトル周りのみの余白を調整 */
+}
+
+/* --- 16 Colors for Advance Mode --- */
+.c0 { background: #FFD700; } /* Gold */
+.c1 { background: #1E90FF; } /* DodgerBlue */
+.c2 { background: #800080; } /* Purple */
+.c3 { background: #FF8C00; } /* DarkOrange */
+.c4 { background: #FFFFFF; } /* White */
+.c5 { background: #FF0000; } /* Red */
+.c6 { background: #00CED1; } /* DarkTurquoise */
+.c7 { background: #008000; } /* Green */
+.c8 { background: #FF69B4; } /* HotPink */
+.c9 { background: #4D4D4D; } /* 暗いグレー (背景#121212に紛れない設定) */
+.c10 { background: #CCFF00; } /* ネオンライム (Neon Lime) */
+.c11 { background: #E28B5E; } /* 小麦色 (濃い肌色) */
+.c12 { background: #A52A2A; } /* 赤茶色 (Brown) */
+.c13 { background: #32CD32; } /* ライム (Lime / 指定順序に基づき調整) */
+.c14 { background: #FF1493; } /* ネオンピンク (Deep Pink) */
+.c15 { background: #000080; } /* 紺色 (Navy) */
+#timer-display, #counter-display {
+	color: #0f0;
+	font-size: 16px;
+	font-weight: bold;
+}
+
+#log-current-mode {
+    color: #0f0;
+    text-shadow: 0 0 5px rgba(0, 255, 0, 0.7);
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+#timer-display, #counter-display {
+	color: #0f0;/* 緑色のデジタル文字 */
+	font-size: 18px;
+	font-weight: bold;
+}
+
+.key-indicator {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #444;
+    color: #888;
+    font-size: 0.9em;
+    margin: 0 2px;
+    transition: all 0.1s ease; /* 反応速度を優先 */
+    border: 1px solid transparent;
+}
+
+/* キー押下時の点灯スタイル */
+.key-indicator.key-active {
+    background: #008800; /* 濃い緑 */
+    color: #0f0;         /* ネオングリーン */
+    border-color: #0f0;
+    box-shadow: 0 0 10px #0f0;
+    transform: translateY(-1px);
+}
+/* --- ZEROエラー維持用の隠し設定 --- */
+.v-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* 既存のreplay-statusとの混同を避ける */
+#current-v2-mode {
+    color: #00ffcc;
+    font-weight: bold;
+}

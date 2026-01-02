@@ -349,7 +349,7 @@ function applySearchlightMask(x, y) {
 }
 
 /**
- * 修正版 toggleSearchlight
+ * toggleSearchlight
  */
 function toggleSearchlight() {
     const sizes = [0, 80, 130, 180];
@@ -392,4 +392,16 @@ function toggleSearchlight() {
 function updateSearchlight(x, y) {
     if (!window.isSearchlightMode || !timerId) return;
     applySearchlightMask(x, y);
+}
+
+/**
+ * サーチライトのボタンに残った文字列(S/M/L)のみを物理的に消去する
+ */
+function resetSearchlight() {
+    const btn = document.querySelector('button[onclick="toggleSearchlight()"]');
+    if (btn) {
+        window.slRadius = 0;
+        btn.classList.toggle('active-toggle', window.isSearchlightMode);
+        btn.setAttribute('data-label', "");
+    }
 }

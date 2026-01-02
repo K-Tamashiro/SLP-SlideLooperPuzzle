@@ -192,9 +192,15 @@ function shuffle() {
 }
 
 /**
- * 判定（合理性・視覚整合性を担保した最新版）
+ * 判定（解析モード時はスキップ版）
+ * 1ブロック1メソッド：既存の checkComplete をこの内容で完全に置き換えてください。
  */
 function checkComplete() {
+    // --- 1. 解析モード中、またはログ無効時は一切の判定を行わない（追加） ---
+    if (window.isReplayMode || !isLogEnabled) {
+        return; 
+    }
+
     if (!board || !targetBoard) return; 
     const mm = window.mediaManager;
     const totalSize = subSize * gridNum;
@@ -205,7 +211,7 @@ function checkComplete() {
     const baseDir = (firstPiece && typeof firstPiece === 'object') ? (firstPiece.direction % 4) : 0;
     let isDirectionUnified = true;
 
-    // --- 1. 現状の抽出 ---
+    // --- 2. 現状の抽出 ---
     for (let r = 0; r < totalSize; r++) {
         for (let c = 0; c < totalSize; c++) {
             const p = board[r][c];
@@ -222,16 +228,11 @@ function checkComplete() {
     let isComplete = false;
 
     if (mm && mm.mode === 'color') {
-        // --- カラーモード：視覚的一致を絶対視する ---
-        // ターゲットビューの配色配列（112233...）と、
-        // 盤面の「現在の色の並び（value）」が完全一致した時のみコンプリート。
-        // これにより、回転中であっても「見た目がターゲットと同じ」なら即座に判定。
         const currentStr = currentValues.join(',');
         const targetStr = targetBoard.flat().map(t => (typeof t === 'object' ? t.value : t)).join(',');
         isComplete = (currentStr === targetStr);
         
     } else {
-        // --- 画像・動画モード：4つの回転パターンのいずれかに一致 ---
         if (isDirectionUnified) {
             const currentIdStr = currentIds.join(',');
             const correctIdStr = getTargetIndices(baseDir);
@@ -241,29 +242,27 @@ function checkComplete() {
         }
     }
 
-    // --- 演出・ガード条件（既存のものを完全担保） ---
+    // --- 演出・ガード条件 ---
     if (isComplete && !skipCompleteOnce) {
-        if (window.isReplayMode || !isLogEnabled) return;
+        // 二重チェック：演出直前でも Replay モードなら抜ける
+        if (window.isReplayMode) return;
+
         if (typeof toggleTimer === 'function') toggleTimer(false);
         if (window.rotateTimerId && typeof startRotateCountdown === 'function') {
             startRotateCountdown();
         }
         if (typeof saveSystemLog === 'function') saveSystemLog(true); 
-        // --- 追記：履歴リストの即時更新 ---
-        // saveSystemLogで保存された直後のlocalStorageからリストを再生成する
+        
         if (typeof updateHistoryList === 'function') {
-            // 保存処理との競合を避けるため、極小のディレイを挟むとより確実です
             setTimeout(() => {
                 updateHistoryList(); 
-                console.log("History list updated via completion.");
             }, 100);
         }
-        // ----------------------------------
-        // 既存の演出処理の末尾に追加
+
         if (completeTimerId) clearTimeout(completeTimerId);
         completeTimerId = setTimeout(() => {
             hideCompleteDisplay();
-        }, 5000); // 5秒後に消去
+        }, 5000);
 
         document.getElementById('status-board')?.classList.add('show');
         document.getElementById('status-preview')?.classList.add('show');
@@ -352,6 +351,7 @@ function resetStats() {
     if (overlay) {
         overlay.remove();
     }
+    resetSearchlight();
 
     // 4. コンプリート表示（status-board / status-preview）を確実に消去
     hideCompleteOverlays();
