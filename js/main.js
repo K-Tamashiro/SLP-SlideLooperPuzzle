@@ -130,17 +130,21 @@ window.stopContinuousStep = function() {
     }
 };
 
-// main.js 内のリプレイボタン制御
-// main.js のリプレイボタン部分
 if (backBtn && nextBtn) {
-    const touchOpts = { passive: true }; // これが重要
+    const touchOpts = { passive: true };
 
+    // PC用クリック開始
+    backBtn.addEventListener('mousedown', () => startContinuousStep('back'));
+    nextBtn.addEventListener('mousedown', () => startContinuousStep('next'));
+
+    // スマホ用タッチ開始（ご提示の長押し開始ロジック）
     backBtn.addEventListener('touchstart', () => startContinuousStep('back'), touchOpts);
     nextBtn.addEventListener('touchstart', () => startContinuousStep('next'), touchOpts);
 
-    // 画面のどこで指を離しても止まるように window に登録
+    // 画面のどこで指/マウスを離しても確実に止める
+    // window.stopContinuousStep ではなく、定義済みの stopContinuousStep を直接参照
     ['mouseup', 'touchend', 'touchcancel'].forEach(evt => {
-        window.addEventListener(evt, window.stopContinuousStep, touchOpts);
+        window.addEventListener(evt, stopContinuousStep, touchOpts);
     });
 }
 
