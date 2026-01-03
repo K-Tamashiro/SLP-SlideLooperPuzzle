@@ -187,10 +187,15 @@
 			</div>
 
 			<div class="log-section">
-				<label for="history-list">History (Filtered by Mode)</label>
-				<div id="history-list" class="history-container"
+				<div id="history-label" class="log-label">History (Filtered by Mode)</div>
+				
+				<div id="history-list" 
+					class="history-container"
+					role="list"
+					aria-labelledby="history-label"
 					style="max-height:150px; overflow-y:auto; background:#111; border:1px solid #444; margin-bottom:5px;">
 				</div>
+				
 				<div class="log-controls">
 					<button onclick="saveBackupCSV()" title="Backup History">📤 Backup</button>
 					<button onclick="triggerRestore()" title="Restore History CSV">📥 Restore</button>

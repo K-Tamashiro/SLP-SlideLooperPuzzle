@@ -148,7 +148,11 @@ function refreshHistoryList() {
 
         // HTML生成：JSオブジェクトの直接埋め込みを避け、data属性を使用する
         return `
-            <div class="history-item" data-index="${index}">
+            <div class="history-item" 
+                data-index="${index}" 
+                role="listitem" 
+                tabindex="0" 
+                aria-label="History entry for ${data.timestamp}">
                 <div class="mini-target-icon" onclick="loadHistoryByIndex(${index})">
                     ${iconContent}
                 </div>
