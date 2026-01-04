@@ -175,113 +175,177 @@ function refreshHistoryList() {
 /**
  * 解析モード開始：ターゲットの状態を起点としてリプレイを構築
  */
+/**
+ * 解析モード開始：0(左)=崩れ、Max(右)=完成
+ */
 function startAnalyzeMode() {
     const solveLog = document.getElementById('solve-log').value;
     if (!solveLog) return;
-    const timerDisplay = document.getElementById('timer-display');
-    if (timerDisplay && window.currentLogTime) timerDisplay.textContent = window.currentLogTime;
     
-    // 解析モードはログ保存オフ
     setLogState(false);
 
-    window.replaySteps = solveLog.split(',').filter(s => s.trim() !== "");
-    window.currentReplayIdx = window.replaySteps.length; 
+    // --- 1. 配列の準備（グローバルに確実にセット） ---
+    // ログを「そのまま」の順序（起→結）で格納
+    window.originalLogSteps = solveLog.split(',').filter(s => s.trim() !== "");
+    // 操作用（ミラー/反転計算済み。これも 起→結 の順序で保持）
+    window.replaySteps = getMirrorStepsFromLog(solveLog); 
+
+    const totalSteps = window.originalLogSteps.length;
     window.isReplayMode = true;
 
-    // --- 構造的修正：targetBoardの配色を維持しつつ、画像用の連番IDを再構築 ---
+    // --- 2. 盤面初期化（ターゲット/完成状態） ---
     const totalSize = subSize * gridNum;
     board = Array.from({ length: totalSize }, (_, r) => 
         Array.from({ length: totalSize }, (_, c) => {
-            const absoluteIndex = r * totalSize + c; // 画像としての正しい位置ID
-            
-            // 当時のターゲットから「その位置にあるべきFace番号」を取得
+            const absoluteIndex = r * totalSize + c;
             const targetPiece = targetBoard[r][c];
             const targetValue = (typeof targetPiece === 'object') ? targetPiece.value : targetPiece;
             const targetDir = (typeof targetPiece === 'object') ? (targetPiece.direction || 0) : 0;
-
-            return {
-                tileId: absoluteIndex, // 画像が綺麗に並ぶための連番
-                value: targetValue,    // 保存された当時の配色ターゲット
-                direction: targetDir   // 保存された当時の回転状態
-            };
+            return { tileId: absoluteIndex, value: targetValue, direction: targetDir };
         })
     );
 
-    // --- 2. スライダーの設定（高速ワープ用） ---
+    // --- 3. 【重要】「0手目」の状態を物理的に作る ---
+    // 完成状態から、ミラー手順を「最初(0)から最後(total-1)」まで全て適用して
+    // 完全に崩しきった状態（＝タイムラインの左端）を作る
+    for (let i = 0; i < totalSteps; i++) {
+        executeSingleMove(window.replaySteps[i], false, true);
+    }
+    
+    // 現在地を 0（崩れきった状態）にセット
+    window.currentReplayIdx = 0;
+
+    // --- 4. スライダー設定 ---
     const slider = document.getElementById('analyze-slider');
     if (slider) {
-        slider.max = window.replaySteps.length;
+        slider.max = totalSteps;
+        slider.value = 0;
         slider.oninput = function(e) {
-            const targetIdx = parseInt(e.target.value);
-            while (window.currentReplayIdx < targetIdx) {
-                executeSingleMove(window.replaySteps[window.currentReplayIdx], false, true); 
+            const targetPos = parseInt(e.target.value);
+            // 右へ進む(targetPosが増える) ＝ 手順を「戻す(true)」
+            while (window.currentReplayIdx < targetPos) {
+                executeSingleMove(window.replaySteps[window.currentReplayIdx], true, true);
                 window.currentReplayIdx++;
             }
-            while (window.currentReplayIdx > targetIdx) {
+            // 左へ戻る(targetPosが減る) ＝ 手順を「再度崩す(false)」
+            while (window.currentReplayIdx > targetPos) {
                 window.currentReplayIdx--;
-                executeSingleMove(window.replaySteps[window.currentReplayIdx], true, true); 
+                executeSingleMove(window.replaySteps[window.currentReplayIdx], false, true);
             }
-            render(); 
+            render();
             updateReplayDisplay(); 
         };
     }
-    
-    // --- 3. 重要：ログを逆順に全適用して「初期状態」まで戻す ---
-    while (window.currentReplayIdx > 0) {
-        window.currentReplayIdx--;
-        executeSingleMove(window.replaySteps[window.currentReplayIdx], true, true); 
-    }
-    
+
     toggleLogPanel();
     showMediaControls(true);
+    updateReplayDisplay(); // ここで正しく totalSteps が参照される
     render(); 
-    updateReplayDisplay();
 }
 
+/**
+ * 表示更新：0番目(左端)から素直に表示
+ */
+function updateReplayDisplay() {
+    const idxEl = document.getElementById('replay-index');
+    const totalEl = document.getElementById('replay-total');
+    const moveEl = document.getElementById('current-move-display');
+    const slider = document.getElementById('analyze-slider');
+    const boardCounter = document.getElementById('move-count') || document.getElementById('counter-display');
+
+    // グローバル配列から確実に総数を取得（分母0対策）
+    const steps = window.originalLogSteps;
+    if (!steps) return;
+    const totalSteps = steps.length;
+    const cur = window.currentReplayIdx;
+
+    if (idxEl) idxEl.innerText = cur;
+    if (totalEl) totalEl.innerText = totalSteps; // 分母を表示
+    if (slider) {
+        slider.max = totalSteps;
+        slider.value = cur;
+    }
+    if (boardCounter) {
+        boardCounter.innerText = cur.toString().padStart(4, '0');
+    }
+
+    // --- 手順表示：0番目(最初)から順に出す ---
+    if (moveEl) {
+        if (cur <= 0) {
+            moveEl.innerText = "---";
+        } else if (cur > totalSteps) {
+            moveEl.innerText = "COMPLETE";
+        } else {
+            // 1手進めたとき(cur=1)、配列の0番目のログを表示する
+            const rawLogText = steps[cur - 1];
+            moveEl.innerText = rawLogText ? `[${rawLogText}]` : "---";
+        }
+    }
+
+    const nextBtn = document.querySelector('button[onclick="replayStepNext()"]');
+    const backBtn = document.querySelector('button[onclick="replayStepBack()"]');
+    if (nextBtn) nextBtn.disabled = (cur >= totalSteps);
+    if (backBtn) backBtn.disabled = (cur <= 0);
+
+    if (typeof hideCompleteDisplay === 'function') hideCompleteDisplay();
+    const statusBoard = document.getElementById('status-board');
+    if (statusBoard) statusBoard.classList.remove('show');
+}
+
+/**
+ * 1手進める（右：完成に向かう）
+ */
 function replayStepNext() {
-    if (!window.replaySteps || window.currentReplayIdx >= window.replaySteps.length) return;
-
-    const steps = window.replaySteps;
-    let i = window.currentReplayIdx;
-    const [firstLabel, firstAction] = steps[i].split('-');
-
-    // 同じアクション（D1等）が続く分をカウント
-    let count = 0;
-    while (i + count < steps.length) {
-        const [nextLabel, nextAction] = steps[i + count].split('-');
-        if (nextAction !== firstAction) break;
-        count++;
-    }
-
-    // まとめて実行（最後だけ描画）
-    for (let k = 0; k < count; k++) {
-        const isLast = (k === count - 1);
-        executeSingleMove(steps[window.currentReplayIdx], false, !isLast);
+    const totalSteps = window.replaySteps.length;
+    if (window.currentReplayIdx < totalSteps) {
+        const stepIdx = totalSteps - 1 - window.currentReplayIdx;
+        executeSingleMove(window.replaySteps[stepIdx], true, false);
         window.currentReplayIdx++;
+        updateReplayDisplay();
+        render();
     }
-    updateReplayDisplay();
 }
 
+/**
+ * 1手戻る（左：崩れに戻る）
+ */
 function replayStepBack() {
-    if (window.currentReplayIdx <= 0) return;
-
-    const steps = window.replaySteps;
-    let i = window.currentReplayIdx - 1;
-    const [firstLabel, firstAction] = steps[i].split('-');
-
-    let count = 0;
-    while (i - count >= 0) {
-        const [nextLabel, nextAction] = steps[i - count].split('-');
-        if (nextAction !== firstAction) break;
-        count++;
-    }
-
-    for (let k = 0; k < count; k++) {
-        const isLast = (k === count - 1);
+    if (window.currentReplayIdx > 0) {
         window.currentReplayIdx--;
-        executeSingleMove(steps[window.currentReplayIdx], true, !isLast);
+        const totalSteps = window.replaySteps.length;
+        const stepIdx = totalSteps - 1 - window.currentReplayIdx;
+        executeSingleMove(window.replaySteps[stepIdx], false, false);
+        updateReplayDisplay();
+        render();
     }
-    updateReplayDisplay();
+}
+
+
+
+/**
+ * 記録されたログ文字列からミラー（逆手順）配列を生成する
+ */
+function getMirrorStepsFromLog(logStr) {
+    if (!logStr) return [];
+
+    // 1. 文字列を配列化して順序を反転
+    const steps = logStr.split(',').filter(s => s.trim() !== "");
+    const reversed = steps.reverse();
+
+    // 2. 移動数値を (gridNum - 移動量) に置き換え
+    const mirror = reversed.map(step => {
+        const [label, action] = step.split('-');
+        const dir = action[0];
+        const moveVal = parseInt(action.substring(1));
+        
+        // 盤面サイズ(gridNum)から現在の移動量を引く
+        const mirrorVal = Number(gridNum) - moveVal;
+        
+        return `${label}-${dir}${mirrorVal}`;
+    });
+
+    // すでに配列を返します
+    return mirror;
 }
 
 /**
@@ -702,33 +766,44 @@ function updateGimmickHistoryIcons(gimmicks) {
 }
 
 /**
- * 記号（A-R1等）を解析して1手だけ動かす
- * @param {boolean} isSilent - trueならrenderをスキップ
+ * media-system.js
+ * ブロック単位の移動（* subSize）を維持
  */
 function executeSingleMove(moveStr, isReverseAction, isSilent = false) {
     const cmd = moveStr.trim().toLowerCase();
     if (!cmd.includes('-')) return;
 
     const [label, action] = cmd.split('-');
+    // ラベルが数字なら縦列（1,2,3...）、アルファベットなら横行（a,b,c...）
     let lineIdx = isNaN(label) ? label.charCodeAt(0) - 97 : parseInt(label) - 1;
     let isV = !isNaN(label);
     let dir = action[0].toUpperCase();
 
-    // --- ここを元に戻す（1つの棋譜命令に従う） ---
-    // もし棋譜の R1 が「1枠分」を指しているなら、ここが本来の移動量になります
+    // ブロック単位の移動距離
     let steps = parseInt(action.substring(1)) * subSize;
 
-    let finalRev = (dir === 'R' || dir === 'D');
-    if (isReverseAction) finalRev = !finalRev;
-
-    // 棋譜に書かれた通りの回数分、配列を回す
-    for (let i = 0; i < steps; i++) {
-        moveLogic(lineIdx, isV, finalRev);
+    // --- 方向判定の修正 ---
+    let isRev;
+    if (isV) {
+        // 縦移動：D(Down)は正方向(false)、U(Up)は逆方向(true)
+        isRev = (dir === 'U'); 
+    } else {
+        // 横移動：R(Right)は正方向(false)、L(Left)は逆方向(true)
+        isRev = (dir === 'L');
     }
 
-    // 1手分の処理が終わったら描画
+    // ログ戻し（undo）などの場合は、判定した方向をさらに反転させる
+    if (isReverseAction) {
+        isRev = !isRev;
+    }
+
+    // 物理移動の実行
+    for (let i = 0; i < steps; i++) {
+        moveLogic(lineIdx, isV, isRev);
+    }
+
     if (!isSilent) {
-        render(); 
+        render();
     }
 }
 
@@ -750,54 +825,6 @@ function showMediaControls(show) {
         controls.classList.remove('active');
         if (replayBtn) replayBtn.classList.remove('active-toggle');
         if (titleContainer) titleContainer.style.opacity = "1";
-    }
-}
-
-/**
- * リプレイ表示の更新（解析モード専用：コンプリート表示を抑制）
- * 1ブロック1メソッド：既存の updateReplayDisplay をこの内容で完全に置き換えてください。
- */
-function updateReplayDisplay() {
-    const idxEl = document.getElementById('replay-index');
-    const totalEl = document.getElementById('replay-total');
-    const moveEl = document.getElementById('current-move-display');
-    const slider = document.getElementById('analyze-slider');
-
-    const boardCounter = document.getElementById('move-count') || document.getElementById('counter-display');
-
-    if (idxEl) idxEl.innerText = window.currentReplayIdx;
-    if (totalEl) totalEl.innerText = window.replaySteps.length;
-    
-    if (slider) {
-        slider.value = window.currentReplayIdx; 
-    }
-    
-    if (boardCounter) {
-        boardCounter.innerText = window.currentReplayIdx.toString().padStart(4, '0');
-        moveCount = window.currentReplayIdx;
-    }
-    
-    const isLastStep = (window.currentReplayIdx === window.replaySteps.length);
-
-    if (moveEl) {
-        moveEl.innerText = isLastStep ? "FINISHED" : (window.replaySteps[window.currentReplayIdx] || "END");
-    }
-    
-    if (slider) {
-        slider.max = window.replaySteps.length;
-        slider.value = window.currentReplayIdx;
-    }
-
-    const nextBtn = document.querySelector('button[onclick="replayStepNext()"]');
-    const backBtn = document.querySelector('button[onclick="replayStepBack()"]');
-    if (nextBtn) nextBtn.disabled = isLastStep;
-    if (backBtn) backBtn.disabled = (window.currentReplayIdx <= 0);
-
-    // --- 修正：解析モード時は isComplete であっても status-board を表示しない ---
-    // 既存の演出コードを削除、または強制的に remove します
-    const statusBoard = document.getElementById('status-board');
-    if (statusBoard) {
-        statusBoard.classList.remove('show');
     }
 }
 

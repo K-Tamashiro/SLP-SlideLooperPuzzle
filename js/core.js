@@ -25,6 +25,7 @@ let rotationManager = null; // ローテーションマネージャー
 let completeTimerId = null;
 // 解析用の初期状態を保存する変数
 let initialAnalyzeBoard = null;
+window.isTargetScrambled = false;
 
 let debugmode = false;
 /**
@@ -40,29 +41,34 @@ function initBoard(resetTarget = false) {
     calculateLayout();
     const totalSize = subSize * gridNum;
 
-    if (resetTarget || !targetBoard) {
-        targetBoard = Array.from({length: totalSize}, (_, r) => 
-            Array.from({length: totalSize}, (_, c) => 
-                Math.floor(r / subSize) * gridNum + Math.floor(c / subSize)
-            )
-        );
-    }
-    // 既存コードの後ろに追加
-    if (!rotationManager) {
-        rotationManager = new RotationManager(window.mediaManager ? window.mediaManager.mode : 'color');
-    }
-    board = Array.from({length: totalSize}, (_, r) => 
+    // 1. マスターデータ(initialBoard)の生成
+    // カラー・画像どちらのモードでも、1つの「枠(Face)」の中は同じ value に統一する
+    window.initialBoard = Array.from({length: totalSize}, (_, r) => 
         Array.from({length: totalSize}, (_, c) => {
+            // 常に「どの枠(Face)に属するか」を計算 (0, 1, 2...)
+            const faceVal = Math.floor(r / subSize) * gridNum + Math.floor(c / subSize);
+
             return {
-                value: Math.floor(r / subSize) * gridNum + Math.floor(c / subSize),
-                tileId: r * totalSize + c, // ソース画像上の絶対的な位置IDを追加
+                value: faceVal, // これでカラーモード時、1つの枠内が1色に統一される
+                tileId: r * totalSize + c, // 画像モード用の絶対座標ID
                 direction: 0
             };
         })
     );
 
+    // 3. 盤面の生成（マスターデータの完全コピーで 0123... にリセット）
+    board = JSON.parse(JSON.stringify(window.initialBoard));
+
+    if (!rotationManager) {
+        rotationManager = new RotationManager(window.mediaManager ? window.mediaManager.mode : 'color');
+    }
+
     resetStats(); 
     clearSolveLog();
+    shuffleTargetOnly();
+
+    window.isTargetScrambled = false;
+
     render();
     renderPreview(); 
     renderCoordinates();
@@ -147,48 +153,82 @@ function moveLogic(idx, isV, isRev) {
  * シャッフル
  */
 function shuffle() {
-    hideCompleteDisplay(); // 表示を消す
+    hideCompleteDisplay();
     const count = parseInt(document.getElementById('scramble-count').value) || 15;
+    const totalSize = subSize * gridNum;
     resetStats();
+
+    // --- 1. リセット後の最初の1回目だけに行う「準備」 ---
+    if (!window.isTargetScrambled) {
+        // A. ターゲットビュー（正解の配置）を新しく決定
+        shuffleTargetOnly(); 
+
+        // B. 盤面をその新しい正解配置に「一度だけ」同期させる
+        // これにより、古い問題の崩れを破棄し、新しい正解からスタートできる
+        copyTargetToCurrent();
+
+        // 準備完了フラグを立てる
+        window.isTargetScrambled = true;
+    } 
 
     for (let i = 0; i < count; i++) {
         const isV = Math.random() > 0.5;
         const isRev = Math.random() > 0.5;
-        const lineIdx = Math.floor(Math.random() * (subSize * gridNum));
+        const lineIdx = Math.floor(Math.random() * totalSize);
         for (let j = 0; j < subSize; j++) {
             moveLogic(lineIdx, isV, isRev);
         }
     }
 
-    if (!window.mediaManager || window.mediaManager.mode === 'color') {
-        const totalFaces = gridNum * gridNum;
-        let faces = Array.from({length: totalFaces}, (_, i) => i);
-        for (let i = 0; i < 20; i++) {
-            const isV = Math.random() > 0.5;
-            const isRev = Math.random() > 0.5;
-            const line = Math.floor(Math.random() * gridNum);
-            let idxs = [];
-            if (isV) for (let g = 0; g < gridNum; g++) idxs.push(g * gridNum + line);
-            else for (let g = 0; g < gridNum; g++) idxs.push(line * gridNum + g);
-
-            if (isRev) {
-                let temp = faces[idxs[0]];
-                for (let j = 0; j < gridNum - 1; j++) faces[idxs[j]] = faces[idxs[j+1]];
-                faces[idxs[gridNum-1]] = temp;
-            } else {
-                let temp = faces[idxs[gridNum-1]];
-                for (let j = gridNum - 1; j > 0; j--) faces[idxs[j]] = faces[idxs[j-1]];
-                faces[idxs[0]] = temp;
-            }
-        }
-        const totalSize = subSize * gridNum;
-        targetBoard = Array.from({length: totalSize}, (_, r) => 
-            Array.from({length: totalSize}, (_, c) => faces[Math.floor(r / subSize) * gridNum + Math.floor(c / subSize)])
-        );
-    }
-    renderPreview(); 
     render(); 
     checkComplete(); 
+}
+
+/**
+ * ターゲットビュー（targetBoard）を更新し、プレビューを再描画する
+ */
+function shuffleTargetOnly() {
+    const totalSize = subSize * gridNum;
+    const totalFaces = gridNum * gridNum;
+
+    // 1. フェース単位のインデックス配列を作成
+    let faces = Array.from({ length: totalFaces }, (_, i) => i);
+
+    // 2. フェース配列をシャッフル（整合性を担保）
+    const shuffleCount = 20; 
+    for (let i = 0; i < shuffleCount; i++) {
+        const isVertical = Math.random() > 0.5;
+        const isReverse = Math.random() > 0.5;
+        const line = Math.floor(Math.random() * gridNum);
+        
+        let idxs = [];
+        if (isVertical) {
+            for (let g = 0; g < gridNum; g++) idxs.push(g * gridNum + line);
+        } else {
+            for (let g = 0; g < gridNum; g++) idxs.push(line * gridNum + g);
+        }
+
+        if (isReverse) {
+            let temp = faces[idxs[0]];
+            for (let j = 0; j < gridNum - 1; j++) faces[idxs[j]] = faces[idxs[j + 1]];
+            faces[idxs[gridNum - 1]] = temp;
+        } else {
+            let temp = faces[idxs[gridNum - 1]];
+            for (let j = gridNum - 1; j > 0; j--) faces[idxs[j]] = faces[idxs[j - 1]];
+            faces[idxs[0]] = temp;
+        }
+    }
+
+    // 3. 実際のグローバル変数 targetBoard を更新
+    targetBoard = Array.from({ length: totalSize }, (_, r) =>
+        Array.from({ length: totalSize }, (_, c) => {
+            const faceIndex = Math.floor(r / subSize) * gridNum + Math.floor(c / subSize);
+            return faces[faceIndex];
+        })
+    );
+
+    // 4. ターゲットビューを再描画
+    renderPreview();
 }
 
 /**

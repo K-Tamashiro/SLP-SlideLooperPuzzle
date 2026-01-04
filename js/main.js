@@ -416,6 +416,62 @@ function copyCurrentToTarget() {
     checkComplete();
 }
 
+function copyTargetToCurrent() {
+    const totalSize = subSize * gridNum;
+
+    // --- 1. initialBoardの整合性チェックと再生成 ---
+    // 存在しない、またはサイズが現在の設定(totalSize)と合っていない場合に作り直す
+    if (!window.initialBoard || window.initialBoard.length !== totalSize || (window.initialBoard[0] && window.initialBoard[0].length !== totalSize)) {
+        console.log("Re-creating initialBoard for new size/mode...");
+        window.initialBoard = Array.from({length: totalSize}, (_, r) => 
+            Array.from({length: totalSize}, (_, c) => ({
+                value: Math.floor(r / subSize) * gridNum + Math.floor(c / subSize),
+                tileId: r * totalSize + c,
+                direction: 0
+            }))
+        );
+    }
+
+    if (!targetBoard) return;
+
+    // --- 2. 盤面の同期実行 ---
+    const newBoard = Array.from({ length: totalSize }, () => new Array(totalSize));
+
+    for (let r = 0; r < totalSize; r++) {
+        for (let c = 0; c < totalSize; c++) {
+            const faceVal = targetBoard[r][c];
+
+            const r_orig_base = Math.floor(faceVal / gridNum) * subSize;
+            const c_orig_base = (faceVal % gridNum) * subSize;
+
+            const final_r = r_orig_base + (r % subSize);
+            const final_c = c_orig_base + (c % subSize);
+
+            // ここで undefined チェックを入れることで TypeError を物理的に防ぐ
+            const srcRow = window.initialBoard[final_r];
+            const src = srcRow ? srcRow[final_c] : null;
+
+            if (src) {
+                newBoard[r][c] = {
+                    value: src.value,
+                    tileId: src.tileId,
+                    direction: src.direction || 0
+                };
+            } else {
+                // 万が一参照に失敗した時のフォールバック（真っ黒回避）
+                newBoard[r][c] = {
+                    value: Math.floor(r / subSize) * gridNum + Math.floor(c / subSize),
+                    tileId: r * totalSize + c,
+                    direction: 0
+                };
+            }
+        }
+    }
+
+    board = newBoard;
+    render();
+}
+
 /**
  * カラーモードのターゲットスクランブル（内部データ同期版）
  */
