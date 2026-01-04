@@ -180,7 +180,7 @@ function startAnalyzeMode() {
     if (!solveLog) return;
     
     setLogState(false);
-
+ 
     // --- 1. 手順の準備 ---
     // window.replaySteps は「完成から崩すためのミラー手順」
     window.replaySteps = getMirrorStepsFromLog(solveLog);
@@ -286,7 +286,7 @@ function updateReplayDisplay() {
     const totalSteps = window.replaySteps.length;
     const cur = window.currentReplayIdx;
 
-    if (idxEl) idxEl.innerText = cur; // 0なら左端(崩れ)、totalStepsなら右端(完成)
+    if (idxEl) idxEl.innerText = cur;
     if (totalEl) totalEl.innerText = totalSteps;
     
     if (slider) {
@@ -299,22 +299,36 @@ function updateReplayDisplay() {
     }
 
     if (moveEl) {
+        // 1. ログを配列としてキャッシュする (window.originalLogSteps を活用)
+        // 解析開始時や履歴クリック時にセットされている前提。
+        // 万が一空の場合だけ、その場で一度だけ作る。
+        if (!window.originalLogSteps || window.originalLogSteps.length === 0) {
+            const logVal = document.getElementById('solve-log').value;
+            window.originalLogSteps = logVal ? logVal.split(',').map(s => s.trim()) : [];
+        }
+
+        // 2. 表示するインデックスの決定 (0手目は1手目を予告、それ以外は現在の手)
+        const displayIdx = (cur <= 0) ? 0 : cur - 1;
+        const currentLogMove = window.originalLogSteps[displayIdx] || "---";
+
+        // 3. 表示
         if (cur >= totalSteps) {
-            moveEl.innerText = "COMPLETE";
+            moveEl.innerText = `COMPLETE[${currentLogMove}]`;
+        } else if (cur <= 0) {
+            moveEl.innerText = `Start[${currentLogMove}]`;
         } else {
-            // 次に「解くため」に打つべき手を表示
-            const stepIdx = totalSteps - 1 - cur;
-            moveEl.innerText = `[${window.replaySteps[stepIdx]}] (UNDO)`;
+            moveEl.innerText = `[${currentLogMove}]`;
         }
     }
+    
 
-    // ボタンの有効無効
+    // ボタンの制御
     const nextBtn = document.querySelector('button[onclick="replayStepNext()"]');
     const backBtn = document.querySelector('button[onclick="replayStepBack()"]');
     if (nextBtn) nextBtn.disabled = (cur >= totalSteps);
     if (backBtn) backBtn.disabled = (cur <= 0);
 
-    // 演出ガード
+    // 演出リセット
     if (typeof hideCompleteDisplay === 'function') hideCompleteDisplay();
     const statusBoard = document.getElementById('status-board');
     if (statusBoard) statusBoard.classList.remove('show');
@@ -694,6 +708,7 @@ function toggleLogPanel() {
 
     const isVisible = overlay.style.display === 'block';
     if (!isVisible) {
+        // --- パネルを開く時の処理 ---
         if (statusBoard) statusBoard.classList.remove('show');
         if (logModeSpan && mainSelect) {
             const selectedText = mainSelect.options[mainSelect.selectedIndex].text;
@@ -706,7 +721,15 @@ function toggleLogPanel() {
             mediaControls.style.opacity = '0';
         }
     } else {
+        // --- パネルを閉じる時の処理 ---
         overlay.style.display = 'none';
+
+        // 解析中（ReplayMode）でない場合は、表示されていた履歴の時間を消す
+        if (!window.isReplayMode) {
+            const timerDisplay = document.getElementById('timer-display');
+            if (timerDisplay) timerDisplay.innerText = "00:00.000";
+        }
+
         if (window.isReplayMode && mediaControls) {
             mediaControls.style.visibility = 'visible';
             mediaControls.style.opacity = '1';
