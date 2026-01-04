@@ -173,10 +173,7 @@ function refreshHistoryList() {
 }
 
 /**
- * 解析モード開始：ターゲットの状態を起点としてリプレイを構築
- */
-/**
- * 解析モード開始：0(左)=崩れ、Max(右)=完成
+ * 解析モード開始：左(0)=崩れ状態 から 右(Max)=完成状態 へ向かうタイムライン
  */
 function startAnalyzeMode() {
     const solveLog = document.getElementById('solve-log').value;
@@ -184,16 +181,13 @@ function startAnalyzeMode() {
     
     setLogState(false);
 
-    // --- 1. 配列の準備（グローバルに確実にセット） ---
-    // ログを「そのまま」の順序（起→結）で格納
-    window.originalLogSteps = solveLog.split(',').filter(s => s.trim() !== "");
-    // 操作用（ミラー/反転計算済み。これも 起→結 の順序で保持）
-    window.replaySteps = getMirrorStepsFromLog(solveLog); 
-
-    const totalSteps = window.originalLogSteps.length;
+    // --- 1. 手順の準備 ---
+    // window.replaySteps は「完成から崩すためのミラー手順」
+    window.replaySteps = getMirrorStepsFromLog(solveLog);
+    const totalSteps = window.replaySteps.length;
     window.isReplayMode = true;
 
-    // --- 2. 盤面初期化（ターゲット/完成状態） ---
+    // --- 2. 盤面の初期化（ターゲット/完成状態を起点にする） ---
     const totalSize = subSize * gridNum;
     board = Array.from({ length: totalSize }, (_, r) => 
         Array.from({ length: totalSize }, (_, c) => {
@@ -201,36 +195,43 @@ function startAnalyzeMode() {
             const targetPiece = targetBoard[r][c];
             const targetValue = (typeof targetPiece === 'object') ? targetPiece.value : targetPiece;
             const targetDir = (typeof targetPiece === 'object') ? (targetPiece.direction || 0) : 0;
-            return { tileId: absoluteIndex, value: targetValue, direction: targetDir };
+            return {
+                tileId: absoluteIndex,
+                value: targetValue,
+                direction: targetDir
+            };
         })
     );
 
-    // --- 3. 【重要】「0手目」の状態を物理的に作る ---
-    // 完成状態から、ミラー手順を「最初(0)から最後(total-1)」まで全て適用して
-    // 完全に崩しきった状態（＝タイムラインの左端）を作る
+    // --- 3. 物理的に「崩れきった状態」を 0手目(左端) とする準備 ---
+    // 一旦ターゲットから全手順を適用して、盤面を「崩れた状態」へワープさせる
     for (let i = 0; i < totalSteps; i++) {
         executeSingleMove(window.replaySteps[i], false, true);
     }
-    
-    // 現在地を 0（崩れきった状態）にセット
-    window.currentReplayIdx = 0;
+    // この時点の盤面＝左端(0)。ここから「解く」ことで右(Max)へ向かう
+    window.currentReplayIdx = 0; 
 
-    // --- 4. スライダー設定 ---
+    // --- 4. スライダーの挙動定義 ---
     const slider = document.getElementById('analyze-slider');
     if (slider) {
         slider.max = totalSteps;
-        slider.value = 0;
+        slider.value = 0; // 左端スタート
         slider.oninput = function(e) {
             const targetPos = parseInt(e.target.value);
-            // 右へ進む(targetPosが増える) ＝ 手順を「戻す(true)」
+
+            // 現在地から目標地点(targetPos)まで盤面を動かす
             while (window.currentReplayIdx < targetPos) {
-                executeSingleMove(window.replaySteps[window.currentReplayIdx], true, true);
+                // 右へ進む ＝ 完成に近づく ＝ ミラー手順を「逆再生(isReverseAction: true)」
+                // 適用する手順の添字は (totalSteps - 1 - 現在地)
+                const stepIdx = totalSteps - 1 - window.currentReplayIdx;
+                executeSingleMove(window.replaySteps[stepIdx], true, true);
                 window.currentReplayIdx++;
             }
-            // 左へ戻る(targetPosが減る) ＝ 手順を「再度崩す(false)」
             while (window.currentReplayIdx > targetPos) {
+                // 左へ戻る ＝ 崩れに戻る ＝ ミラー手順を「正再生(isReverseAction: false)」
                 window.currentReplayIdx--;
-                executeSingleMove(window.replaySteps[window.currentReplayIdx], false, true);
+                const stepIdx = totalSteps - 1 - window.currentReplayIdx;
+                executeSingleMove(window.replaySteps[stepIdx], false, true);
             }
             render();
             updateReplayDisplay(); 
@@ -239,57 +240,8 @@ function startAnalyzeMode() {
 
     toggleLogPanel();
     showMediaControls(true);
-    updateReplayDisplay(); // ここで正しく totalSteps が参照される
+    updateReplayDisplay(); 
     render(); 
-}
-
-/**
- * 表示更新：0番目(左端)から素直に表示
- */
-function updateReplayDisplay() {
-    const idxEl = document.getElementById('replay-index');
-    const totalEl = document.getElementById('replay-total');
-    const moveEl = document.getElementById('current-move-display');
-    const slider = document.getElementById('analyze-slider');
-    const boardCounter = document.getElementById('move-count') || document.getElementById('counter-display');
-
-    // グローバル配列から確実に総数を取得（分母0対策）
-    const steps = window.originalLogSteps;
-    if (!steps) return;
-    const totalSteps = steps.length;
-    const cur = window.currentReplayIdx;
-
-    if (idxEl) idxEl.innerText = cur;
-    if (totalEl) totalEl.innerText = totalSteps; // 分母を表示
-    if (slider) {
-        slider.max = totalSteps;
-        slider.value = cur;
-    }
-    if (boardCounter) {
-        boardCounter.innerText = cur.toString().padStart(4, '0');
-    }
-
-    // --- 手順表示：0番目(最初)から順に出す ---
-    if (moveEl) {
-        if (cur <= 0) {
-            moveEl.innerText = "---";
-        } else if (cur > totalSteps) {
-            moveEl.innerText = "COMPLETE";
-        } else {
-            // 1手進めたとき(cur=1)、配列の0番目のログを表示する
-            const rawLogText = steps[cur - 1];
-            moveEl.innerText = rawLogText ? `[${rawLogText}]` : "---";
-        }
-    }
-
-    const nextBtn = document.querySelector('button[onclick="replayStepNext()"]');
-    const backBtn = document.querySelector('button[onclick="replayStepBack()"]');
-    if (nextBtn) nextBtn.disabled = (cur >= totalSteps);
-    if (backBtn) backBtn.disabled = (cur <= 0);
-
-    if (typeof hideCompleteDisplay === 'function') hideCompleteDisplay();
-    const statusBoard = document.getElementById('status-board');
-    if (statusBoard) statusBoard.classList.remove('show');
 }
 
 /**
@@ -320,7 +272,53 @@ function replayStepBack() {
     }
 }
 
+/**
+ * 表示更新（左：0=崩れ ～ 右：Max=完成）
+ */
+function updateReplayDisplay() {
+    const idxEl = document.getElementById('replay-index');
+    const totalEl = document.getElementById('replay-total');
+    const moveEl = document.getElementById('current-move-display');
+    const slider = document.getElementById('analyze-slider');
+    const boardCounter = document.getElementById('move-count') || document.getElementById('counter-display');
 
+    if (!window.replaySteps) return;
+    const totalSteps = window.replaySteps.length;
+    const cur = window.currentReplayIdx;
+
+    if (idxEl) idxEl.innerText = cur; // 0なら左端(崩れ)、totalStepsなら右端(完成)
+    if (totalEl) totalEl.innerText = totalSteps;
+    
+    if (slider) {
+        slider.max = totalSteps;
+        slider.value = cur;
+    }
+    
+    if (boardCounter) {
+        boardCounter.innerText = cur.toString().padStart(4, '0');
+    }
+
+    if (moveEl) {
+        if (cur >= totalSteps) {
+            moveEl.innerText = "COMPLETE";
+        } else {
+            // 次に「解くため」に打つべき手を表示
+            const stepIdx = totalSteps - 1 - cur;
+            moveEl.innerText = `[${window.replaySteps[stepIdx]}] (UNDO)`;
+        }
+    }
+
+    // ボタンの有効無効
+    const nextBtn = document.querySelector('button[onclick="replayStepNext()"]');
+    const backBtn = document.querySelector('button[onclick="replayStepBack()"]');
+    if (nextBtn) nextBtn.disabled = (cur >= totalSteps);
+    if (backBtn) backBtn.disabled = (cur <= 0);
+
+    // 演出ガード
+    if (typeof hideCompleteDisplay === 'function') hideCompleteDisplay();
+    const statusBoard = document.getElementById('status-board');
+    if (statusBoard) statusBoard.classList.remove('show');
+}
 
 /**
  * 記録されたログ文字列からミラー（逆手順）配列を生成する
