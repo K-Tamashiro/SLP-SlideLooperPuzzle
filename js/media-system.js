@@ -180,11 +180,13 @@ function startAnalyzeMode() {
     if (!solveLog) return;
     
     setLogState(false);
- 
+    staticShowGrouping();
+
     // --- 1. 手順の準備 ---
-    // window.replaySteps は「完成から崩すためのミラー手順」
-    window.replaySteps = getMirrorStepsFromLog(solveLog);
-    const totalSteps = window.replaySteps.length;
+    // window.moveTable は「完成から崩すためのミラー手順」
+    // window.moveTable = getMirrorStepsFromLog(solveLog);
+    window.groupedSteps = window.moveTable;
+    const totalSteps = window.moveTable.length;
     window.isReplayMode = true;
 
     // --- 2. 盤面の初期化（ターゲット/完成状態を起点にする） ---
@@ -205,8 +207,8 @@ function startAnalyzeMode() {
 
     // --- 3. 物理的に「崩れきった状態」を 0手目(左端) とする準備 ---
     // 一旦ターゲットから全手順を適用して、盤面を「崩れた状態」へワープさせる
-    for (let i = 0; i < totalSteps; i++) {
-        executeSingleMove(window.replaySteps[i], false, true);
+    for (let i = totalSteps - 1; i >= 0; i--) {
+        executeGroupedMove(window.moveTable[i], true, true);
     }
     // この時点の盤面＝左端(0)。ここから「解く」ことで右(Max)へ向かう
     window.currentReplayIdx = 0; 
@@ -221,18 +223,16 @@ function startAnalyzeMode() {
 
             // 現在地から目標地点(targetPos)まで盤面を動かす
             while (window.currentReplayIdx < targetPos) {
-                // 右へ進む ＝ 完成に近づく ＝ ミラー手順を「逆再生(isReverseAction: true)」
-                // 適用する手順の添字は (totalSteps - 1 - 現在地)
-                const stepIdx = totalSteps - 1 - window.currentReplayIdx;
-                executeSingleMove(window.replaySteps[stepIdx], true, true);
+                executeGroupedMove(window.groupedSteps[window.currentReplayIdx], false, true);
                 window.currentReplayIdx++;
             }
+
             while (window.currentReplayIdx > targetPos) {
-                // 左へ戻る ＝ 崩れに戻る ＝ ミラー手順を「正再生(isReverseAction: false)」
                 window.currentReplayIdx--;
-                const stepIdx = totalSteps - 1 - window.currentReplayIdx;
-                executeSingleMove(window.replaySteps[stepIdx], false, true);
+                executeGroupedMove(window.groupedSteps[window.currentReplayIdx], true, true);
             }
+
+
             render();
             updateReplayDisplay(); 
         };
@@ -248,10 +248,9 @@ function startAnalyzeMode() {
  * 1手進める（右：完成に向かう）
  */
 function replayStepNext() {
-    const totalSteps = window.replaySteps.length;
+    const totalSteps = window.moveTable.length;
     if (window.currentReplayIdx < totalSteps) {
-        const stepIdx = totalSteps - 1 - window.currentReplayIdx;
-        executeSingleMove(window.replaySteps[stepIdx], true, false);
+        executeGroupedMove(window.groupedSteps[window.currentReplayIdx], false, true);
         window.currentReplayIdx++;
         updateReplayDisplay();
         render();
@@ -264,9 +263,7 @@ function replayStepNext() {
 function replayStepBack() {
     if (window.currentReplayIdx > 0) {
         window.currentReplayIdx--;
-        const totalSteps = window.replaySteps.length;
-        const stepIdx = totalSteps - 1 - window.currentReplayIdx;
-        executeSingleMove(window.replaySteps[stepIdx], false, false);
+        executeGroupedMove(window.groupedSteps[window.currentReplayIdx], true, true);
         updateReplayDisplay();
         render();
     }
@@ -282,8 +279,8 @@ function updateReplayDisplay() {
     const slider = document.getElementById('analyze-slider');
     const boardCounter = document.getElementById('move-count') || document.getElementById('counter-display');
 
-    if (!window.replaySteps) return;
-    const totalSteps = window.replaySteps.length;
+    if (!window.moveTable) return;
+    const totalSteps = window.moveTable.length;
     const cur = window.currentReplayIdx;
 
     if (idxEl) idxEl.innerText = cur;
@@ -307,18 +304,24 @@ function updateReplayDisplay() {
             window.originalLogSteps = logVal ? logVal.split(',').map(s => s.trim()) : [];
         }
 
-        // 2. 表示するインデックスの決定 (0手目は1手目を予告、それ以外は現在の手)
-        const displayIdx = (cur <= 0) ? 0 : cur - 1;
-        const currentLogMove = window.originalLogSteps[displayIdx] || "---";
+        // 表示インデックス：常に「現在位置」
+        let displayMove = '----';
 
-        // 3. 表示
-        if (cur >= totalSteps) {
-            moveEl.innerText = `COMPLETE[${currentLogMove}]`;
-        } else if (cur <= 0) {
-            moveEl.innerText = `Start[${currentLogMove}]`;
-        } else {
-            moveEl.innerText = `[${currentLogMove}]`;
+        if (cur > 0 && cur <= totalSteps) {
+            const idx = Math.min(cur - 1, totalSteps - 1);
+            const m = window.groupedSteps[idx];
+            if (m) displayMove = formatTableMove(m);
         }
+
+        // 表示
+        if (cur >= totalSteps) {
+            moveEl.innerText = `COMPLETE[${displayMove}]`;
+        } else if (cur <= 0) {
+            moveEl.innerText = `Start[----]`;
+        } else {
+            moveEl.innerText = `[${displayMove}]`;
+        }
+
     }
     
 
@@ -332,6 +335,14 @@ function updateReplayDisplay() {
     if (typeof hideCompleteDisplay === 'function') hideCompleteDisplay();
     const statusBoard = document.getElementById('status-board');
     if (statusBoard) statusBoard.classList.remove('show');
+}
+
+function formatTableMove(m) {
+    const lines = m.lineIndices
+        .map(idx => m.isV ? (idx + 1) : String.fromCharCode(97 + idx))
+        .join(',');
+
+    return `${lines}-${m.dir}${m.dist}`;
 }
 
 /**
@@ -733,7 +744,7 @@ function toggleLogPanel() {
         if (window.isReplayMode && mediaControls) {
             mediaControls.style.visibility = 'visible';
             mediaControls.style.opacity = '1';
-            const isComplete = (window.currentReplayIdx === window.replaySteps.length);
+            const isComplete = (window.currentReplayIdx === window.moveTable.length);
             if (isComplete && statusBoard) {
                 statusBoard.classList.add('show');
             }
@@ -829,6 +840,73 @@ function executeSingleMove(moveStr, isReverseAction, isSilent = false) {
 }
 
 /**
+ * 通常移動／枠移動を吸収する唯一の実行入口
+ */
+function executeMove(moveStr, isReverse, isSilent = false) {
+    // 枠移動ログ判定（例: A2-R1 / 2-D1 など）
+    if (moveStr.includes(':')) {
+        // 例: G1:A-R1
+        const [group, move] = moveStr.split(':');
+        const groupIdx = parseInt(group.substring(1)); // G1 → 1
+        const base = groupIdx * subSize;
+
+        const isV = !isNaN(move[0]);
+
+        for (let i = 0; i < subSize; i++) {
+            const label = isV
+                ? (base + i + 1)
+                : String.fromCharCode(97 + base + i);
+
+            const dirCount = move.split('-')[1]; // ★ 正規化
+            executeSingleMove(`${label}-${dirCount}`, isReverse, true);
+        }
+
+
+        if (!isSilent) render();
+        return;
+    }
+
+    // 通常移動
+    executeSingleMove(moveStr, isReverse, isSilent);
+}
+
+/**
+ * moveTable 用 実行エンジン
+ */
+function executeGroupedMove(move, isReverseAction, isSilent = false) {
+    if (move.dist <= 0) return;
+
+    const isRev = getIsRev(move.isV, move.dir, isReverseAction);
+    const steps = move.dist * subSize;
+
+    if (move.type === 'SINGLE') {
+        for (let i = 0; i < steps; i++) {
+            moveLogic(move.lineIndices[0], move.isV, isRev);
+        }
+    } else { // FRAME
+        for (let i = 0; i < steps; i++) {
+            for (const lineIdx of move.lineIndices) {
+                moveLogic(lineIdx, move.isV, isRev);
+            }
+        }
+    }
+
+    if (!isSilent) render();
+}
+
+function getIsRev(isV, dir, isReverseAction) {
+    let isRev;
+    if (isV) {
+        isRev = (dir === 'U');
+    } else {
+        isRev = (dir === 'L');
+    }
+    if (isReverseAction) isRev = !isRev;
+    return isRev;
+}
+
+
+/**
  * メディアコントロールの表示制御（Behavior）
  */
 function showMediaControls(show) {
@@ -877,7 +955,7 @@ function reproduceScramble() {
     
     try {
         steps.forEach(move => {
-            executeSingleMove(move, false);
+            executeGroupedMove(move, false);
         });
 
         render();

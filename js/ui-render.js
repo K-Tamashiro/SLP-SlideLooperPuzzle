@@ -375,7 +375,7 @@ function startContinuousStep(direction) {
     autoStepInterval = setTimeout(() => {
         autoStepInterval = setInterval(() => {
             if (direction === 'next') {
-                if (window.currentReplayIdx >= window.replaySteps.length) return stopContinuousStep();
+                if (window.currentReplayIdx >= window.moveTable.length) return stopContinuousStep();
                 replayStepNext();
             } else {
                 if (window.currentReplayIdx <= 0) return stopContinuousStep();
