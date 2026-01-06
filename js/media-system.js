@@ -1052,34 +1052,28 @@ function reproduceScramble() {
     const input = document.getElementById('scramble-input').value;
     if (!input) return;
 
-    // 1. 判定を一時的にスキップするフラグを立てる
     skipCompleteOnce = true;
 
-    // 2. 盤面初期化
-    initBoard();
+    // ターゲットをシャッフルさせない（falseを渡す）
+    initBoard(false); 
 
     const steps = input.split(',').filter(s => s.trim() !== "");
     
     try {
         steps.forEach(move => {
-            executeGroupedMove(move, false);
+            // ステップ1の修正：文字列実行関数へ
+            executeMove(move, false, true); 
         });
 
         render();
-        
-        // 3. 正常終了時はダイアログを閉じ、メッセージは出さない
         toggleLogPanel();
         
         if (typeof addLog === 'function') {
             addLog("Scramble pattern applied.");
         }
-        
     } catch (err) {
-        // エラー時のみ通知
-        alert("Error: Invalid scramble code format.");
         console.error(err);
     } finally {
-        // フラグを元に戻す
         skipCompleteOnce = false;
     }
 }
