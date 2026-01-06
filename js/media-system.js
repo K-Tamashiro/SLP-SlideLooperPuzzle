@@ -1,4 +1,136 @@
 /**
+ * 解析モード用アニメーション状態管理フラグ
+ */
+window.isAnimating = false;
+
+/**
+ * 解析モード：アニメーション付き移動実行
+ * 物理的なスライド演出を行い、完了後に論理状態を同期する
+ */
+async function animateAnalyzeMove(m, isReverseAction) {
+    if (window.isAnimating) return; 
+    window.isAnimating = true;
+
+    const isRev = getIsRev(m.isV, m.dir, isReverseAction);
+    const steps = m.dist; 
+    
+    const wrapper = document.getElementById('board');
+    if (!wrapper) {
+        window.isAnimating = false;
+        return;
+    }
+    const wrapRect = wrapper.getBoundingClientRect();
+    const indices = m.lineIndices;
+    const ghosts = [];
+    
+    // 1. ゴースト（視覚的身代わり）の生成
+    indices.forEach(idx => {
+        const strip = document.createElement('div');
+        strip.className = 'ghost-strip analyze-ghost';
+        
+        const cells = [];
+        document.querySelectorAll('.cell').forEach(c => {
+            const r = parseInt(c.dataset.row), col = parseInt(c.dataset.col);
+            if ((m.isV && col === idx) || (!m.isV && r === idx)) {
+                cells.push({ el: c, k: (m.isV ? r : col) });
+            }
+        });
+        cells.sort((a, b) => a.k - b.k);
+
+        const firstRect = cells[0].el.getBoundingClientRect();
+        const bL = firstRect.left - wrapRect.left;
+        const bT = firstRect.top - wrapRect.top;
+        
+        strip.style.left = bL + 'px';
+        strip.style.top = bT + 'px';
+        strip.style.gap = `${GAP_FACE}px`;
+        strip.style.transition = 'transform 0.2s cubic-bezier(0.25, 1, 0.5, 1)';
+
+        // ループを表現するために3セット分のクローンを配置
+        const createSet = () => {
+            const d = document.createElement('div');
+            d.style.display = m.isV ? 'grid' : 'flex';
+            d.style.gap = `${GAP_CELL}px`;
+            if (m.isV) d.style.gridTemplateColumns = '1fr';
+
+            cells.forEach((item, i) => {
+                const clone = item.el.cloneNode(true);
+                clone.style.opacity = '1';
+                const originalCanvas = item.el.querySelector('canvas');
+                if (originalCanvas) {
+                    clone.querySelectorAll('canvas').forEach(c => c.remove());
+                    clone.style.backgroundImage = `url(${originalCanvas.toDataURL()})`;
+                    clone.style.backgroundSize = 'cover';
+                }
+                if (i > 0 && i % subSize === 0) {
+                    if (m.isV) clone.style.marginTop = `${GAP_FACE - GAP_CELL}px`;
+                    else clone.style.marginLeft = `${GAP_FACE - GAP_CELL}px`;
+                }
+                d.appendChild(clone);
+            });
+            return d;
+        };
+
+        strip.style.flexDirection = m.isV ? 'column' : 'row';
+        for(let k=0; k<3; k++) strip.appendChild(createSet());
+        
+        const offset = m.isV ? (wrapRect.height + GAP_FACE) : (wrapRect.width + GAP_FACE);
+        if (m.isV) strip.style.top = (bT - offset) + 'px';
+        else strip.style.left = (bL - offset) + 'px';
+
+        wrapper.appendChild(strip);
+        ghosts.push(strip);
+        cells.forEach(item => item.el.style.opacity = '0.1');
+    });
+
+    // 2. 移動アニメーションの実行
+    const faceW = (cellSizePixel * subSize) + (GAP_CELL * (subSize - 1));
+    const unit = faceW + GAP_FACE;
+    const movePx = steps * unit * (isRev ? -1 : 1);
+
+    ghosts[0].offsetHeight; // 強制リフロー
+    ghosts.forEach(g => {
+        g.style.transform = m.isV ? `translateY(${movePx}px)` : `translateX(${movePx}px)`;
+    });
+
+    // 3. アニメーション完了待機（CSS transition時間に合わせる）
+    await new Promise(resolve => setTimeout(resolve, 210));
+
+    // 論理状態の更新とゴーストの削除
+    executeGroupedMove(m, isReverseAction, true);
+    ghosts.forEach(g => g.remove());
+    window.isAnimating = false;
+    render();
+}
+
+/**
+ * 1手進める（Nextボタン：アニメーションあり）
+ */
+async function replayStepNext() {
+    if (window.isAnimating) return; // アニメーション中はガード
+    const totalSteps = window.moveTable ? window.moveTable.length : 0;
+    if (window.currentReplayIdx < totalSteps) {
+        const m = window.groupedSteps[window.currentReplayIdx];
+        await animateAnalyzeMove(m, false);
+        window.currentReplayIdx++;
+        updateReplayDisplay();
+    }
+}
+
+/**
+ * 1手戻る（Backボタン：アニメーションあり）
+ */
+async function replayStepBack() {
+    if (window.isAnimating) return; // ガード
+    if (window.currentReplayIdx > 0) {
+        window.currentReplayIdx--;
+        const m = window.groupedSteps[window.currentReplayIdx];
+        await animateAnalyzeMove(m, true);
+        updateReplayDisplay();
+    }
+}
+
+/**
  * タイマー制御
  */
 function toggleTimer(forceState) {
@@ -242,31 +374,6 @@ function startAnalyzeMode() {
     showMediaControls(true);
     updateReplayDisplay(); 
     render(); 
-}
-
-/**
- * 1手進める（右：完成に向かう）
- */
-function replayStepNext() {
-    const totalSteps = window.moveTable.length;
-    if (window.currentReplayIdx < totalSteps) {
-        executeGroupedMove(window.groupedSteps[window.currentReplayIdx], false, true);
-        window.currentReplayIdx++;
-        updateReplayDisplay();
-        render();
-    }
-}
-
-/**
- * 1手戻る（左：崩れに戻る）
- */
-function replayStepBack() {
-    if (window.currentReplayIdx > 0) {
-        window.currentReplayIdx--;
-        executeGroupedMove(window.groupedSteps[window.currentReplayIdx], true, true);
-        updateReplayDisplay();
-        render();
-    }
 }
 
 /**

@@ -154,23 +154,6 @@ function staticShowGrouping() {
     })));
 }
 
-function replayStepNextForward() {
-  const totalSteps = window.moveTable?.length || 0;
-  if (window.currentReplayIdx >= totalSteps) return;
-  executeGroupedMove(window.moveTable[window.currentReplayIdx], false, false);
-  window.currentReplayIdx++;
-  updateReplayDisplayForward();
-  render();
-}
-
-function replayStepBackForward() {
-  if (window.currentReplayIdx <= 0) return;
-  window.currentReplayIdx--;
-  executeGroupedMove(window.moveTable[window.currentReplayIdx], true, false);
-  updateReplayDisplayForward();
-  render();
-}
-
 /**
  * 表示更新（左:0=崩れ ～ 右:Max=完成）forward版
  */
