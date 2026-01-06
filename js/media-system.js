@@ -1048,33 +1048,53 @@ function copySolveToScramble() {
 /**
  * 3. Reproduce Scramble (Updated)
  */
+/**
+ * 3. Reproduce Scramble (手動スクランブル適用：修正版)
+ */
 function reproduceScramble() {
     const input = document.getElementById('scramble-input').value;
     if (!input) return;
 
+    // 1. 判定を一時的にスキップ（処理中のノイズ防止）
     skipCompleteOnce = true;
+    
+    // 2. ログ記録を有効化（checkCompleteのガードを通過させるため）
+    setLogState(true);
 
-    // ターゲットをシャッフルさせない（falseを渡す）
-    initBoard(false); 
+    // 3. 盤面の物理リセット（タイマー停止や基本構造の初期化）
+    initBoard(false);
+
+    // 4. 【本質的修正】ターゲットビュー（正解）を盤面に一度コピーする
+    // これにより、スクランブルの「起点」が「正解」と完全に一致する
+    copyTargetToCurrent();
 
     const steps = input.split(',').filter(s => s.trim() !== "");
     
     try {
+        // 5. 「正解」の状態から指定の手順を適用して崩していく
         steps.forEach(move => {
-            // ステップ1の修正：文字列実行関数へ
             executeMove(move, false, true); 
         });
 
         render();
+        
+        // 6. 通常通りパネルを閉じる
         toggleLogPanel();
         
         if (typeof addLog === 'function') {
-            addLog("Scramble pattern applied.");
+            addLog("Scramble applied from Target state.");
         }
+        
     } catch (err) {
-        console.error(err);
+        console.error("Scramble reproduce failed:", err);
+        alert("Invalid scramble format.");
     } finally {
-        skipCompleteOnce = false;
+        // 7. 完了後に判定を解放
+        setTimeout(() => {
+            skipCompleteOnce = false;
+            // 念のためこの時点で判定を一回走らせる
+            checkComplete();
+        }, 100);
     }
 }
 
