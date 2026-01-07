@@ -140,18 +140,19 @@ function staticShowGrouping() {
         
         i += matchedMove.size;
     }
-    
-    // --- コンソール出力の整理 ---
-    console.log(`[Grouping Analysis] Mode:${gNum}x${gNum} / Block:${sSize}`);
-    console.table(window.moveTable.map((m, idx) => ({
-        index: idx,
-        type: m.type,
-        axis: m.isV ? 'V' : 'H',
-        lines: m.lineIndices.map(idx => m.isV ? idx + 1 : String.fromCharCode(97 + idx)).join(','),
-        dir: m.dir,    // 方向記号 (L, R, U, D)
-        dist: m.dist,  // 移動距離 (数値のみ)
-        reverse: m.reverse // 復元に必要なステップ数
-    })));
+    if(debugmode){
+        // --- コンソール出力の整理 ---
+        console.log(`[Grouping Analysis] Mode:${gNum}x${gNum} / Block:${sSize}`);
+        console.table(window.moveTable.map((m, idx) => ({
+            index: idx,
+            type: m.type,
+            axis: m.isV ? 'V' : 'H',
+            lines: m.lineIndices.map(idx => m.isV ? idx + 1 : String.fromCharCode(97 + idx)).join(','),
+            dir: m.dir,    // 方向記号 (L, R, U, D)
+            dist: m.dist,  // 移動距離 (数値のみ)
+            reverse: m.reverse // 復元に必要なステップ数
+        })));
+    }
 }
 
 /**

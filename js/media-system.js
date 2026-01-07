@@ -1045,11 +1045,10 @@ function copySolveToScramble() {
         if (typeof addLog === 'function') addLog("Solve log copied to Scramble Box");
     }
 }
+
 /**
  * 3. Reproduce Scramble (Updated)
- */
-/**
- * 3. Reproduce Scramble (手動スクランブル適用：修正版)
+ * 盤面状態を維持したまま手順のみを適用する
  */
 function reproduceScramble() {
     const input = document.getElementById('scramble-input').value;
@@ -1057,39 +1056,33 @@ function reproduceScramble() {
 
     // 1. 判定を一時的にスキップ（処理中のノイズ防止）
     skipCompleteOnce = true;
-    
-    // 2. ログ記録を有効化（checkCompleteのガードを通過させるため）
-    setLogState(true);
 
-    // 3. 盤面の物理リセット（タイマー停止や基本構造の初期化）
-    initBoard(false);
-
-    // 4. 【本質的修正】ターゲットビュー（正解）を盤面に一度コピーする
-    // これにより、スクランブルの「起点」が「正解」と完全に一致する
-    copyTargetToCurrent();
+    // ※重要：盤面のリセット(initBoard)やターゲットの強制同期(copyTargetToCurrent)は行わない。
+    // これにより、解析モードで特定の時点まで戻した状態や、
+    // 任意の盤面状態に対して、追加で手順を適用することが可能になる。
 
     const steps = input.split(',').filter(s => s.trim() !== "");
     
     try {
-        // 5. 「正解」の状態から指定の手順を適用して崩していく
+        // 2. 現在の盤面に対して指定の手順を適用
         steps.forEach(move => {
             executeMove(move, false, true); 
         });
 
         render();
         
-        // 6. 通常通りパネルを閉じる
+        // 3. 通常通りパネルを閉じる
         toggleLogPanel();
         
         if (typeof addLog === 'function') {
-            addLog("Scramble applied from Target state.");
+            addLog("Scramble applied to current board state.");
         }
         
     } catch (err) {
         console.error("Scramble reproduce failed:", err);
         alert("Invalid scramble format.");
     } finally {
-        // 7. 完了後に判定を解放
+        // 4. 完了後に判定を解放
         setTimeout(() => {
             skipCompleteOnce = false;
             // 念のためこの時点で判定を一回走らせる
