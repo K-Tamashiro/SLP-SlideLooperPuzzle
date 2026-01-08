@@ -172,6 +172,16 @@
 					<button onclick="reproduceScramble()" title="Reproduce Scramble">🧩 Apply</button>
 					<button onclick="triggerImport()" title="Import CSV">📥 Import</button>
 					<button onclick="saveCSV('scramble')" title="Save Scramble CSV">💾 Save</button>
+					<!-- Reverseボタンの追加：アイコンを反転イメージのSVGに変更 -->
+					<button onclick="reversePattern()" title="Reverse Scramble via Torus" style="background: #2c3e50;">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;">
+							<path d="M20 17H4"></path>
+							<path d="M7 20l-3-3 3-3"></path>
+							<path d="M4 7h16"></path>
+							<path d="M17 10l3-3-3-3"></path>
+						</svg>
+						Reverse
+					</button>
 				</div>
 			</div>
 

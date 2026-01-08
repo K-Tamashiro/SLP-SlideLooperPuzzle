@@ -455,3 +455,51 @@ function resetSearchlight() {
         btn.setAttribute('data-label', "");
     }
 }
+
+		/**
+		 * Scramble Box内の記号をトーラス構造に基づいて反転させる
+		 * 現在の盤面サイズ（gridNum）を動的に参照し、距離 d を補数 (gridNum - d) に変換
+		 * さらに配列の順序を逆転させて、解法としての整合性を保つ
+		 */
+		function reversePattern() {
+			const input = document.getElementById('scramble-input');
+			if (!input || !input.value) return;
+
+			// 現在のグリッドサイズ（面数）をcore.jsのグローバル変数から直接取得
+			// 4x4なら2、6x6なら3、8x8なら4、9x9なら3が入る
+			let gNum;
+			try {
+				gNum = Number(gridNum); 
+			} catch (e) {
+				gNum = 3; // フォールバック
+			}
+			
+			const steps = input.value.split(',').map(s => s.trim()).filter(s => s !== "");
+
+			const invertedSteps = steps.map(step => {
+				const dashIndex = step.lastIndexOf('-');
+				if (dashIndex === -1) return step;
+
+				const label = step.substring(0, dashIndex);
+				const action = step.substring(dashIndex + 1);
+				
+				const dir = action.charAt(0);
+				const distStr = action.substring(1);
+				const dist = parseInt(distStr, 10);
+
+				if (isNaN(dist)) return step;
+
+				// トーラス反転計算：その盤面の「段数（面数）」に基づいた距離の補数
+				// dist % gNum をとることで、過剰な回転数にも対応
+				const revDist = (gNum - (dist % gNum)) % gNum;
+
+				return `${label}-${dir}${revDist}`;
+			});
+
+			// 操作の実行順序を逆転させる
+			invertedSteps.reverse();
+
+			input.value = invertedSteps.join(',');
+			
+			console.log(`Torus Inversion Success: GridNum=${gNum}, Steps=${invertedSteps.length}`);
+		}
