@@ -136,7 +136,8 @@ function toggleTimer(forceState) {
     const btn = document.querySelector('button[onclick="toggleTimer()"]');
     const shouldStart = (forceState !== undefined) ? forceState : !timerId;
 
-    if (!isLogEnabled && shouldStart) return;
+    // ログ無効時は開始不可
+    if (typeof isLogEnabled !== 'undefined' && !isLogEnabled && shouldStart) return;
 
     if (!shouldStart) {
         // --- 停止（一時停止）処理 ---
@@ -147,13 +148,20 @@ function toggleTimer(forceState) {
             timerId = null;
         }
         if (btn) btn.classList.remove('active-toggle');
-        stopRotateIntervalOnly();
+        
+        // 中断保存（現在の盤面と累積時間を記録）
+        saveSystemLog(false);
+        
+        // ギミックとUIのクリーンアップ
+        if (typeof stopRotateIntervalOnly === 'function') stopRotateIntervalOnly();
         setInterfaceLock(false);
     } else {
         // --- 開始（再開）処理 ---
         if (timerId) return;
-        toggleMenu(false);
+        
+        if (typeof toggleMenu === 'function') toggleMenu(false);
         setInitialBoardSnapshot();
+        
         // 新たな開始基点を記録
         startTime = performance.now();
         
@@ -170,9 +178,10 @@ function toggleTimer(forceState) {
         if (btn) btn.classList.add('active-toggle');
         setInterfaceLock(true);
 
+        // 回転ギミックの再開
         const rotateBtn = document.querySelector('button[onclick="startRotateCountdown()"]');
         if (rotateBtn && rotateBtn.classList.contains('active-toggle-red')) {
-            if (!window.rotateTimerId) executeRotateLoop(); 
+            if (!window.rotateTimerId && typeof executeRotateLoop === 'function') executeRotateLoop(); 
         }
     }
 }
@@ -203,10 +212,13 @@ function incrementCounter() {
  * ソルブログが空の状態でのみ実行され、一度保存されたら上書きしない
  */
 function setInitialBoardSnapshot() {
+    if (window.currentSessionId) return;
     const slLog = document.getElementById('solve-log').value;
-    // ソルブログが空（開始時）かつ、まだスナップショットが保存されていない場合のみ実行
+    // セッション開始時（ログが空）かつ、まだスナップショットがない場合のみ保存
     if (!slLog && !window.initialBoardSnapshot) {
         window.initialBoardSnapshot = JSON.parse(JSON.stringify(board));
+        // このセッションを一意に識別するためのタイムスタンプ
+        window.currentSessionId = new Date().getTime();
     }
 }
 
@@ -220,14 +232,19 @@ function saveSystemLog(isComplete = false) {
     const time = document.getElementById('timer-display').innerText;
     const moves = document.getElementById('counter-display').innerText;
 
-    // 現在のギミック状態
     const gimmicks = {
         rotate: !!document.querySelector('button[onclick="startRotateCountdown()"].active-toggle-red'),
         flash: window.isFlashMode,
         searchlight: window.isSearchlightMode
     };
 
-const logEntry = {
+    // セッションIDが未定義の場合はここで発行し、グローバルに保持する（重複防止の要）
+    if (!window.currentSessionId) {
+        window.currentSessionId = new Date().getTime();
+    }
+
+    const logEntry = {
+        session_id: window.currentSessionId,
         timestamp: new Date().toLocaleString(),
         grid_size: gridNum,
         sub_size: subSize,
@@ -237,26 +254,31 @@ const logEntry = {
         solve_time: time,
         step_count: moves,
         gimmicks: gimmicks,
-        initial_state: window.initialBoardSnapshot || null, // ここを修正
+        initial_state: window.initialBoardSnapshot || null,
+        current_state: JSON.parse(JSON.stringify(board)),
         target_state: targetBoard,
         is_complete: isComplete
     };
 
-    // localStorageから取得 (最大400件の全体枠、表示時に各モード100件でフィルタ)
     let history = JSON.parse(localStorage.getItem('slp_history') || '[]');
     
-    // 同一セッション（同じタイムスタンプや未完了の更新）の処理は今はシンプルに追加
-    history.push(logEntry);
+    // セッションIDで既存ログを検索
+    const existingIndex = history.findIndex(h => h.session_id === logEntry.session_id);
 
-    // 全体で400件を超えないように制御（古いものから削除）
-    if (history.length > 400) history.shift();
+    if (existingIndex !== -1) {
+        // 同一セッションがあれば、最新の状態で上書き
+        history[existingIndex] = logEntry;
+    } else {
+        // なければ新規追加
+        history.push(logEntry);
+        if (history.length > 400) history.shift();
+    }
 
     localStorage.setItem('slp_history', JSON.stringify(history));
 
-    // リストの表示更新（Behavior）
-    if (typeof refreshHistoryList === 'function') refreshHistoryList();
-
-	refreshHistoryList();
+    if (typeof refreshHistoryList === 'function') {
+        refreshHistoryList();
+    }
 }
 
 /**
@@ -375,34 +397,73 @@ function createMiniPreview(state, cellSize = 3) {
 }
 
 /**
- * 解析モード開始：左(0)=崩れ状態 から 右(Max)=完成状態 へ向かうタイムライン
+ * 解析モード開始：履歴の状態（完了/中断）に応じて、解析(Replay)か再開(Resume)かを振り分ける
  */
 function startAnalyzeMode() {
     const solveLog = document.getElementById('solve-log').value;
     if (!solveLog) return;
     
+    // 履歴レコードの検索
+    const history = JSON.parse(localStorage.getItem('slp_history') || '[]');
+    // 現在のログまたは対象のログに一致するレコードを特定
+    const record = history.find(h => h.solve_history === solveLog);
+    
+    if (!record) return;
+
+    // 同一セッションとして継続するためにIDとスナップショットを復元
+    window.currentSessionId = record.session_id;
+    window.initialBoardSnapshot = record.initial_state;
+
+    const isInterrupted = !record.is_complete;
+    const initialSnapshot = record.initial_state;
+    const currentSnapshot = record.current_state;
+
+    // --- 1. 中断データの再開(Resume)処理 ---
+    if (isInterrupted && currentSnapshot) {
+        // 盤面を中断した時点の状態に復元
+        board = JSON.parse(JSON.stringify(currentSnapshot));
+        
+        // 【重要】中断時点までの手順ログを配列として復元し、以降の操作を追記可能にする
+        if (record.solve_history) {
+            window.moveTable = record.solve_history.split(',').map(s => s.trim()).filter(s => s !== "");
+        } else {
+            window.moveTable = [];
+        }
+        
+        // 累積時間の復元（toggleTimerでの再開用）
+        if (typeof parseTimeToMs === 'function') {
+            window.elapsedTime = parseTimeToMs(record.solve_time);
+        }
+        
+        // UI表示の同期
+        document.getElementById('timer-display').innerText = record.solve_time || "00:00.00";
+        document.getElementById('counter-display').innerText = record.step_count || "0";
+
+        // プレイモードとして復帰（解析モードフラグを立てない）
+        window.isReplayMode = false;
+        setInterfaceLock(false);
+        
+        // 解析ダイアログ（履歴パネル）を閉じて盤面へ戻る
+        if (typeof toggleLogPanel === 'function') toggleLogPanel();
+        
+        render();
+        return; // 解析UI（スライダー等）のセットアップを行わずに終了
+    }
+
+    // --- 2. 完了データの解析(Analyze/Replay)モードのセットアップ ---
     setLogState(false);
     staticShowGrouping();
 
-    // --- 1. 手順の準備 ---
-    // window.moveTable は「完成から崩すためのミラー手順」
+    // 解析モード用の手順リスト作成
     window.groupedSteps = window.moveTable;
     const totalSteps = window.moveTable.length;
     window.isReplayMode = true;
 
-    // --- 2. 盤面の初期化（履歴データからスナップショットを直接復元） ---
-    // 履歴は localStorage の 'slp_history' に保存されている
-    const history = JSON.parse(localStorage.getItem('slp_history') || '[]');
-    // 現在表示されている解法ログ（手順）に一致する履歴レコードを検索
-    const record = history.find(h => h.solve_history === solveLog);
-    const snapshot = record ? record.initial_state : null;
-
-    if (snapshot && Array.isArray(snapshot) && snapshot.length > 0) {
-        // 有効なスナップショットがある場合：計算を排除し、0手目の盤面を即座に復元
-        board = JSON.parse(JSON.stringify(snapshot));
+    // スナップショット（0手目）から盤面を初期化
+    if (initialSnapshot && Array.isArray(initialSnapshot)) {
+        board = JSON.parse(JSON.stringify(initialSnapshot));
     } else {
-        // スナップショットが取得できない（古いログ等）場合のフォールバック：
-        // ターゲット/完成状態を起点にし、手順を逆適用（巻き戻し）して開始盤面を動的に生成する
+        // フォールバック：スナップショットがない場合はターゲットから逆算
         const totalSize = subSize * gridNum;
         board = Array.from({ length: totalSize }, (_, r) => 
             Array.from({ length: totalSize }, (_, c) => {
@@ -410,49 +471,39 @@ function startAnalyzeMode() {
                 const targetPiece = targetBoard[r][c];
                 const targetValue = (typeof targetPiece === 'object') ? targetPiece.value : targetPiece;
                 const targetDir = (typeof targetPiece === 'object') ? (targetPiece.direction || 0) : 0;
-                return {
-                    tileId: absoluteIndex,
-                    value: targetValue,
-                    direction: targetDir
-                };
+                return { tileId: absoluteIndex, value: targetValue, direction: targetDir };
             })
         );
-
-        // ターゲットから全手順を逆適用して「崩れた状態」へワープさせる
         for (let i = totalSteps - 1; i >= 0; i--) {
             executeGroupedMove(window.moveTable[i], true, true);
         }
     }
 
-    // 解析開始地点(0手目)を起点変数として保持し、ポインタをリセット
     window.initialAnalyzeBoard = JSON.parse(JSON.stringify(board));
-    window.currentReplayIdx = 0; 
+    window.currentReplayIdx = 0;
 
-    // --- 4. スライダーの挙動定義 ---
+    // スライダーのセットアップ
     const slider = document.getElementById('analyze-slider');
     if (slider) {
         slider.max = totalSteps;
-        slider.value = 0; // 左端スタート
+        slider.value = 0;
         slider.oninput = function(e) {
             const targetPos = parseInt(e.target.value);
-
-            // 現在地から目標地点(targetPos)まで盤面を動かす
             while (window.currentReplayIdx < targetPos) {
                 executeGroupedMove(window.groupedSteps[window.currentReplayIdx], false, true);
                 window.currentReplayIdx++;
             }
-
             while (window.currentReplayIdx > targetPos) {
                 window.currentReplayIdx--;
                 executeGroupedMove(window.groupedSteps[window.currentReplayIdx], true, true);
             }
-
             render();
             updateReplayDisplay(); 
         };
     }
 
-    toggleLogPanel();
+    // 履歴パネルを閉じ、解析専用コントロールを表示
+    if (typeof toggleLogPanel === 'function') toggleLogPanel();
     showMediaControls(true);
     updateReplayDisplay(); 
     render(); 

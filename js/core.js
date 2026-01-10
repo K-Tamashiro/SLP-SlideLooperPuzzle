@@ -305,6 +305,7 @@ function checkComplete() {
             // Complete後はTimerとカウンターをResetする
             window.elapsedTime = 0;
             moveCount = 0;
+            window.initialBoardSnapshot = null;
         }, 5000);
 
         document.getElementById('status-board')?.classList.add('show');
