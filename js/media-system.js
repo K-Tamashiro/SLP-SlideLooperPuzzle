@@ -1,7 +1,5 @@
-/**
- * 解析モード用アニメーション状態管理フラグ
- */
 window.isAnimating = false;
+window.initialBoardSnapshot = null;
 
 /**
  * 解析モード：アニメーション付き移動実行
@@ -229,17 +227,17 @@ function saveSystemLog(isComplete = false) {
         searchlight: window.isSearchlightMode
     };
 
-    const logEntry = {
+const logEntry = {
         timestamp: new Date().toLocaleString(),
         grid_size: gridNum,
         sub_size: subSize,
-        media_mode: window.mediaManager ? window.mediaManager.mode : 'color', // 追加
+        media_mode: window.mediaManager ? window.mediaManager.mode : 'color',
         scramble_log: scLog,
         solve_history: slLog,
         solve_time: time,
         step_count: moves,
         gimmicks: gimmicks,
-        initial_state: window.initial_state_data || null,
+        initial_state: window.initialBoardSnapshot || null, // ここを修正
         target_state: targetBoard,
         is_complete: isComplete
     };
@@ -388,33 +386,46 @@ function startAnalyzeMode() {
 
     // --- 1. 手順の準備 ---
     // window.moveTable は「完成から崩すためのミラー手順」
-    // window.moveTable = getMirrorStepsFromLog(solveLog);
     window.groupedSteps = window.moveTable;
     const totalSteps = window.moveTable.length;
     window.isReplayMode = true;
 
-    // --- 2. 盤面の初期化（ターゲット/完成状態を起点にする） ---
-    const totalSize = subSize * gridNum;
-    board = Array.from({ length: totalSize }, (_, r) => 
-        Array.from({ length: totalSize }, (_, c) => {
-            const absoluteIndex = r * totalSize + c;
-            const targetPiece = targetBoard[r][c];
-            const targetValue = (typeof targetPiece === 'object') ? targetPiece.value : targetPiece;
-            const targetDir = (typeof targetPiece === 'object') ? (targetPiece.direction || 0) : 0;
-            return {
-                tileId: absoluteIndex,
-                value: targetValue,
-                direction: targetDir
-            };
-        })
-    );
+    // --- 2. 盤面の初期化（履歴データからスナップショットを直接復元） ---
+    // 履歴は localStorage の 'slp_history' に保存されている
+    const history = JSON.parse(localStorage.getItem('slp_history') || '[]');
+    // 現在表示されている解法ログ（手順）に一致する履歴レコードを検索
+    const record = history.find(h => h.solve_history === solveLog);
+    const snapshot = record ? record.initial_state : null;
 
-    // --- 3. 物理的に「崩れきった状態」を 0手目(左端) とする準備 ---
-    // 一旦ターゲットから全手順を適用して、盤面を「崩れた状態」へワープさせる
-    for (let i = totalSteps - 1; i >= 0; i--) {
-        executeGroupedMove(window.moveTable[i], true, true);
+    if (snapshot && Array.isArray(snapshot) && snapshot.length > 0) {
+        // 有効なスナップショットがある場合：計算を排除し、0手目の盤面を即座に復元
+        board = JSON.parse(JSON.stringify(snapshot));
+    } else {
+        // スナップショットが取得できない（古いログ等）場合のフォールバック：
+        // ターゲット/完成状態を起点にし、手順を逆適用（巻き戻し）して開始盤面を動的に生成する
+        const totalSize = subSize * gridNum;
+        board = Array.from({ length: totalSize }, (_, r) => 
+            Array.from({ length: totalSize }, (_, c) => {
+                const absoluteIndex = r * totalSize + c;
+                const targetPiece = targetBoard[r][c];
+                const targetValue = (typeof targetPiece === 'object') ? targetPiece.value : targetPiece;
+                const targetDir = (typeof targetPiece === 'object') ? (targetPiece.direction || 0) : 0;
+                return {
+                    tileId: absoluteIndex,
+                    value: targetValue,
+                    direction: targetDir
+                };
+            })
+        );
+
+        // ターゲットから全手順を逆適用して「崩れた状態」へワープさせる
+        for (let i = totalSteps - 1; i >= 0; i--) {
+            executeGroupedMove(window.moveTable[i], true, true);
+        }
     }
-    // この時点の盤面＝左端(0)。ここから「解く」ことで右(Max)へ向かう
+
+    // 解析開始地点(0手目)を起点変数として保持し、ポインタをリセット
+    window.initialAnalyzeBoard = JSON.parse(JSON.stringify(board));
     window.currentReplayIdx = 0; 
 
     // --- 4. スライダーの挙動定義 ---
@@ -435,7 +446,6 @@ function startAnalyzeMode() {
                 window.currentReplayIdx--;
                 executeGroupedMove(window.groupedSteps[window.currentReplayIdx], true, true);
             }
-
 
             render();
             updateReplayDisplay(); 
@@ -935,7 +945,7 @@ function toggleLogPanel() {
 function loadFilteredHistory(data) {
     if (!data) return;
 
-    // --- デグレ防止：数値配列をオブジェクト構造へ正規化してから代入 ---
+    // 数値配列をオブジェクト構造へ正規化してから代入 ---
     const rawTarget = JSON.parse(JSON.stringify(data.target_state));
     targetBoard = rawTarget.map(row => 
         row.map(cell => {

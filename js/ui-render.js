@@ -395,7 +395,6 @@ function stopContinuousStep() {
 
 /**
  * 履歴のインデックスからデータをロード（JSONエスケープエラー回避用）
- * 1ブロック1メソッド：新規追加してください。
  */
 function loadHistoryByIndex(index) {
     if (!window.currentFilteredHistory || !window.currentFilteredHistory[index]) {
@@ -412,13 +411,11 @@ function loadHistoryByIndex(index) {
         console.warn("loadFilteredHistory is not defined.");
     }
 
-    // --- ここを追加：履歴の時間を盤面のタイマー表示に反映 ---
     const timerDisplay = document.getElementById('timer-display');
     if (timerDisplay) {
         timerDisplay.innerText = data.solve_time || "00:00.000";
     }
 
-    // --- ついでに：前回の相談で「空になる」と言っていたログ用要素も更新 ---
     const solveTimeEl = document.getElementById('solve-time');
     if (solveTimeEl) {
         solveTimeEl.innerText = data.solve_time || "00:00.000";

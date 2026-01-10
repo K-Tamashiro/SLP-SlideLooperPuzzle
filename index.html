@@ -146,77 +146,77 @@
 	<input type="file" id="v2-video-input" accept="video/*" onchange="handleVideoUpload(event)" 
        style="display:none;" aria-label="Video upload">
 
-	<div id="log-overlay" class="overlay">
-		<div class="log-panel">
-			<div id="mode-display-neon" style="text-align: center; margin-bottom: 5px;">
-				<span id="current-mode-badge"
-					style="color:#0f0; border:2px solid #0f0; padding:4px 15px; border-radius:20px; font-weight:bold; box-shadow:0 0 10px #0f0;">
-					MODE: <span id="mode-text">-- x --</span>
-				</span>
-			</div>
+<div id="log-overlay" class="overlay">
+        <div class="log-panel">
+            <div id="mode-display-neon" style="text-align: center; margin-bottom: 5px;">
+                <span id="current-mode-badge"
+                    style="color:#0f0; border:2px solid #0f0; padding:4px 15px; border-radius:20px; font-weight:bold; box-shadow:0 0 10px #0f0;">
+                    MODE: <span id="mode-text">-- x --</span>
+                </span>
+            </div>
 
-			<div id="history-gimmick-display"
-				style="display:flex; gap:15px; justify-content:center; padding:10px; background:#222; border-radius:5px; margin-bottom:5px; font-size:24px;">
-				<span class="g-icon" id="g-rotate" style="opacity:0.3;">🔄</span>
-				<span class="g-icon" id="g-spotlight" style="opacity:0.3;">🔦</span>
-				<span class="g-icon" id="g-flash" style="opacity:0.3;">⚡</span>
-			</div>
+            <div id="history-gimmick-display"
+                style="display:flex; gap:15px; justify-content:center; padding:10px; background:#222; border-radius:5px; margin-bottom:5px; font-size:24px;">
+                <span class="g-icon" id="g-rotate" style="opacity:0.3;">🔄</span>
+                <span class="g-icon" id="g-spotlight" style="opacity:0.3;">🔦</span>
+                <span class="g-icon" id="g-flash" style="opacity:0.3;">⚡</span>
+            </div>
 
-			<div id="log-error-msg"
-				style="color:#ff4444; font-size:12px; height:18px; text-align:center; margin-bottom:5px;"></div>
+            <div id="log-error-msg"
+                style="color:#ff4444; font-size:12px; height:18px; text-align:center; margin-bottom:5px;"></div>
 
-			<div class="log-section">
-				<label for="scramble-input">Scramble Box (Question)</label>
-				<input type="text" id="scramble-input" placeholder="A-L1,B-R2,1-U2,3-D1...">
-				<div class="log-controls">
-					<button onclick="reproduceScramble()" title="Reproduce Scramble">🧩 Apply</button>
-					<button onclick="triggerImport()" title="Import CSV">📥 Import</button>
-					<button onclick="saveCSV('scramble')" title="Save Scramble CSV">💾 Save</button>
-					<!-- Reverseボタンの追加：アイコンを反転イメージのSVGに変更 -->
-					<button onclick="reversePattern()" title="Reverse Scramble via Torus" style="background: #2c3e50;">
-						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;">
-							<path d="M20 17H4"></path>
-							<path d="M7 20l-3-3 3-3"></path>
-							<path d="M4 7h16"></path>
-							<path d="M17 10l3-3-3-3"></path>
-						</svg>
-						Reverse
-					</button>
-				</div>
-			</div>
+            <div class="log-section">
+                <label for="scramble-input">Scramble Box (Question)</label>
+                <input type="text" id="scramble-input" placeholder="A-L1,B-R2,1-U2,3-D1...">
+                <div class="log-controls">
+                    <button onclick="reproduceScramble()" title="Reproduce Scramble">🧩 Apply</button>
+                    <button onclick="triggerImport()" title="Import CSV">📥 Import</button>
+                    <button onclick="saveCSV('scramble')" title="Save Scramble CSV">💾 Save</button>
+                    <!-- Reverseボタンの追加：アイコンを反転イメージのSVGに変更 -->
+                    <button onclick="reversePattern()" title="Reverse Scramble via Torus" style="background: #2c3e50;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;">
+                            <path d="M20 17H4"></path>
+                            <path d="M7 20l-3-3 3-3"></path>
+                            <path d="M4 7h16"></path>
+                            <path d="M17 10l3-3-3-3"></path>
+                        </svg>
+                        Rev
+                    </button>
+                </div>
+            </div>
 
-			<div class="log-section">
-				<label for="solve-log">Solve Log (Live Answer)</label>
-				<input type="text" id="solve-log" readonly placeholder="Your solve log will appear here">
-				<div class="log-controls">
-					<button onclick="copySolveToScramble()" title="Apply to Scramble">📋 Copy</button>
-					<button onclick="saveCSV('solve')" title="Save Solve Pattern">💾 Save</button>
-					<button id="analyze-btn" onclick="startAnalyzeMode()" style="background:#d35400; flex: 2;"
-						title="Analyze This Solve">🔍 ANALYZE</button>
-				</div>
-			</div>
+            <div class="log-section">
+                <label for="solve-log">Solve Log (Live Answer)</label>
+                <input type="text" id="solve-log" readonly placeholder="Your solve log will appear here">
+                <div class="log-controls">
+                    <button onclick="copySolveToScramble()" title="Apply to Scramble">📋 Copy</button>
+                    <button onclick="saveCSV('solve')" title="Save Solve Pattern">💾 Save</button>
+                    <button id="analyze-btn" onclick="startAnalyzeMode()" style="background:#d35400; flex: 2;"
+                        title="Analyze This Solve">🔍 Analyze</button>
+                </div>
+            </div>
 
-			<div class="log-section">
-				<div id="history-label" class="log-label">History (Filtered by Mode)</div>
-				
-				<div id="history-list" 
-					class="history-container"
-					role="list"
-					aria-labelledby="history-label"
-					style="max-height:150px; overflow-y:auto; background:#111; border:1px solid #444; margin-bottom:5px;">
-				</div>
-				
-				<div class="log-controls">
-					<button onclick="saveBackupCSV()" title="Backup History">📤 Backup</button>
-					<button onclick="triggerRestore()" title="Restore History CSV">📥 Restore</button>
-				</div>
-			</div>
+            <div class="log-section">
+                <div id="history-label" class="log-label">History (Filtered by Mode)</div>
+                
+                <div id="history-list" 
+                    class="history-container"
+                    role="list"
+                    aria-labelledby="history-label"
+                    style="max-height:150px; overflow-y:auto; background:#111; border:1px solid #444; margin-bottom:5px;">
+                </div>
+                
+                <div class="log-controls">
+                    <button onclick="saveBackupCSV()" title="Backup History">📤 Backup</button>
+                    <button onclick="triggerRestore()" title="Restore History CSV">📥 Restore</button>
+               </div>
+            </div>
 
-			<button class="close-btn" onclick="toggleLogPanel()">Close</button>
-			<input type="file" id="import-input" style="display:none" onchange="importCSV(event)" aria-label="Import CSV">
-			<input type="file" id="restore-input" style="display:none" onchange="restoreHistory(event)" aria-label="Restore history">
-		</div>
-	</div>
+            <button class="close-btn" onclick="toggleLogPanel()">Close</button>
+            <input type="file" id="import-input" style="display:none" onchange="importCSV(event)" aria-label="Import CSV">
+            <input type="file" id="restore-input" style="display:none" onchange="restoreHistory(event)" aria-label="Restore history">
+        </div>
+    </div>
 
 	<div class="content-wrapper">
 		<div class="game-area">
