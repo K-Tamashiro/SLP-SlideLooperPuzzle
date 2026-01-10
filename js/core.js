@@ -26,6 +26,7 @@ let completeTimerId = null;
 // 解析用の初期状態を保存する変数
 let initialAnalyzeBoard = null;
 window.isTargetScrambled = false;
+window.elapsedTime = 0;
 
 let debugmode = false;
 /**
@@ -62,7 +63,6 @@ function initBoard(resetTarget = false) {
     if (!rotationManager) {
         rotationManager = new RotationManager(window.mediaManager ? window.mediaManager.mode : 'color');
     }
-
     resetStats(); 
     clearSolveLog();
     shuffleTargetOnly();
@@ -302,6 +302,9 @@ function checkComplete() {
         if (completeTimerId) clearTimeout(completeTimerId);
         completeTimerId = setTimeout(() => {
             hideCompleteDisplay();
+            // Complete後はTimerとカウンターをResetする
+            window.elapsedTime = 0;
+            moveCount = 0;
         }, 5000);
 
         document.getElementById('status-board')?.classList.add('show');
@@ -379,6 +382,7 @@ function resetStats() {
         clearInterval(timerId); 
         timerId = null; 
     }
+    window.elapsedTime = 0;
     stopRotateIntervalOnly();
 
     // 2. サーチライト状態の強制リセット（ボタン消灯とモードオフ）

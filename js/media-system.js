@@ -141,21 +141,34 @@ function toggleTimer(forceState) {
     if (!isLogEnabled && shouldStart) return;
 
     if (!shouldStart) {
-        if (timerId) { clearInterval(timerId); timerId = null; }
+        // --- 停止（一時停止）処理 ---
+        if (timerId) {
+            // 現在のセッションでの経過時間を累積変数に加算
+            window.elapsedTime = (window.elapsedTime || 0) + (performance.now() - startTime);
+            clearInterval(timerId);
+            timerId = null;
+        }
         if (btn) btn.classList.remove('active-toggle');
         stopRotateIntervalOnly();
         setInterfaceLock(false);
     } else {
+        // --- 開始（再開）処理 ---
         if (timerId) return;
         toggleMenu(false);
+        setInitialBoardSnapshot();
+        // 新たな開始基点を記録
         startTime = performance.now();
+        
         timerId = setInterval(() => {
-            const diff = performance.now() - startTime;
+            // (現在のセッションの経過時間) + (過去に蓄積された経過時間)
+            const diff = (performance.now() - startTime) + (window.elapsedTime || 0);
+            
             const m = Math.floor(diff / 60000).toString().padStart(2, '0');
             const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
             const ms = Math.floor(diff % 1000).toString().padStart(3, '0');
             if (display) display.textContent = `${m}:${s}.${ms}`;
         }, 10);
+        
         if (btn) btn.classList.add('active-toggle');
         setInterfaceLock(true);
 
@@ -188,6 +201,18 @@ function incrementCounter() {
 }
 
 /**
+ * ゲーム開始時の盤面スナップショットを保存する
+ * ソルブログが空の状態でのみ実行され、一度保存されたら上書きしない
+ */
+function setInitialBoardSnapshot() {
+    const slLog = document.getElementById('solve-log').value;
+    // ソルブログが空（開始時）かつ、まだスナップショットが保存されていない場合のみ実行
+    if (!slLog && !window.initialBoardSnapshot) {
+        window.initialBoardSnapshot = JSON.parse(JSON.stringify(board));
+    }
+}
+
+/**
  * 現在のゲーム状態をシステムログとして保存する
  * @param {boolean} isComplete - コンプリートしたかどうかのフラグ
  */
@@ -214,7 +239,8 @@ function saveSystemLog(isComplete = false) {
         solve_time: time,
         step_count: moves,
         gimmicks: gimmicks,
-        target_state: targetBoard, // ターゲット配色そのものを保存
+        initial_state: window.initial_state_data || null,
+        target_state: targetBoard,
         is_complete: isComplete
     };
 
@@ -236,8 +262,8 @@ function saveSystemLog(isComplete = false) {
 }
 
 /**
- * 履歴リストの表示更新（全モード混在・アイコン出し分け版）
- * 1ブロック1メソッド：既存の refreshHistoryList をこの内容で完全に置き換えてください。
+ * 履歴リストの表示更新
+ * 空枠への「？」表示、アイコン最大化、ステップ単位「cnt」を適用
  */
 function refreshHistoryList() {
     const container = document.getElementById('history-list');
@@ -251,8 +277,6 @@ function refreshHistoryList() {
     }
 
     const history = JSON.parse(rawHistory || '[]');
-    
-    // フィルタリング：盤面サイズの一致のみを確認
     const filtered = history.filter(h => {
         return Number(h.grid_size) === gridNum && Number(h.sub_size) === subSize;
     }).reverse();
@@ -262,46 +286,94 @@ function refreshHistoryList() {
         return;
     }
 
-    // 描画ループ
+    // --- サイズ計算 ---
+    const totalSize = gridNum * subSize;
+    let miniCellSize = 2;
+    if (totalSize <= 4) miniCellSize = 5;
+    else if (totalSize <= 6) miniCellSize = 3;
+
+    const boxWidth = totalSize * miniCellSize + (totalSize - 1) + 2;
+
     container.innerHTML = filtered.map((data, index) => {
         const entryId = data.timestamp; 
-        
-        // アイコン決定
-        let iconContent = "";
+        const stepValue = data.step_count ? data.step_count.toString().replace(/[^0-9]/g, '') : "0";
+        const paddedSteps = stepValue.padStart(4, '0');
         const logMode = data.media_mode || 'color';
 
-        if (logMode === 'image') {
-            iconContent = `<div class="history-icon-box" title="Image Mode">🖼️</div>`;
-        } else if (logMode === 'video') {
-            iconContent = `<div class="history-icon-box" title="Video Mode">▶️</div>`;
+        // --- 空枠（プレースホルダー）に「？」を追加 ---
+        const emptyBox = `
+            <div style="width:${boxWidth}px; height:${boxWidth}px; border:1px dashed #555; 
+                 flex-shrink:0; box-sizing:border-box; display:flex; align-items:center; 
+                 justify-content:center; color:#555; font-size:${Math.floor(boxWidth * 0.6)}px; 
+                 font-weight:bold; font-family:sans-serif;">?</div>`;
+
+        const initialPreview = data.initial_state 
+            ? createMiniPreview(data.initial_state, miniCellSize) 
+            : emptyBox;
+
+        const arrow = `<span style="color: #ffff00; font-size: 10px; margin: 0 5px; flex-shrink: 0;">▶</span>`;
+
+        // 右側：ターゲット表示
+        let targetIcon = "";
+        const fontSize = Math.floor(boxWidth * 0.75);
+
+        if (logMode === 'video') {
+            targetIcon = `<div class="history-icon-box" title="Video Mode" style="width:${boxWidth}px; height:${boxWidth}px; display:flex; align-items:center; justify-content:center; font-size:${fontSize}px; border:1px solid #444; border-radius:2px; background:#222;">▶️</div>`;
+        } else if (logMode === 'image') {
+            targetIcon = `<div class="history-icon-box" title="Image Mode" style="width:${boxWidth}px; height:${boxWidth}px; display:flex; align-items:center; justify-content:center; font-size:${fontSize}px; border:1px solid #444; border-radius:2px; background:#222;">🖼️</div>`;
         } else {
-            iconContent = createMiniPreview(data.target_state);
+            targetIcon = data.target_state ? createMiniPreview(data.target_state, miniCellSize) : emptyBox;
         }
 
-        // HTML生成：JSオブジェクトの直接埋め込みを避け、data属性を使用する
+        const iconContent = `
+            <div style="display: flex; align-items: center; justify-content: center;">
+                <div style="flex-shrink:0; width:${boxWidth}px; display:flex; justify-content:center;">${initialPreview}</div>
+                ${arrow}
+                <div style="flex-shrink:0; width:${boxWidth}px; display:flex; justify-content:center;">${targetIcon}</div>
+            </div>
+        `;
+
         return `
             <div class="history-item" 
                 data-index="${index}" 
                 role="listitem" 
                 tabindex="0" 
-                aria-label="History entry for ${data.timestamp}">
-                <div class="mini-target-icon" onclick="loadHistoryByIndex(${index})">
+                style="display: flex; align-items: center; padding: 4px 6px;">
+                <div class="mini-target-icon" onclick="loadHistoryByIndex(${index})" style="width: auto; min-width: ${boxWidth * 2 + 20}px; flex-shrink: 0; display: flex; align-items: center; margin-right: 10px;">
                     ${iconContent}
                 </div>
-                <div class="history-status">${data.is_complete ? "✅" : "⚠️"}</div>
-                <div class="history-info" onclick="loadHistoryByIndex(${index})">
-                    <div class="history-date">${data.timestamp}</div>
-                    <div class="history-stats">
-                        <span class="history-time">${data.solve_time}</span>
-                        <span class="history-steps">${data.step_count} steps</span>
+                <div class="history-status" style="flex-shrink: 0; margin-right: 8px;">${data.is_complete ? "✅" : "⚠️"}</div>
+                <div class="history-info" onclick="loadHistoryByIndex(${index})" style="flex-grow: 1; min-width: 0;">
+                    <div class="history-date" style="font-size: 9px; color: #ccc;">${data.timestamp}</div>
+                    <div class="history-stats" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="history-time" style="font-family: monospace; font-size: 11px;">${data.solve_time}</span>
+                        <span class="history-steps" style="font-size: 10px; color: #888; margin-left: 6px;">${paddedSteps} cnt</span>
                     </div>
                 </div>
-                <button class="history-delete-btn" onclick="deleteHistoryEntry('${entryId}')">🗑️</button>
+                <button class="history-delete-btn" onclick="deleteHistoryEntry('${entryId}')" style="margin-left: 6px; flex-shrink: 0;">🗑️</button>
             </div>`;
     }).join('');
 
-    // ※JS側でデータを引きやすくするため、filteredを一時的にグローバルへ保持
     window.currentFilteredHistory = filtered;
+}
+
+/**
+ * ミニプレビュー生成（セルサイズ指定対応）
+ */
+function createMiniPreview(state, cellSize = 3) {
+    if (!state || !Array.isArray(state)) return '';
+    const size = state.length;
+    let html = `<div style="display:grid; grid-template-columns:repeat(${size}, ${cellSize}px); gap:1px; background:#333; padding:1px; border-radius:1px; flex-shrink:0; box-sizing:border-box;">`;
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            const entry = state[r][c];
+            const val = (entry !== null && typeof entry === 'object') ? entry.value : entry;
+            const colorClass = (val !== undefined && val !== null) ? `c${val}` : '';
+            html += `<div class="${colorClass}" style="width:${cellSize}px; height:${cellSize}px;"></div>`;
+        }
+    }
+    html += `</div>`;
+    return html;
 }
 
 /**
