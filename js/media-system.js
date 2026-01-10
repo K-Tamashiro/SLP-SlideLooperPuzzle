@@ -403,86 +403,96 @@ function startAnalyzeMode() {
     const solveLog = document.getElementById('solve-log').value;
     if (!solveLog) return;
     
-    // 履歴レコードの検索
     const history = JSON.parse(localStorage.getItem('slp_history') || '[]');
-    // 現在のログまたは対象のログに一致するレコードを特定
     const record = history.find(h => h.solve_history === solveLog);
-    
     if (!record) return;
 
-    // 同一セッションとして継続するためにIDとスナップショットを復元
+    // セッションIDと初期盤面の復元
     window.currentSessionId = record.session_id;
     window.initialBoardSnapshot = record.initial_state;
 
     const isInterrupted = !record.is_complete;
-    const initialSnapshot = record.initial_state;
-    const currentSnapshot = record.current_state;
+    const boardEl = document.getElementById('board');
 
     // --- 1. 中断データの再開(Resume)処理 ---
-    if (isInterrupted && currentSnapshot) {
-        // 盤面を中断した時点の状態に復元
-        board = JSON.parse(JSON.stringify(currentSnapshot));
+    if (isInterrupted) {
+        // 盤面と手順の復元
+        board = JSON.parse(JSON.stringify(record.current_state));
+        window.moveTable = record.solve_history ? record.solve_history.split(',').map(s => s.trim()).filter(Boolean) : [];
         
-        // 【重要】中断時点までの手順ログを配列として復元し、以降の操作を追記可能にする
-        if (record.solve_history) {
-            window.moveTable = record.solve_history.split(',').map(s => s.trim()).filter(s => s !== "");
-        } else {
-            window.moveTable = [];
-        }
-        
-        // 累積時間の復元（toggleTimerでの再開用）
+        // 累積時間の復元
         if (typeof parseTimeToMs === 'function') {
             window.elapsedTime = parseTimeToMs(record.solve_time);
         }
         
-        // UI表示の同期
+        // UI（タイマー・手数）の同期
         document.getElementById('timer-display').innerText = record.solve_time || "00:00.00";
         document.getElementById('counter-display').innerText = record.step_count || "0";
 
-        // プレイモードとして復帰（解析モードフラグを立てない）
+        // --- ギミック状態の復元 (setInterfaceLockのセレクタに準拠) ---
+        if (record.gimmicks) {
+            const g = record.gimmicks;
+            
+            // 同色フラッシュ
+            window.isFlashMode = !!g.flash;
+            window.isSameColorFlash = !!g.flash;
+            const fBtn = document.querySelector('button[onclick="toggleFlash()"]');
+            if (fBtn) fBtn.classList.toggle('active-toggle', window.isFlashMode);
+            if (boardEl) boardEl.classList.toggle('same-color-flash', window.isSameColorFlash);
+
+            // サーチライト
+            window.isSearchlightMode = !!g.searchlight;
+            const sBtn = document.querySelector('button[onclick="toggleSearchlight()"]');
+            if (sBtn) sBtn.classList.toggle('active-toggle', window.isSearchlightMode);
+            if (boardEl) boardEl.classList.toggle('searchlight-mode', window.isSearchlightMode);
+
+            // 回転
+            const rBtn = document.querySelector('button[onclick="startRotateCountdown()"]');
+            if (rBtn) rBtn.classList.toggle('active-toggle-red', !!g.rotate);
+        }
+
         window.isReplayMode = false;
+        // 再開時はまずロックを解除して操作可能にする
         setInterfaceLock(false);
-        
-        // 解析ダイアログ（履歴パネル）を閉じて盤面へ戻る
         if (typeof toggleLogPanel === 'function') toggleLogPanel();
-        
         render();
-        return; // 解析UI（スライダー等）のセットアップを行わずに終了
+        return; 
     }
 
-    // --- 2. 完了データの解析(Analyze/Replay)モードのセットアップ ---
+    // --- 2. 完了データの解析(Analyze/Replay)モード ---
+    // 解析時はギミックを強制解除
+    window.isFlashMode = false;
+    window.isSameColorFlash = false;
+    window.isSearchlightMode = false;
+    if (boardEl) {
+        boardEl.classList.remove('same-color-flash', 'searchlight-mode');
+    }
+
+    // ギミック系ボタンのクラスを一括除去 (タイマーボタン以外)
+    const targetButtons = [
+        'button[onclick="toggleFlash()"]',
+        'button[onclick="toggleSearchlight()"]',
+        'button[onclick="startRotateCountdown()"]'
+    ];
+    targetButtons.forEach(sel => {
+        const el = document.querySelector(sel);
+        if (el) el.classList.remove('active-toggle', 'active-toggle-red');
+    });
+
     setLogState(false);
     staticShowGrouping();
 
-    // 解析モード用の手順リスト作成
     window.groupedSteps = window.moveTable;
     const totalSteps = window.moveTable.length;
     window.isReplayMode = true;
 
-    // スナップショット（0手目）から盤面を初期化
-    if (initialSnapshot && Array.isArray(initialSnapshot)) {
-        board = JSON.parse(JSON.stringify(initialSnapshot));
-    } else {
-        // フォールバック：スナップショットがない場合はターゲットから逆算
-        const totalSize = subSize * gridNum;
-        board = Array.from({ length: totalSize }, (_, r) => 
-            Array.from({ length: totalSize }, (_, c) => {
-                const absoluteIndex = r * totalSize + c;
-                const targetPiece = targetBoard[r][c];
-                const targetValue = (typeof targetPiece === 'object') ? targetPiece.value : targetPiece;
-                const targetDir = (typeof targetPiece === 'object') ? (targetPiece.direction || 0) : 0;
-                return { tileId: absoluteIndex, value: targetValue, direction: targetDir };
-            })
-        );
-        for (let i = totalSteps - 1; i >= 0; i--) {
-            executeGroupedMove(window.moveTable[i], true, true);
-        }
+    if (record.initial_state) {
+        board = JSON.parse(JSON.stringify(record.initial_state));
     }
 
     window.initialAnalyzeBoard = JSON.parse(JSON.stringify(board));
     window.currentReplayIdx = 0;
 
-    // スライダーのセットアップ
     const slider = document.getElementById('analyze-slider');
     if (slider) {
         slider.max = totalSteps;
@@ -502,7 +512,6 @@ function startAnalyzeMode() {
         };
     }
 
-    // 履歴パネルを閉じ、解析専用コントロールを表示
     if (typeof toggleLogPanel === 'function') toggleLogPanel();
     showMediaControls(true);
     updateReplayDisplay(); 
