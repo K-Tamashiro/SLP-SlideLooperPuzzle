@@ -432,3 +432,93 @@ function syncBoardFromDOM() {
         }
     });
 }
+
+//-----------------------------------------------------------------------------------------
+function restorationBord() {
+    const KEY = 'slp_history';
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return;
+
+    const history = JSON.parse(raw);
+    let updated = 0;
+
+    history.forEach(item => {
+        if (!item.is_complete) return;
+        if (item.initial_state && item.initial_state.length) return;
+        if (!item.target_state || !item.solve_history) return;
+
+        const gNum  = Number(item.grid_size);
+        const sSize = Number(item.sub_size);
+        const N = gNum * sSize;
+
+        // 1. target → ローカル board
+        let board = item.target_state.map((row, r) =>
+            row.map((cell, c) => ({
+                value: typeof cell === 'object' ? cell.value : cell,
+                tileId: typeof cell === 'object'
+                    ? (cell.tileId ?? (r * N + c))
+                    : (r * N + c),
+                direction: typeof cell === 'object' ? (cell.direction ?? 0) : 0
+            }))
+        );
+
+        // 2. 生ログを逆順に
+        const steps = item.solve_history
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean)
+            .reverse();
+
+        // 3. 完成 → 崩れ（逆順 × 残距離 × 同方向）
+        for (const step of steps) {
+            const [label, act] = step.split('-');
+            const dir = act[0].toUpperCase();
+            const dist = parseInt(act.slice(1), 10);
+            if (!dist) continue;
+
+            const isV  = !isNaN(label);
+            const line = isV
+                ? (parseInt(label, 10) - 1)
+                : (label.charCodeAt(0) - 97);
+
+            const rev = (gNum - (dist % gNum)) % gNum;
+            if (rev === 0) continue;
+
+            const isRev = isV ? (dir === 'U') : (dir === 'L');
+            const loops = rev * sSize;
+
+            for (let i = 0; i < loops; i++) {
+                moveLocal(board, line, isV, isRev);
+            }
+        }
+
+        // 4. snapshot 保存
+        item.initial_state = board;
+        updated++;
+    });
+
+    localStorage.setItem(KEY, JSON.stringify(history));
+    if (typeof refreshHistoryList === 'function') refreshHistoryList();
+}
+
+function moveLocal(board, line, isV, isRev) {
+    const N = board.length;
+
+    if (isV) {
+        if (isRev) {
+            const t = board[0][line];
+            for (let r = 0; r < N - 1; r++) board[r][line] = board[r + 1][line];
+            board[N - 1][line] = t;
+        } else {
+            const t = board[N - 1][line];
+            for (let r = N - 1; r > 0; r--) board[r][line] = board[r - 1][line];
+            board[0][line] = t;
+        }
+    } else {
+        if (isRev) board[line].push(board[line].shift());
+        else board[line].unshift(board[line].pop());
+    }
+}
+
+
+//-----------------------------------------------------------------------------------------
