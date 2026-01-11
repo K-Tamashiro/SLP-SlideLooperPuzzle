@@ -160,11 +160,12 @@ function toggleTimer(forceState) {
         if (timerId) return;
         
         if (typeof toggleMenu === 'function') toggleMenu(false);
+
         setInitialBoardSnapshot();
-        
+
         // 新たな開始基点を記録
         startTime = performance.now();
-        
+
         timerId = setInterval(() => {
             // (現在のセッションの経過時間) + (過去に蓄積された経過時間)
             const diff = (performance.now() - startTime) + (window.elapsedTime || 0);
@@ -212,13 +213,9 @@ function incrementCounter() {
  * ソルブログが空の状態でのみ実行され、一度保存されたら上書きしない
  */
 function setInitialBoardSnapshot() {
-    if (window.currentSessionId) return;
-    const slLog = document.getElementById('solve-log').value;
     // セッション開始時（ログが空）かつ、まだスナップショットがない場合のみ保存
-    if (!slLog && !window.initialBoardSnapshot) {
+    if (!window.initialBoardSnapshot) {
         window.initialBoardSnapshot = JSON.parse(JSON.stringify(board));
-        // このセッションを一意に識別するためのタイムスタンプ
-        window.currentSessionId = new Date().getTime();
     }
 }
 
