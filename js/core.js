@@ -24,7 +24,7 @@ let skipCompleteOnce = false;
 let rotationManager = null; // ローテーションマネージャー
 let completeTimerId = null;
 // 解析用の初期状態を保存する変数
-let initialAnalyzeBoard = null;
+window.initialAnalyzeBoard = null;
 window.isTargetScrambled = false;
 window.elapsedTime = 0;
 
@@ -72,6 +72,7 @@ function initBoard(resetTarget = false) {
     render();
     renderPreview(); 
     renderCoordinates();
+    window.initialAnalyzeBoard = null;
 }
 
 /**
@@ -131,6 +132,11 @@ function calculateLayout() {
             }
             cellSizePixel = Math.max(40, Math.min(maxCell, cellSizePixel));
     }
+    window.initialBoardSnapshot = null;
+    window.currentSessionId = null;
+    lveHistory = [];
+    moveCount = 0;
+    window.elapsedTime = 0;
 }
 
 /**
@@ -181,7 +187,11 @@ function shuffle() {
     }
 
     render(); 
-    checkComplete(); 
+    checkComplete();
+    // Scramble後を開始状態として保存
+    window.initialAnalyzeBoard = JSON.parse(JSON.stringify(board));
+    // ゲームセッションを空にする
+    window.currentSessionId = null
 }
 
 /**
@@ -305,7 +315,9 @@ function checkComplete() {
             // Complete後はTimerとカウンターをResetする
             window.elapsedTime = 0;
             moveCount = 0;
+            lveHistory = [];
             window.initialBoardSnapshot = null;
+            window.currentSessionId = null;
         }, 5000);
 
         document.getElementById('status-board')?.classList.add('show');
