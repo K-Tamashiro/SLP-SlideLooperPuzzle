@@ -42,10 +42,7 @@ function initBoard(resetTarget = false) {
 
     // 盤面の回転状態を 0 度にリセット
     window.boardRotationDegree = 0;
-    const logInput = document.getElementById('solve-log');
-    if (logInput) {
-        logInput.value = '';
-    }
+    resetLogOnly();
 
     calculateLayout();
     const totalSize = subSize * gridNum;
@@ -330,10 +327,7 @@ function checkComplete() {
             window.initialBoardSnapshot = null;
             window.currentSessionId = null;
             window.boardRotationDegree = 0;
-            const logInput = document.getElementById('solve-log');
-            if (logInput) {
-                logInput.value = '';
-            }
+            resetLogOnly();
         }, 5000);
 
         document.getElementById('status-board')?.classList.add('show');
@@ -342,6 +336,20 @@ function checkComplete() {
         document.getElementById('status-board')?.classList.remove('show');
         document.getElementById('status-preview')?.classList.remove('show');
         if (!isComplete) skipCompleteOnce = false;
+    }
+}
+
+/**
+ * ログ履歴とUI表示のみを完全にリセットする
+ */
+function resetLogOnly() {
+    // 内部履歴配列をクリア
+    solveHistory = [];
+    
+    // UI上のログ入力フィールドをクリア
+    const logInput = document.getElementById('solve-log');
+    if (logInput) {
+        logInput.value = '';
     }
 }
 
