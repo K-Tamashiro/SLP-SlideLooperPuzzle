@@ -180,6 +180,7 @@ function toggleTimer(forceState) {
         setInterfaceLock(true);
 
         // 回転ギミックの再開
+        window.boardRotationDegree = 0;
         const rotateBtn = document.querySelector('button[onclick="startRotateCountdown()"]');
         if (rotateBtn && rotateBtn.classList.contains('active-toggle-red')) {
             if (!window.rotateTimerId && typeof executeRotateLoop === 'function') executeRotateLoop(); 
@@ -197,9 +198,73 @@ function recordMove(lineIdx, dir, steps, mode) {
     const isV = (dir === 'U' || dir === 'D');
     let label = isV ? (lineIdx + 1) : String.fromCharCode(65 + lineIdx).toLowerCase();
     const logEntry = `${label}-${dir}${steps}`;
-    solveHistory.push(logEntry);
+    solveHistory.push(RotateChange(logEntry));
     const logInput = document.getElementById('solve-log');
     if (logInput) logInput.value = solveHistory.join(',');
+}
+
+/**
+ * 回転変換処理：物理操作ログを盤面の回転状態（0, 90, 180, 270度）に合わせて論理記号に変換する
+ */
+function RotateChange(log) {
+    const rot = (window.boardRotationDegree || 0); // 0, 90, 180, 270 (90度刻み)
+    if (rot === 0) return log;
+
+    const parts = log.split('-');
+    if (parts.length < 2) return log;
+
+    const labelStr = parts[0];
+    const action = parts[1]; // 例: "R1", "U2"
+    const dir = action[0];
+    const steps = action.slice(1);
+
+    const n = subSize * gridNum;
+    const isV = !isNaN(labelStr);
+    const lineIdx = isV ? (parseInt(labelStr, 10) - 1) : (labelStr.charCodeAt(0) - 97);
+
+    let logIdx = lineIdx;
+    let logDir = dir;
+
+    /**
+     * 回転座標変換テーブル
+     * 物理操作（見た目）を、正解の向き（0度）から見た論理操作に逆変換する
+     */
+    switch (rot) {
+        case 90: // 90° 回転状態
+            if (isV) {
+                logIdx = (n - 1) - lineIdx; // 列 -> 行 (座標反転)
+                logDir = (dir === 'D' ? 'R' : 'L'); 
+            } else {
+                logIdx = lineIdx; // 行 -> 列
+                logDir = (dir === 'R' ? 'D' : 'U');
+            }
+            break;
+
+        case 180: // 180° 回転状態
+            logIdx = (n - 1) - lineIdx; // 座標反転
+            if (isV) {
+                logDir = (dir === 'D' ? 'U' : 'D');
+            } else {
+                logDir = (dir === 'R' ? 'L' : 'R');
+            }
+            break;
+
+        case 270: // 270° 回転状態
+            if (isV) {
+                logIdx = lineIdx; // 列 -> 行
+                logDir = (dir === 'D' ? 'L' : 'R');
+            } else {
+                logIdx = (n - 1) - lineIdx; // 行 -> 列 (座標反転)
+                logDir = (dir === 'R' ? 'U' : 'D');
+            }
+            break;
+    }
+
+    // 変換後の状態に基づいてラベルを再生成
+    const isLogV = (logDir === 'U' || logDir === 'D');
+    const newLabel = isLogV ? (logIdx + 1) : String.fromCharCode(97 + logIdx);
+    
+    return `${newLabel}-${logDir}${steps}`;
 }
 
 function incrementCounter() {

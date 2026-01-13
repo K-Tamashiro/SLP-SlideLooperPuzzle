@@ -37,6 +37,35 @@ function render() {
                 cell.className = 'cell';
                 cell.style.width = cell.style.height = `${cellSizePixel}px`;
                 cell.style.backgroundImage = 'none';
+                
+                if(window.debugmode){
+                    cell.style.position = 'relative'; // 子要素（数字・画像）の基準点
+                    cell.style.zIndex = '1';
+                    cell.style.overflow = 'hidden';
+                    // 【修正】Flexboxを使用して、子要素（数字）を物理的な真ん中に完全に固定する
+                    cell.style.display = 'flex';
+                    cell.style.alignItems = 'center';
+                    cell.style.justifyContent = 'center';
+                    // --- 数字ラベルの追加（パネルの真ん中にオーバーレイ） ---
+                    const numSpan = document.createElement('span');
+                    numSpan.innerText = piece.tileId + 1; // 15パズル形式（1始まり）
+                    numSpan.style.position = 'absolute';
+                    // Flexboxで中央揃えにするため、絶対配置(absolute)と座標指定を解除
+                    numSpan.style.zIndex = '10'; // キャンバスより前面に表示
+                    numSpan.style.color = '#fff';
+                    numSpan.style.fontWeight = 'bold';
+                    numSpan.style.textShadow = '1px 1px 2px #000, -1px -1px 2px #000';
+                    numSpan.style.pointerEvents = 'none'; // クリック操作を邪魔しない
+                    numSpan.style.fontSize = `${cellSizePixel * 0.4}px`;
+                    numSpan.style.lineHeight = '1';
+                    numSpan.style.whiteSpace = 'nowrap';
+                    // パーツの回転角（0, 90, 180, 270度）を取得して適用
+                    const angle = (piece.direction || 0) * 90;
+                    numSpan.style.transform = `rotate(${angle}deg)`;
+                    
+                    cell.appendChild(numSpan);
+                } 
+                
 
                 // --- メディア状態の取得 ---
                 const mm = window.mediaManager;

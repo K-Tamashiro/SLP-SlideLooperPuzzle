@@ -27,8 +27,9 @@ let completeTimerId = null;
 window.initialAnalyzeBoard = null;
 window.isTargetScrambled = false;
 window.elapsedTime = 0;
+window.boardRotationDegree = 0;
 
-let debugmode = false;
+window.debugmode = false;// true=debug false=Release
 /**
  * 初期化
  */
@@ -37,6 +38,13 @@ function initBoard(resetTarget = false) {
         toggleTimer(false); 
     } else {
         setInterfaceLock(false);
+    }
+
+    // 盤面の回転状態を 0 度にリセット
+    window.boardRotationDegree = 0;
+    const logInput = document.getElementById('solve-log');
+    if (logInput) {
+        logInput.value = '';
     }
 
     calculateLayout();
@@ -65,8 +73,9 @@ function initBoard(resetTarget = false) {
     }
     resetStats(); 
     clearSolveLog();
-    shuffleTargetOnly();
-
+    if (window.mediaManager.mode === "color") {
+        shuffleTargetOnly(); 
+    }
     window.isTargetScrambled = false;
 
     render();
@@ -167,11 +176,13 @@ function shuffle() {
     // --- 1. リセット後の最初の1回目だけに行う「準備」 ---
     if (!window.isTargetScrambled) {
         // A. ターゲットビュー（正解の配置）を新しく決定
-        shuffleTargetOnly(); 
+        if (window.mediaManager.mode === "color") {
+            shuffleTargetOnly(); 
+            copyTargetToCurrent();
+        }
 
         // B. 盤面をその新しい正解配置に「一度だけ」同期させる
         // これにより、古い問題の崩れを破棄し、新しい正解からスタートできる
-        copyTargetToCurrent();
 
         // 準備完了フラグを立てる
         window.isTargetScrambled = true;
@@ -318,6 +329,11 @@ function checkComplete() {
             lveHistory = [];
             window.initialBoardSnapshot = null;
             window.currentSessionId = null;
+            window.boardRotationDegree = 0;
+            const logInput = document.getElementById('solve-log');
+            if (logInput) {
+                logInput.value = '';
+            }
         }, 5000);
 
         document.getElementById('status-board')?.classList.add('show');
@@ -446,76 +462,110 @@ function syncBoardFromDOM() {
 }
 
 //-----------------------------------------------------------------------------------------
+/**
+ * 旧データのCompleteしたデータの開始盤面を取得するデータサルベージ機能
+ */
 function restorationBord() {
     const KEY = 'slp_history';
     const raw = localStorage.getItem(KEY);
     if (!raw) return;
 
     const history = JSON.parse(raw);
-    let updated = 0;
+    let updatedCount = 0;
 
     history.forEach(item => {
         if (!item.is_complete) return;
-        if (item.initial_state && item.initial_state.length) return;
-        if (!item.target_state || !item.solve_history) return;
+        if (!item.solve_history) return;
 
         const gNum  = Number(item.grid_size);
         const sSize = Number(item.sub_size);
         const N = gNum * sSize;
 
-        // 1. target → ローカル board
-        let board = item.target_state.map((row, r) =>
-            row.map((cell, c) => ({
-                value: typeof cell === 'object' ? cell.value : cell,
-                tileId: typeof cell === 'object'
-                    ? (cell.tileId ?? (r * N + c))
-                    : (r * N + c),
-                direction: typeof cell === 'object' ? (cell.direction ?? 0) : 0
-            }))
-        );
+        // --- 1. モード判定（画像・動画系か） ---
+        const modeStr = (item.media_mode || "").toLowerCase();
+        const isMedia = modeStr.includes('image') || modeStr.includes('video') || modeStr.includes('movie');
+        // const isMedia = modeStr.includes('color');
 
-        // 2. 生ログを逆順に
+        // --- 2. ターゲット盤面の強制上書き（画像・動画モードの場合） ---
+        // ストレージ内のターゲットビューが標準配色でない場合、ここで強制的に標準化する
+        if (isMedia) {
+            const standardTarget = [];
+            for (let r = 0; r < N; r++) {
+                const rowArr = [];
+                for (let c = 0; c < N; c++) {
+                    rowArr.push({
+                        value: Math.floor(r / sSize) * gNum + Math.floor(c / sSize),
+                        tileId: r * N + c,
+                        direction: 0
+                    });
+                }
+                standardTarget.push(rowArr);
+            }
+            // ターゲット盤面を標準配色に差し替え
+            item.target_state = standardTarget;
+        }
+
+        // 初期盤面が既に存在する場合は、ターゲット盤面の上書きのみ行い、再計算はスキップ
+        if (item.initial_state && item.initial_state.length > 0) {
+            if (isMedia) updatedCount++; // ターゲット上書き分としてカウント
+            return;
+        }
+
+        if (!item.target_state) return;
+
+        // --- 3. 算出用の一時盤面（完成状態から開始） ---
+        let tempBoard = JSON.parse(JSON.stringify(item.target_state));
+
+        // --- 4. ログを逆順にして巻き戻し（サルベージ実行） ---
+        // ※操作ログは既に正規化（0度基準）されている前提
         const steps = item.solve_history
             .split(',')
             .map(s => s.trim())
             .filter(Boolean)
             .reverse();
 
-        // 3. 完成 → 崩れ（逆順 × 残距離 × 同方向）
         for (const step of steps) {
-            const [label, act] = step.split('-');
+            const dashIdx = step.lastIndexOf('-');
+            if (dashIdx === -1) continue;
+            
+            const label = step.substring(0, dashIdx);
+            const act = step.substring(dashIdx + 1);
+            
             const dir = act[0].toUpperCase();
             const dist = parseInt(act.slice(1), 10);
             if (!dist) continue;
 
-            const isV  = !isNaN(label);
-            const line = isV
-                ? (parseInt(label, 10) - 1)
-                : (label.charCodeAt(0) - 97);
+            const isV = !isNaN(label);
+            const line = isV ? (parseInt(label, 10) - 1) : (label.charCodeAt(0) - 97);
 
-            const rev = (gNum - (dist % gNum)) % gNum;
-            if (rev === 0) continue;
+            // 逆移動量の算出
+            const revDist = (gNum - (dist % gNum)) % gNum;
+            if (revDist === 0) continue;
 
             const isRev = isV ? (dir === 'U') : (dir === 'L');
-            const loops = rev * sSize;
+            const totalLoops = revDist * sSize;
 
-            for (let i = 0; i < loops; i++) {
-                moveLocal(board, line, isV, isRev);
+            for (let i = 0; i < totalLoops; i++) {
+                moveLocal(tempBoard, line, isV, isRev);
             }
         }
 
-        // 4. snapshot 保存
-        item.initial_state = board;
-        updated++;
+        // 算出された盤面を初期状態として保存
+        item.initial_state = tempBoard;
+        updatedCount++;
     });
 
-    localStorage.setItem(KEY, JSON.stringify(history));
-    if (typeof refreshHistoryList === 'function') refreshHistoryList();
+    if (updatedCount > 0) {
+        localStorage.setItem(KEY, JSON.stringify(history));
+        if (typeof refreshHistoryList === 'function') refreshHistoryList();
+    }
 }
 
+/**
+ * 盤面移動の論理計算（サルベージ用：回転考慮済みの標準座標で実行）
+ */
 function moveLocal(board, line, isV, isRev) {
     const N = board.length;
-
     if (isV) {
         if (isRev) {
             const t = board[0][line];
@@ -531,6 +581,4 @@ function moveLocal(board, line, isV, isRev) {
         else board[line].unshift(board[line].pop());
     }
 }
-
-
 //-----------------------------------------------------------------------------------------

@@ -140,7 +140,7 @@ function staticShowGrouping() {
         
         i += matchedMove.size;
     }
-    if(debugmode){
+    if(window.debugmode){
         // --- コンソール出力の整理 ---
         console.log(`[Grouping Analysis] Mode:${gNum}x${gNum} / Block:${sSize}`);
         console.table(window.moveTable.map((m, idx) => ({

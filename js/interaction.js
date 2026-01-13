@@ -272,6 +272,9 @@ function rotateBoard() {
     setTimeout(() => {
         if (rotateTimerId) { clearInterval(rotateTimerId); rotateTimerId = null; }
         updateFrameProgress('rotate', 0);
+        
+        // 盤面全体の回転角を更新 (時計回りに+90度)
+        window.boardRotationDegree = (window.boardRotationDegree + 90) % 360;
 
         const n = subSize * gridNum;
         let newBoard = Array.from({length: n}, () => new Array(n).fill(null));
@@ -337,7 +340,7 @@ function executeRotateLoop() {
     const n = subSize * gridNum;
     const perimeterCells = (n * 4) - 4;
     let duration = 0;
-    if (debugmode){
+    if (window.debugmode){
         duration = perimeterCells * 500; // 1セル0.5秒計算 デバッグモード
     } else{
         duration = perimeterCells * 3000; // 1セル3秒計算
