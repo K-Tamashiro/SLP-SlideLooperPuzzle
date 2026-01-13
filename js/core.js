@@ -345,7 +345,7 @@ function checkComplete() {
 function resetLogOnly() {
     // 内部履歴配列をクリア
     solveHistory = [];
-    
+    window.boardRotationDegree = 0;
     // UI上のログ入力フィールドをクリア
     const logInput = document.getElementById('solve-log');
     if (logInput) {
