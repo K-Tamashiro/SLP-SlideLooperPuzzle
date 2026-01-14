@@ -30,7 +30,7 @@ window.elapsedTime = 0;
 window.boardRotationDegree = 0;
 window.viewNumber = false;
 
-window.debugmode = true;// true=debug false=Release
+window.debugmode = false;// true=debug false=Release
 /**
  * 初期化
  */
