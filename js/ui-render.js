@@ -1,5 +1,6 @@
 /**
  * メイン盤面描画（画像・動画・カラー完全統合版）
+ * ピースの回転状態（direction）およびナンバー表示（viewNumber）に対応
  */
 function render() {
     const container = document.getElementById('board'); 
@@ -37,37 +38,16 @@ function render() {
                 cell.className = 'cell';
                 cell.style.width = cell.style.height = `${cellSizePixel}px`;
                 cell.style.backgroundImage = 'none';
+                cell.style.position = 'relative'; // 子要素（数字・画像）の基準点
+                cell.style.zIndex = '1';
+                cell.style.overflow = 'hidden';
                 
-                if(window.debugmode){
-                    cell.style.position = 'relative'; // 子要素（数字・画像）の基準点
-                    cell.style.zIndex = '1';
-                    cell.style.overflow = 'hidden';
-                    // 【修正】Flexboxを使用して、子要素（数字）を物理的な真ん中に完全に固定する
-                    cell.style.display = 'flex';
-                    cell.style.alignItems = 'center';
-                    cell.style.justifyContent = 'center';
-                    // --- 数字ラベルの追加（パネルの真ん中にオーバーレイ） ---
-                    const numSpan = document.createElement('span');
-                    numSpan.innerText = piece.tileId + 1; // 15パズル形式（1始まり）
-                    numSpan.style.position = 'absolute';
-                    // Flexboxで中央揃えにするため、絶対配置(absolute)と座標指定を解除
-                    numSpan.style.zIndex = '10'; // キャンバスより前面に表示
-                    numSpan.style.color = '#fff';
-                    numSpan.style.fontWeight = 'bold';
-                    numSpan.style.textShadow = '1px 1px 2px #000, -1px -1px 2px #000';
-                    numSpan.style.pointerEvents = 'none'; // クリック操作を邪魔しない
-                    numSpan.style.fontSize = `${cellSizePixel * 0.4}px`;
-                    numSpan.style.lineHeight = '1';
-                    numSpan.style.whiteSpace = 'nowrap';
-                    // パーツの回転角（0, 90, 180, 270度）を取得して適用
-                    const angle = (piece.direction || 0) * 90;
-                    numSpan.style.transform = `rotate(${angle}deg)`;
-                    
-                    cell.appendChild(numSpan);
-                } 
-                
+                // Flexboxを使用して、子要素（数字）を中心固定する準備
+                cell.style.display = 'flex';
+                cell.style.alignItems = 'center';
+                cell.style.justifyContent = 'center';
 
-                // --- メディア状態の取得 ---
+                // --- 1. 背景（メディアまたはカラー）の描画 ---
                 const mm = window.mediaManager;
                 const hasValidMedia = mm && mm.mediaSrc && mm.mediaSrc !== "";
 
@@ -108,13 +88,34 @@ function render() {
                             0, 0, cellSizePixel, cellSizePixel,
                             sx0 + (origAbsC * step), sy0 + (origAbsR * step), step, step
                         );
-                        cell.appendChild(canvas);
+                        cell.appendChild(canvas); // 画像描画結果をセルに追加
                     }
                 } else {
                     cell.classList.add(`c${value}`);
                 }
 
-                // --- イベント制御（フラッシュ & ドラッグ） ---
+                // --- 2. ナンバーラベルの追加（オーバーレイ・回転対応） ---
+                if (window.viewNumber) {
+                    const numSpan = document.createElement('span');
+                    numSpan.innerText = (piece.tileId !== undefined) ? (piece.tileId + 1) : "";
+                    numSpan.style.position = 'absolute';
+                    numSpan.style.zIndex = '10'; // キャンバスより前面に表示
+                    numSpan.style.color = '#fff';
+                    numSpan.style.fontWeight = 'bold';
+                    numSpan.style.textShadow = '1px 1px 2px #000, -1px -1px 2px #000';
+                    numSpan.style.pointerEvents = 'none'; // クリック操作を邪魔しない
+                    numSpan.style.fontSize = `${cellSizePixel * 0.4}px`;
+                    numSpan.style.lineHeight = '1';
+                    numSpan.style.whiteSpace = 'nowrap';
+                    
+                    // パーツの回転角（0, 90, 180, 270度）を取得して適用
+                    const angle = (piece.direction || 0) * 90;
+                    numSpan.style.transform = `rotate(${angle}deg)`;
+                    
+                    cell.appendChild(numSpan);
+                }
+
+                // --- 3. イベント制御（フラッシュ & ドラッグ） ---
                 const startAction = (clientX, clientY, type, e) => {
                     if (window.isFlashMode === true) {
                         if (typeof triggerFlash === 'function') {
@@ -125,25 +126,21 @@ function render() {
                 };
 
                 cell.onmousedown = (e) => startAction(e.clientX, e.clientY, 'mouse', e);
-                const touchHandler = (e) => {
-                    const touch = e.touches[0];
-                    startAction(touch.clientX, touch.clientY, 'touch', e);
-                };
-
-                // passive: true を指定することでブラウザの警告を消し、スクロールを滑らかにします
+                
                 cell.addEventListener('touchstart', (e) => {
                     const touch = e.touches[0];
                     startAction(touch.clientX, touch.clientY, 'touch', e);
                 }, { passive: true });
 
-                // マウスイベントも同様に
                 cell.addEventListener('mousedown', (e) => {
                     startAction(e.clientX, e.clientY, 'mouse', e);
                 });
+
                 cell.oncontextmenu = (e) => {
                     e.preventDefault();
                     render();
                 };
+
                 faceEl.appendChild(cell);
             }
         }
@@ -267,8 +264,7 @@ function setInterfaceLock(isLocked) {
         'button[onclick="toggleVideoPanel()"]',
         '#shuffle-btn',
         '#mode-select',
-        '#scramble-count',
-        '#replay-trigger'
+        '#scramble-count'
     ];
     
     targetSelectors.forEach(selector => {

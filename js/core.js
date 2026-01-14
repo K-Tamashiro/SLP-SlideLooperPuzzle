@@ -28,8 +28,9 @@ window.initialAnalyzeBoard = null;
 window.isTargetScrambled = false;
 window.elapsedTime = 0;
 window.boardRotationDegree = 0;
+window.viewNumber = false;
 
-window.debugmode = false;// true=debug false=Release
+window.debugmode = true;// true=debug false=Release
 /**
  * 初期化
  */
@@ -46,7 +47,9 @@ function initBoard(resetTarget = false) {
 
     calculateLayout();
     const totalSize = subSize * gridNum;
-
+    if (!window.rotationManager && typeof RotationManager === 'function') {
+        window.rotationManager = new RotationManager('COLOR');
+    }
     // 1. マスターデータ(initialBoard)の生成
     // カラー・画像どちらのモードでも、1つの「枠(Face)」の中は同じ value に統一する
     window.initialBoard = Array.from({length: totalSize}, (_, r) => 

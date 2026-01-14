@@ -469,6 +469,8 @@ function startAnalyzeMode() {
     const record = history.find(h => h.solve_history === solveLog);
     if (!record) return;
 
+    toggleReplayMode();
+
     // セッションIDと初期盤面の復元
     window.currentSessionId = record.session_id;
     window.initialBoardSnapshot = record.initial_state;
@@ -1222,20 +1224,7 @@ function getIsRev(isV, dir, isReverseAction) {
  */
 function showMediaControls(show) {
     const controls = document.getElementById('media-controls');
-    const replayBtn = document.getElementById('replay-trigger');
     const titleContainer = document.querySelector('.title-container');
-
-    if (show) {
-        controls.style.display = 'flex';
-        controls.classList.add('active');
-        if (replayBtn) replayBtn.classList.add('active-toggle');
-        if (titleContainer) titleContainer.style.opacity = "0.1"; // タイトルを薄くして視認性確保
-    } else {
-        controls.style.display = 'none';
-        controls.classList.remove('active');
-        if (replayBtn) replayBtn.classList.remove('active-toggle');
-        if (titleContainer) titleContainer.style.opacity = "1";
-    }
 }
 
 /**

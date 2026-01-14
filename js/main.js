@@ -319,32 +319,11 @@ function restoreHistory(event) {
 }
 
 /**
- * サイドメニューの再生ボタン押下時の挙動
- * 1. メディアコントロール表示中 -> 解析モードを終了してコントロールを消す
- * 2. 非表示中 -> ログパネルを表示してログ選択を促す
+ * 1. メディアコントロール表示
  */
 function toggleReplayMode() {
-    const mediaControls = document.getElementById('media-controls');
-    const isMediaVisible = mediaControls && mediaControls.classList.contains('active');
-
-    if (isMediaVisible) {
-        // メディアコントロールが表示されていたら消す（解析モード終了）
-        window.isReplayMode = false;
-        showMediaControls(false);
-        // 解析モードを閉じる時 ログ保存をオンにする
-        setLogState(true);
-        
-        if (window.autoPlayTimer) {
-            clearInterval(window.autoPlayTimer);
-            window.autoPlayTimer = null;
-        }
-        
-        // 完了通知が出ていれば消す
-        document.getElementById('status-board')?.classList.remove('show');
-    } else {
-        // 表示されていなければログダイアログを表示
-        toggleLogPanel();
-    }
+    const mc = document.getElementById('media-controls');
+    if (mc) mc.classList.toggle('active');
 }
 
 /**
@@ -511,4 +490,21 @@ function changeMode(sSize, gNum) {
     subSize = sSize; 
     gridNum = gNum;
     initBoard(true);
+}
+
+/**
+ * ナンバー表示モードの切り替え
+ */
+function toggleNumberView() {
+    window.viewNumber = !window.viewNumber;
+    
+    const btn = document.getElementById('number-trigger');
+    if (btn) {
+        btn.classList.toggle('active-toggle', window.viewNumber);
+    }
+    
+    // 状態をログに記録（任意）
+    if (typeof addLog === 'function') addLog(`Number View: ${window.viewNumber}`);
+    
+    render();
 }
