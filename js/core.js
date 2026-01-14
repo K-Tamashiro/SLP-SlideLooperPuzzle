@@ -177,7 +177,7 @@ function shuffle() {
     if (!window.isTargetScrambled) {
         // A. ターゲットビュー（正解の配置）を新しく決定
         if (window.mediaManager.mode === "color") {
-            shuffleTargetOnly(); 
+            // shuffleTargetOnly(); 
             copyTargetToCurrent();
         }
 
