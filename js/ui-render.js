@@ -1,6 +1,6 @@
 /**
  * メイン盤面描画（画像・動画・カラー完全統合版）
- * ピースの回転状態（direction）およびナンバー表示（viewNumber）に対応
+ * ターゲットビューの配置に基づいた、各枠(Face)内での連続性を考慮したナンバリング表示
  */
 function render() {
     const container = document.getElementById('board'); 
@@ -12,6 +12,23 @@ function render() {
     container.innerHTML = '';
 
     const totalCells = subSize * gridNum;
+
+    // --- ターゲットビューにおける各フェースの表示位置を計算（カラーモード用） ---
+    const mm = window.mediaManager;
+    const isColorMode = !mm || mm.mode === 'color';
+    const faceToTargetPos = new Map();
+
+    if (isColorMode && targetBoard) {
+        for (let fr = 0; fr < gridNum; fr++) {
+            for (let fc = 0; fc < gridNum; fc++) {
+                // 各フェース（ブロック）の左上セルの値をフェースIDとして取得
+                const val = targetBoard[fr * subSize][fc * subSize];
+                const fVal = (val && typeof val === 'object') ? val.value : val;
+                // フェースIDに対して、ターゲットビュー上での「どのフェース位置（行列）」にあるかを保持
+                faceToTargetPos.set(fVal, { tr: fr * subSize, tc: fc * subSize });
+            }
+        }
+    }
 
     for (let f = 0; f < gridNum * gridNum; f++) {
         const faceEl = document.createElement('div');
@@ -38,17 +55,15 @@ function render() {
                 cell.className = 'cell';
                 cell.style.width = cell.style.height = `${cellSizePixel}px`;
                 cell.style.backgroundImage = 'none';
-                cell.style.position = 'relative'; // 子要素（数字・画像）の基準点
+                cell.style.position = 'relative'; 
                 cell.style.zIndex = '1';
                 cell.style.overflow = 'hidden';
                 
-                // Flexboxを使用して、子要素（数字）を中心固定する準備
                 cell.style.display = 'flex';
                 cell.style.alignItems = 'center';
                 cell.style.justifyContent = 'center';
 
                 // --- 1. 背景（メディアまたはカラー）の描画 ---
-                const mm = window.mediaManager;
                 const hasValidMedia = mm && mm.mediaSrc && mm.mediaSrc !== "";
 
                 if (hasValidMedia) {
@@ -72,7 +87,6 @@ function render() {
                         const canvas = document.createElement('canvas');
                         canvas.width = canvas.height = cellSizePixel;
                         const ctx = canvas.getContext('2d');
-                        const totalCells = subSize * gridNum;
                         
                         const origAbsR = Math.floor(tId / totalCells);
                         const origAbsC = tId % totalCells;
@@ -88,54 +102,73 @@ function render() {
                             0, 0, cellSizePixel, cellSizePixel,
                             sx0 + (origAbsC * step), sy0 + (origAbsR * step), step, step
                         );
-                        cell.appendChild(canvas); // 画像描画結果をセルに追加
+                        cell.appendChild(canvas); 
                     }
                 } else {
                     cell.classList.add(`c${value}`);
                 }
 
-                // --- 2. ナンバーラベルの追加（オーバーレイ・回転対応） ---
+                // --- 2. ナンバーラベルの追加（ターゲットビュー準拠の絶対ナンバリング） ---
                 if (window.viewNumber) {
                     const numSpan = document.createElement('span');
-                    numSpan.innerText = (piece.tileId !== undefined) ? (piece.tileId + 1) : "";
+                    
+                    let displayNum = "";
+                    if (piece.tileId !== undefined) {
+                        if (isColorMode && targetBoard) {
+                            // カラーモード：ターゲットビューの物理位置を基点とした絶対計算
+                            const pos = faceToTargetPos.get(piece.value);
+                            if (pos) {
+                                // ピースの元々の面内相対座標を取得
+                                const relR = Math.floor(piece.tileId / totalCells) % subSize;
+                                const relC = (piece.tileId % totalCells) % subSize;
+
+                                // ターゲットビュー（完成図）におけるこのピースの絶対座標
+                                const targetAbsR = pos.tr + relR;
+                                const targetAbsC = pos.tc + relC;
+
+                                // 盤面全体での行列インデックスから通し番号を算出 (1〜N^2)
+                                // これにより、どのようなターゲット配置でも完成時に1, 2, 3...と並ぶ
+                                displayNum = (targetAbsR * totalCells) + targetAbsC + 1;
+                            } else {
+                                displayNum = piece.tileId + 1;
+                            }
+                        } else {
+                            // イメージ・動画モードは本来の正解位置を表示
+                            displayNum = piece.tileId + 1;
+                        }
+                    }
+
+                    numSpan.innerText = displayNum;
                     numSpan.style.position = 'absolute';
-                    numSpan.style.zIndex = '10'; // キャンバスより前面に表示
+                    numSpan.style.zIndex = '10';
                     numSpan.style.color = '#fff';
                     numSpan.style.fontWeight = 'bold';
                     numSpan.style.textShadow = '1px 1px 2px #000, -1px -1px 2px #000';
-                    numSpan.style.pointerEvents = 'none'; // クリック操作を邪魔しない
+                    numSpan.style.pointerEvents = 'none';
                     numSpan.style.fontSize = `${cellSizePixel * 0.4}px`;
                     numSpan.style.lineHeight = '1';
                     numSpan.style.whiteSpace = 'nowrap';
                     
-                    // パーツの回転角（0, 90, 180, 270度）を取得して適用
                     const angle = (piece.direction || 0) * 90;
                     numSpan.style.transform = `rotate(${angle}deg)`;
                     
                     cell.appendChild(numSpan);
                 }
 
-                // --- 3. イベント制御（フラッシュ & ドラッグ） ---
+                // --- 3. イベント制御 ---
                 const startAction = (clientX, clientY, type, e) => {
-                    if (window.isFlashMode === true) {
-                        if (typeof triggerFlash === 'function') {
-                            triggerFlash(value);
-                        }
+                    if (window.isFlashMode === true && typeof triggerFlash === 'function') {
+                        triggerFlash(value);
                     }
                     handleStart(row, col, f, clientX, clientY, type, e);
                 };
 
                 cell.onmousedown = (e) => startAction(e.clientX, e.clientY, 'mouse', e);
-                
                 cell.addEventListener('touchstart', (e) => {
                     const touch = e.touches[0];
                     startAction(touch.clientX, touch.clientY, 'touch', e);
                 }, { passive: true });
-
-                cell.addEventListener('mousedown', (e) => {
-                    startAction(e.clientX, e.clientY, 'mouse', e);
-                });
-
+                cell.addEventListener('mousedown', (e) => startAction(e.clientX, e.clientY, 'mouse', e));
                 cell.oncontextmenu = (e) => {
                     e.preventDefault();
                     render();
