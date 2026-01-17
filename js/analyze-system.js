@@ -425,7 +425,8 @@ function buildMeetPath(meetKey, fPrev, bPrev) {
  */
 async function triggerSolverAnalysis() {
   if (typeof toggleLogPanel === 'function') toggleLogPanel();
-
+testGreedySolver();
+return;
   const __t0 = performance.now();
   console.log('[SLP Solver] START');
 
@@ -537,4 +538,110 @@ async function triggerSolverAnalysis() {
   setMsg('Solver: no solution found within limit');
   console.log(`[SLP Solver] END ${Math.floor(performance.now() - __t0)} ms`);
   console.groupEnd();
+}
+
+/**
+ * 実験用テストメソッド: エレベーター方式によるベタ揃え
+ * 指示：A行から順に揃える。B行以降は「目的列を下げる(D1)→合流→戻す(U1)」を徹底。
+ * 修正：手数が0になる問題を解決するため、ゴールのIDを本来の「完成状態(連番)」に固定。
+ */
+async function testGreedySolver() {
+  console.log('[Greedy Test] Starting row-by-row solve...');
+  const ss = Number(safeGet(() => subSize, 2));
+  const gn = Number(safeGet(() => gridNum, 3));
+  const N = ss * gn;
+  
+  let curB = JSON.parse(JSON.stringify(board));
+  
+  // 実験用テストでは、現在のターゲット設定に関わらず「連番（完成状態）」をゴールとして強制設定する
+  // これにより、盤面がバラバラであれば必ず手順が生成される。
+  const goalGrid = Array.from({ length: N }, (_, r) => 
+    Array.from({ length: N }, (_, c) => r * N + c)
+  );
+
+  const path = [];
+  const apply = (line, isV, isRev, dist) => {
+    if (dist <= 0) return;
+    const label = isV ? (line + 1).toString() : String.fromCharCode(97 + line);
+    const dir = isV ? (isRev ? 'U' : 'D') : (isRev ? 'L' : 'R');
+    path.push(`${label}-${dir}${dist}`);
+    // 論理盤面の更新
+    for (let i = 0; i < Math.round(dist * ss); i++) moveLocal(curB, line, isV, isRev);
+  };
+
+  const find = (tid) => {
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        if (curB[r][c] && Number(curB[r][c].tileId) === Number(tid)) return { r, c };
+      }
+    }
+    return null;
+  };
+
+  const stopR = N - ss;
+  console.log(`[Greedy Test] N=${N}, ss=${ss}, stopR=${stopR} (Targeting Identity Solved State)`);
+
+  for (let r = 0; r < stopR; r++) {
+    if (typeof setMsg === 'function') setMsg(`Greedy: Row ${r+1}/${stopR}...`);
+    await new Promise(res => setTimeout(res, 5)); 
+
+    for (let c = 0; c < N; c++) {
+      const tid = goalGrid[r][c];
+      let p = find(tid);
+      
+      if (!p) continue;
+      if (p.r === r && p.c === c) continue;
+
+      // エレベーター作業行 (wr): 現在行 r の直下のFaceの開始行（常に1ユニット分下）
+      const wr = (r + ss) % N;
+
+      // 1. パーツを「作業行 (wr)」に持ってくる
+      // パーツが既に揃えたい行 r にある場合は、まず垂直に落として逃がす
+      if (p.r === r) {
+        apply(p.c, true, false, 1);    // 下げる (D1)
+        apply(wr, false, false, 1);    // 逃がす (R1)
+        apply(p.c, true, true, 1);     // 戻す (U1)
+        p = find(tid);
+      }
+
+      // パーツを作業行 wr まで移動（縦移動が必要な場合）
+      if (p && p.r !== wr) {
+        const vDist = (wr - p.r + N) % N;
+        const vUnits = Math.round(vDist / ss);
+        if (vUnits > 0) {
+          apply(p.c, true, false, vUnits); // 下ろす
+          apply(wr, false, false, 1);      // 逃がす
+          apply(p.c, true, true, vUnits);  // 戻す
+          p = find(tid);
+        }
+      }
+
+      // 2. エレベーター：目的の列 c を下げて迎えに行く
+      if (!p) continue;
+
+      // 下げたいスロットの位置にパーツが被っていたらどかす
+      while (p && p.c === c) {
+        apply(wr, false, false, 1);
+        p = find(tid);
+      }
+
+      // エレベーターの距離：r 行のセルを wr まで下げる（1ユニット分）
+      apply(c, true, false, 1); 
+
+      // 3. 合流：作業行 wr でパーツを列 c に放り込む
+      p = find(tid);
+      if (p) {
+        const hDist = (c - p.c + N) % N;
+        const hUnits = Math.round(hDist / ss);
+        if (hUnits > 0) apply(wr, false, false, hUnits);
+      }
+
+      // 4. 帰還：列 c を元の位置へ引き上げる
+      apply(c, true, true, 1); 
+    }
+  }
+
+  console.log('[Greedy Test] Result Sequence:', path.join(','));
+  setOut(path.join(','));
+  setMsg(path.length > 0 ? `Greedy: OK (${path.length} moves)` : "Greedy: No moves needed.");
 }
