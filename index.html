@@ -52,6 +52,7 @@
 			title="Grid Size Selection">
 			<option value="easy">Easy 2(4x4)</option>
 			<option value="mid" selected="">Middle 2(6x6)</option>
+			<option value="difficult">Difficult 3(6x6)</option>
 			<option value="hard">Hard 3(9x9)</option>
 			<option value="advance">Advance 2(8x8)</option>
 		</select>
@@ -146,7 +147,7 @@
 	<input type="file" id="v2-video-input" accept="video/*" onchange="handleVideoUpload(event)" 
        style="display:none;" aria-label="Video upload">
 
-<div id="log-overlay" class="overlay">
+	<div id="log-overlay" class="overlay">
         <div class="log-panel">
             <div id="mode-display-neon" style="text-align: center; margin-bottom: 5px;">
                 <span id="current-mode-badge"
@@ -239,7 +240,7 @@
 			</div>
 		</div>
 		<div class="side-panel">
-			<div class="preview-area">
+			<div class="preview-area" onclick="triggerSolverAnalysis()" style="cursor: pointer;" title="Click to Solve">
 				<div style="font-size: 12px; color: #aaa; margin-bottom: 5px;">TARGET VIEW</div>
 				<div class="target-stack">
 					<div id="preview"></div>
@@ -332,6 +333,7 @@
 	<script src="js/interaction.js?v=1.0.1"></script>
 	<script src="js/media-system.js?v=1.0.0"></script>
 	<script src="js/RotationManager.js?v=1.0.0"></script>
+	<script src="js/analyze-system.js?v=1.0.0"></script>
 	<script>
 		if (location.protocol.startsWith('http')) {
 			const link = document.createElement('link');

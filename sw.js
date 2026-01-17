@@ -1,4 +1,4 @@
-const CACHE_NAME = "slp-cache-v1.0.2"; // バージョンを上げて更新を促す
+const CACHE_NAME = "slp-cache-v2.1.0"; // バージョンを上げて更新を促す
 const ASSETS = [
   "./",
   "./index.html",
@@ -12,6 +12,7 @@ const ASSETS = [
   "./js/interaction.js",
   "./js/media-system.js",
   "./js/RotationManager.js",
+  "./js/analyze-system.js",
   "./manifest.json"
 ];
 

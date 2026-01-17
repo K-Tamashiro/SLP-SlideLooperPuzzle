@@ -481,6 +481,7 @@ function handleModeChange(mode) {
     switch (mode) {
         case 'easy': changeMode(2, 2); break;
         case 'mid': changeMode(2, 3); break;
+        case 'difficult': changeMode(3, 2); break;
         case 'hard': changeMode(3, 3); break;
         case 'advance': changeMode(2, 4); break;
     }

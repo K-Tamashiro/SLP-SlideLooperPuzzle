@@ -108,7 +108,7 @@ function calculateLayout() {
             case 4:  // Easy: 2x2 (sub:2, grid:2)
                 maxCell = 85; 
                 break;
-            case 6:  // Mid: 2x3 (sub:2, grid:3)
+            case 6:  // Mid: 2x3 (sub:2, grid:3)  diff 3x2(2x2)
                 maxCell = 55;
                 break;
             case 8:  // Advance: 2x4 (sub:2, grid:4)
