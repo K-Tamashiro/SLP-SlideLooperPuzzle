@@ -425,8 +425,7 @@ function buildMeetPath(meetKey, fPrev, bPrev) {
  */
 async function triggerSolverAnalysis() {
   if (typeof toggleLogPanel === 'function') toggleLogPanel();
-testGreedySolver();
-return;
+
   const __t0 = performance.now();
   console.log('[SLP Solver] START');
 
@@ -439,6 +438,25 @@ return;
   const gn = Number(safeGet(() => gridNum));
   const b = safeGet(() => board, null);
   const tb = safeGet(() => targetBoard, null);
+  const n = ss * gn;
+    // モード判定用のキー文字列を作成 (例: "2-6", "2-8")
+    const modeKey = `${ss}-${n}`;
+    console.log(`[FSB Dispatcher] Mode: ${modeKey}`);
+    switch (modeKey) {
+        case '2-6':
+            await testGreedySolver();
+            return;
+        break;
+        case '2-8':
+        case '3-6':
+        case '3-9':
+          await testGreedySolver();
+          return;
+        case '2-4':
+            console.log(`Macro for ${modeKey} is not yet implemented.`);
+            break;
+       default:
+    }
 
   if (!b || !tb || !Number.isFinite(ss) || !Number.isFinite(gn) || ss <= 0 || gn <= 0) {
     setMsg('Solver: Invalid board or settings');
@@ -685,6 +703,69 @@ async function testGreedySolver() {
             apply(c, true, true, elevatorDist);
         }
     }
+    // --- 4. 仕上げ: 右下 ss x ss ブロックの同期 ---
+    // ここまでで下段の各行に必要なパーツは揃っているため、行ごとの LR シフトで完成します。
+    console.log('[Greedy Test] Final horizontal alignment...');
+    for (let r = stopR; r < N; r++) {
+        const tid = goalGrid[r][N - 1]; // 右端を基準に位置合わせ
+        let p = find(tid);
+        if (p && p.r === r && p.c !== N - 1) {
+            const hDist = (N - 1 - p.c + N) % N;
+            const hUnits = Math.round(hDist / ss);
+            if (hUnits > 0) apply(r, false, false, hUnits);
+        }
+    }
+    // --- 3. 2x2枠 6x6盤面 (2-6) 限定の 3点交換仕上げロジック ---
+    if (N === 6 && ss === 2) {
+        console.log('[Greedy Test] Starting Macro 2-6 Logic (Post-Greedy)...');
+        
+        // 【重要】Face 9 (Row 4-5, Col 4-5) の左上 (4,4) と左下 (5,4) に来るべきタイルを追跡
+        const tidC3 = goalGrid[4][4]; // Face 9 Top-Left
+        const tidD3 = goalGrid[5][4]; // Face 9 Bottom-Left
+        
+        // セットアップ移動を行う前に、対象ピースの現在位置を確定
+        const initC3 = find(tidC3);
+        const initD3 = find(tidD3);
+
+        // Face 9 の左列が正解位置にない場合のみマクロを実行
+        const needC3 = initC3 && (initC3.r !== 4 || initC3.c !== 4);
+        const needD3 = initD3 && (initD3.r !== 5 || initD3.c !== 4);
+
+        if (needC3 || needD3) {
+            console.log(`[Macro 2-6] F9-LU at (${initC3?.r},${initC3?.c}), F9-LD at (${initD3?.r},${initD3?.c})`);
+
+            // A. セットアップ (56-U1, CD-L1)
+            // これにより Face 9 が物理座標 (2,2) と (3,2) に移動する
+            apply(4, true, true, 1); apply(5, true, true, 1); // 5-U1, 6-U1
+            apply(2, false, true, 1); apply(3, false, true, 1); // c-L1, d-L1
+
+            // B. C3 (Row 2, Col 2) の解決
+            // initC3 がバッファ領域 E1(4,0) または E3(4,2) にある場合に対応
+            if (needC3 && initC3) {
+                if (initC3.r === 4 && initC3.c === 0) { // E1
+                    apply(2, true, false, 1); apply(4, false, false, 1); apply(2, true, true, 1); apply(4, false, true, 1);
+                } else if (initC3.r === 4 && initC3.c === 2) { // E3
+                    apply(4, false, false, 1); apply(2, true, false, 1); apply(4, false, true, 1); apply(2, true, true, 1);
+                }
+            }
+
+            // C. D3 (Row 3, Col 2) の解決
+            // initD3 がバッファ領域 F1(5,0) または F3(5,2) にある場合に対応
+            if (needD3 && initD3) {
+                if (initD3.r === 5 && initD3.c === 0) { // F1
+                    apply(2, true, false, 1); apply(5, false, false, 1); apply(2, true, true, 1); apply(5, false, true, 1);
+                } else if (initD3.r === 5 && initD3.c === 2) { // F3
+                    apply(5, false, false, 1); apply(2, true, false, 1); apply(5, false, true, 1); apply(2, true, true, 1);
+                }
+            }
+
+            // D. セットアップ解除 (CD-R1, 56-D1)
+            apply(2, false, false, 1); apply(3, false, false, 1); // c-R1, d-R1
+            apply(4, true, false, 1); apply(5, true, false, 1); // 5-D1, 6-D1
+        }
+    }
+
+
 
     console.log('[Greedy Test] Result Sequence:', path.join(','));
     setOut(path.join(','));
