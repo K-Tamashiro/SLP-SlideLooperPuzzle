@@ -88,19 +88,20 @@
 		</div>
 		<div class="replay-status">
 			<div class="analyze-slider-container">
-				<input type="range" id="analyze-slider" min="0" value="0" 
-					aria-label="Replay seek bar">
+				<input type="range" id="analyze-slider" min="0" value="0" aria-label="Replay seek bar">
 			</div>
 			<div class="replay-info-text">
 				<span id="current-move-display">---</span>
-				<span class="step-label">STEP: <span id="replay-index">0</span> / <span id="replay-total">0</span></span>
+				<span class="step-label">STEP: <span id="replay-index">0</span> / <span
+						id="replay-total">0</span></span>
 			</div>
 		</div>
 	</div>
 	<div id="v2-media-uploader" class="media-overlay-top"
 		style="display: none; border: 1px solid #0f0; background: rgba(0, 40, 0, 0.9); box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);">
 		<div class="m-group">
-			<input type="file" id="media-upload" accept="image/*,video/*" style="display: none;" onchange="handleMediaUpload(event)" aria-label="Upload image or video file">
+			<input type="file" id="media-upload" accept="image/*,video/*" style="display: none;"
+				onchange="handleMediaUpload(event)" aria-label="Upload image or video file">
 			<button class="m-btn" onclick="document.getElementById('media-upload').click()">📁 Load</button>
 			<button class="m-btn stop" onclick="resetToColorMode()">🎨 Reset</button>
 		</div>
@@ -144,86 +145,93 @@
 			</p>
 		</div>
 	</div>
-	<input type="file" id="v2-video-input" accept="video/*" onchange="handleVideoUpload(event)" 
-       style="display:none;" aria-label="Video upload">
+	<input type="file" id="v2-video-input" accept="video/*" onchange="handleVideoUpload(event)" style="display:none;"
+		aria-label="Video upload">
 
 	<div id="log-overlay" class="overlay">
-        <div class="log-panel">
-            <div id="mode-display-neon" style="text-align: center; margin-bottom: 5px;">
-                <span id="current-mode-badge"
-                    style="color:#0f0; border:2px solid #0f0; padding:4px 15px; border-radius:20px; font-weight:bold; box-shadow:0 0 10px #0f0;">
-                    MODE: <span id="mode-text">-- x --</span>
-                </span>
-            </div>
+		<div class="log-panel">
+			<div id="mode-display-neon" style="text-align: center; margin-bottom: 5px;">
+				<span id="current-mode-badge"
+					style="color:#0f0; border:2px solid #0f0; padding:4px 15px; border-radius:20px; font-weight:bold; box-shadow:0 0 10px #0f0;">
+					MODE: <span id="mode-text">-- x --</span>
+				</span>
+			</div>
 
-            <div id="history-gimmick-display"
-                style="display:flex; gap:15px; justify-content:center; padding:10px; background:#222; border-radius:5px; margin-bottom:5px; font-size:24px;">
-                <span class="g-icon" id="g-rotate" style="opacity:0.3;">🔄</span>
-                <span class="g-icon" id="g-spotlight" style="opacity:0.3;">🔦</span>
-                <span class="g-icon" id="g-flash" style="opacity:0.3;">⚡</span>
-            </div>
+			<div id="history-gimmick-display"
+				style="display:flex; gap:15px; justify-content:center; padding:10px; background:#222; border-radius:5px; margin-bottom:5px; font-size:24px;">
+				<span class="g-icon" id="g-rotate" style="opacity:0.3;">🔄</span>
+				<span class="g-icon" id="g-spotlight" style="opacity:0.3;">🔦</span>
+				<span class="g-icon" id="g-flash" style="opacity:0.3;">⚡</span>
+			</div>
 
-            <div id="log-error-msg"
-                style="color:#ff4444; font-size:12px; height:18px; text-align:center; margin-bottom:5px;"></div>
+			<div id="log-error-msg"
+				style="color:#ff4444; font-size:12px; height:18px; text-align:center; margin-bottom:5px;"></div>
 
-            <div class="log-section">
-                <label for="scramble-input">Scramble Box (Question)</label>
-                <input type="text" id="scramble-input" placeholder="A-L1,B-R2,1-U2,3-D1...">
-                <div class="log-controls">
-                    <button onclick="reproduceScramble()" title="Reproduce Scramble">🧩 Apply</button>
-                    <button onclick="triggerImport()" title="Import CSV">📥 Import</button>
-                    <button onclick="saveCSV('scramble')" title="Save Scramble CSV">💾 Save</button>
-                    <!-- Reverseボタンの追加：アイコンを反転イメージのSVGに変更 -->
-                    <button onclick="reversePattern()" title="Reverse Scramble via Torus" style="background: #2c3e50;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px; height:14px; vertical-align:middle; margin-right:4px;">
-                            <path d="M20 17H4"></path>
-                            <path d="M7 20l-3-3 3-3"></path>
-                            <path d="M4 7h16"></path>
-                            <path d="M17 10l3-3-3-3"></path>
-                        </svg>
-                        Rev
-                    </button>
-                </div>
-            </div>
+			<div class="log-section">
+				<label for="scramble-input">Scramble Box (Question)</label>
+				<input type="text" id="scramble-input" placeholder="A-L1,B-R2,1-U2,3-D1...">
+				<div class="log-controls">
+					<button onclick="reproduceScramble()" title="Reproduce Scramble">🧩 Apply</button>
+					<button onclick="triggerImport()" title="Import CSV">📥 Import</button>
+					<button onclick="saveCSV('scramble')" title="Save Scramble CSV">💾 Save</button>
+					<!-- Reverseボタンの追加：アイコンを反転イメージのSVGに変更 -->
+					<button onclick="reversePattern()" title="Reverse Scramble via Torus" style="background: #2c3e50;">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+							stroke-linecap="round" stroke-linejoin="round"
+							style="width:14px; height:14px; vertical-align:middle; margin-right:4px;">
+							<path d="M20 17H4"></path>
+							<path d="M7 20l-3-3 3-3"></path>
+							<path d="M4 7h16"></path>
+							<path d="M17 10l3-3-3-3"></path>
+						</svg>
+						Rev
+					</button>
+				</div>
+			</div>
 
-            <div class="log-section">
-                <label for="solve-log">Solve Log (Live Answer)</label>
-                <input type="text" id="solve-log" readonly placeholder="Your solve log will appear here">
-                <div class="log-controls">
-                    <button onclick="copySolveToScramble()" title="Apply to Scramble">📋 Copy</button>
-                    <button onclick="saveCSV('solve')" title="Save Solve Pattern">💾 Save</button>
-                    <button id="analyze-btn" onclick="startAnalyzeMode()" style="background:#d35400; flex: 2;"
-                        title="Analyze This Solve">🔍 Analyze</button>
-                </div>
-            </div>
+			<div class="log-section">
+				<label for="solve-log">Solve Log (Live Answer)</label>
+				<input type="text" id="solve-log" readonly placeholder="Your solve log will appear here">
+				<div class="log-controls">
+					<button onclick="copySolveToScramble()" title="Apply to Scramble">📋 Copy</button>
+					<button onclick="saveCSV('solve')" title="Save Solve Pattern">💾 Save</button>
+					<button id="analyze-btn" onclick="startAnalyzeMode()" style="background:#d35400; flex: 2;"
+						title="Analyze This Solve">🔍 Analyze</button>
+				</div>
+			</div>
 
-            <div class="log-section">
-                <div id="history-label" class="log-label">History (Filtered by Mode)</div>
-                
-                <div id="history-list" 
-                    class="history-container"
-                    role="list"
-                    aria-labelledby="history-label"
-                    style="max-height:150px; overflow-y:auto; background:#111; border:1px solid #444; margin-bottom:5px;">
-                </div>
-                
-                <div class="log-controls">
-                    <button onclick="saveBackupCSV()" title="Backup History">📤 Backup</button>
-                    <button onclick="triggerRestore()" title="Restore History CSV">📥 Restore</button>
-                    <button onclick="restorationBord()" title="Maintenance / Restoration" style="display: flex; align-items: center; gap: 4px;">
-            			<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;">
-                			<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
-            			</svg>
-            			Mente
-        			</button>
-               </div>
-            </div>
+			<div class="log-section">
+				<div id="history-label" class="log-label">History (Filtered by Mode)</div>
 
-            <button class="close-btn" onclick="toggleLogPanel()">Close</button>
-            <input type="file" id="import-input" style="display:none" onchange="importCSV(event)" aria-label="Import CSV">
-            <input type="file" id="restore-input" style="display:none" onchange="restoreHistory(event)" aria-label="Restore history">
-        </div>
-    </div>
+				<div id="history-list" class="history-container" role="list" aria-labelledby="history-label"
+					style="max-height:150px; overflow-y:auto; background:#111; border:1px solid #444; margin-bottom:5px;">
+				</div>
+
+				<div class="log-controls">
+					<button onclick="saveBackupCSV()" title="Backup History">📤 Backup</button>
+					<button onclick="triggerRestore()" title="Restore History CSV">📥 Restore</button>
+					<button onclick="restorationBord()" title="Maintenance / Restoration"
+						style="display: flex; align-items: center; gap: 4px;">
+						<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+							stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+							style="vertical-align: middle;">
+							<path
+								d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z">
+							</path>
+						</svg>
+						Mente
+					</button>
+				</div>
+			</div>
+
+			<button class="close-btn" onclick="toggleLogPanel()">Close</button>
+			<button class="delete-btn" onclick="deleteLog()">Delete</button>
+			<input type="file" id="import-input" style="display:none" onchange="importCSV(event)"
+				aria-label="Import CSV">
+			<input type="file" id="restore-input" style="display:none" onchange="restoreHistory(event)"
+				aria-label="Restore history">
+		</div>
+	</div>
 
 	<div class="content-wrapper">
 		<div class="game-area">
@@ -269,14 +277,15 @@
 						</svg>
 					</button>
 					<button class="icon-btn" id="number-trigger" onclick="toggleNumberView()" title="Number Mode">
-						<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<rect x="3" y="3" width="18" height="18" rx="2" stroke-opacity="0.5" />
-						<!-- 1 -->
-						<path d="M7 9v6" />
-						<!-- 2 -->
-						<path d="M11 9h2.5v3h-2.5v3h2.5" />
-						<!-- 3 -->
-						<path d="M16 9h2.5v6h-2.5 M16 12h2.5" />
+						<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"
+							stroke-linejoin="round">
+							<rect x="3" y="3" width="18" height="18" rx="2" stroke-opacity="0.5" />
+							<!-- 1 -->
+							<path d="M7 9v6" />
+							<!-- 2 -->
+							<path d="M11 9h2.5v3h-2.5v3h2.5" />
+							<!-- 3 -->
+							<path d="M16 9h2.5v6h-2.5 M16 12h2.5" />
 						</svg>
 					</button>
 					<button class="icon-btn" id="rotate-btn" onclick="startRotateCountdown()" title="Rotate">

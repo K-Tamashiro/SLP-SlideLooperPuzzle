@@ -27,6 +27,83 @@ const ASTAR_NODE_LIMIT = 250000;
 const BFS_FIRST_DEPTH = 10;
 const BFS_DEPTH_STEP = 4;
 const BFS_MAX_DEPTH = 60;
+// 2-8 下段BFS用の設定
+const BOTTOM_BFS_MAX_DEPTH = 14;
+
+/**
+ * CPU（Solver）による解析結果をシステムログとして保存する
+ * 解析開始時点の盤面（board）とターゲット盤面をスナップショットとして保持する
+ */
+function saveSystemLog_CPU() {
+  const scInput = document.getElementById('scramble-input');
+  const solveLogArea = document.getElementById('solve-log');
+  if (!scInput || !scInput.value) return;
+
+  const scLog = scInput.value;
+  const steps = scLog.split(',').filter(s => s.trim() !== "");
+  const moves = steps.length;
+
+  // UI上の「Solveログ」に反映
+  if (solveLogArea) {
+    solveLogArea.value = scLog;
+  }
+
+  const gimmicks = {
+    rotate: !!document.querySelector('button[onclick="startRotateCountdown()"].active-toggle-red'),
+    flash: window.isFlashMode,
+    searchlight: window.isSearchlightMode
+  };
+
+  // 【重要】解析が開始された時点の盤面を「初期状態」として記録する
+  // CPUの解答手順はこの盤面状態からスタートするため、これがないと再現できない
+  const startBoardSnapshot = JSON.parse(JSON.stringify(board));
+
+  // 【重要】ターゲット盤面も保存する（カラーモード等でターゲットが変わるため）
+  const targetSnapshot = targetBoard ? JSON.parse(JSON.stringify(targetBoard)) : null;
+
+  const logEntry = {
+    session_id: new Date().getTime(),
+    timestamp: new Date().toLocaleString() + " (CPU Solve)",
+    grid_size: gridNum,
+    sub_size: subSize,
+    media_mode: window.mediaManager ? window.mediaManager.mode : 'color',
+    scramble_log: scLog,       // 手順
+    solve_history: scLog,      // 履歴表示用
+    solver_output: scLog,
+    solve_time: "CPU Search",
+    step_count: moves,
+    gimmicks: gimmicks,
+    initial_state: startBoardSnapshot, // 解析開始時の盤面
+    current_state: startBoardSnapshot, // 解析完了直後はまだ動かしていないので同一
+    target_state: targetSnapshot,     // 当時のターゲット
+    is_complete: true,                 // Solverが解を見つけたため完了扱い
+    is_cpu: true                       // CPUフラグ
+  };
+
+  let history = JSON.parse(localStorage.getItem('slp_history') || '[]');
+  history.push(logEntry);
+
+  // 最大保存件数（400件）
+  if (history.length > 400) history.shift();
+
+  localStorage.setItem('slp_history', JSON.stringify(history));
+
+  // 履歴UIを更新
+  if (typeof refreshHistoryList === 'function') {
+    refreshHistoryList();
+  }
+}
+
+/**
+ * 履歴ログ（slp_history）をすべて削除し、UIを更新する
+ * HTML側の赤い削除ボタン（class="delete-btn"）から呼び出される
+ */
+function deleteLog() {
+  localStorage.removeItem('slp_history');
+  if (typeof refreshHistoryList === 'function') {
+    refreshHistoryList();
+  }
+}
 
 /* ===============================
  * 1. Safe getters / DOM helpers
@@ -419,12 +496,15 @@ function buildMeetPath(meetKey, fPrev, bPrev) {
  * =============================== */
 
 /**
- * 解析エントリーポイント：進捗状態表示を追加
- * 既存のロジック、コンソールログ、判定処理を一切破壊せず、
- * UIスレッドを解放して進行状況を表示するための待機処理のみを挿入しました。
+ * 解析エントリーポイント：タイマー停止処理とログ保存タイミングの修正、およびフリーズ防止策を適用
  */
 async function triggerSolverAnalysis() {
   if (typeof toggleLogPanel === 'function') toggleLogPanel();
+
+  // 解析開始時にプレイタイマーを停止（「Timerが切れてない」問題の修正）
+  if (typeof toggleTimer === 'function' && window.timerId) {
+    toggleTimer(false);
+  }
 
   const __t0 = performance.now();
   console.log('[SLP Solver] START');
@@ -439,21 +519,20 @@ async function triggerSolverAnalysis() {
   const b = safeGet(() => board, null);
   const tb = safeGet(() => targetBoard, null);
   const n = ss * gn;
-  // モード判定用のキー文字列を作成 (例: "2-6", "2-8")
+
   const modeKey = `${ss}-${n}`;
   console.log(`[FSB Dispatcher] Mode: ${modeKey}`);
+
   switch (modeKey) {
     case '2-6':
-      await testGreedySolver();
-      return;
-      break;
-    case '2-8':
     case '3-6':
     case '3-9':
+    case '2-8':
+      // testGreedySolver内でsaveSystemLog_CPUが実行されるため、そのままreturn
       await testGreedySolver();
       return;
     case '2-4':
-      console.log(`Macro for ${modeKey} is not yet implemented.`);
+      console.log(`Using BFS Search for ${modeKey}.`);
       break;
     default:
   }
@@ -483,8 +562,8 @@ async function triggerSolverAnalysis() {
     return;
   }
 
-  // 描画を許可するための待機
-  await new Promise(r => setTimeout(r, 10));
+  // 描画更新のための待機
+  await new Promise(r => setTimeout(r, 16));
 
   // ===== Stage 1: A* (fast) =====
   {
@@ -492,32 +571,29 @@ async function triggerSolverAnalysis() {
     await new Promise(r => setTimeout(r, 10));
 
     console.log('[A*] start');
-    console.time('solveAStar');
     const pathA = solveAStar(start, goal, N, ss, gn, SOLVER_TIME_LIMIT_MS);
-    console.timeEnd('solveAStar');
 
     if (Array.isArray(pathA)) {
       if (pathA.length === 0) {
         setOut('');
         setMsg('Solver: already solved');
-        console.log('Solved (path=[])');
-        console.log(`[SLP Solver] END ${Math.floor(performance.now() - __t0)} ms`);
         console.groupEnd();
         return;
       }
       const s = pathA.join(',');
       setOut(s);
       setMsg(`Solver: OK (${pathA.length} moves) [A*]`);
-      console.log('solver result path:', pathA);
-      console.log('scramble-output:', s);
+
+      // 成功時：return前に確実にログを保存
+      saveSystemLog_CPU();
+
       console.log(`[SLP Solver] END ${Math.floor(performance.now() - __t0)} ms`);
       console.groupEnd();
       return;
     }
-    console.log('[A*] no solution or limit reached, fall back to BFS');
   }
 
-  // ===== Stage 2: bidirectional BFS with iterative depth =====
+  // ===== Stage 2: bidirectional BFS (2-4等で使用) =====
   const t0 = performance.now();
   console.log('[BFS] start');
 
@@ -526,27 +602,19 @@ async function triggerSolverAnalysis() {
     if (remain <= 0) break;
 
     setMsg(`Analyzing (Stage 2: BFS Depth ${depth})...`);
-    await new Promise(r => setTimeout(r, 10));
+    // CPU負荷が高いため、ループ毎にUIスレッドを解放してフリーズを防止
+    await new Promise(r => setTimeout(r, 30));
 
-    console.log(`[BFS] try depth<=${depth} remain=${Math.floor(remain)}ms elapsed=${Math.floor(performance.now() - __t0)}ms`);
-    console.time(`solveBidirectional(d<=${depth})`);
-    const path = solveBidirectional(start, goal, N, ss, gn, depth, remain);
-    console.timeEnd(`solveBidirectional(d<=${depth})`);
+    // const path = solveBidirectional(start, goal, N, ss, gn, depth, remain);
 
     if (Array.isArray(path)) {
-      if (path.length === 0) {
-        setOut('');
-        setMsg('Solver: already solved');
-        console.log('Solved (path=[])');
-        console.log(`[SLP Solver] END ${Math.floor(performance.now() - __t0)} ms`);
-        console.groupEnd();
-        return;
-      }
       const s = path.join(',');
       setOut(s);
       setMsg(`Solver: OK (${path.length} moves) [BFS d<=${depth}]`);
-      console.log('solver result path:', path);
-      console.log('scramble-output:', s);
+
+      // 成功時：BFSの結果を確実にログに保存
+      saveSystemLog_CPU();
+
       console.log(`[SLP Solver] END ${Math.floor(performance.now() - __t0)} ms`);
       console.groupEnd();
       return;
@@ -556,6 +624,9 @@ async function triggerSolverAnalysis() {
   setMsg('Solver: no solution found within limit');
   console.log(`[SLP Solver] END ${Math.floor(performance.now() - __t0)} ms`);
   console.groupEnd();
+
+  // 失敗時でも必要があれば状態を保存（Scramble Boxが空ならsave内で弾かれる）
+  saveSystemLog_CPU();
 }
 
 /**
@@ -839,64 +910,16 @@ async function testGreedySolver() {
 
       break;
     case '2-8':
-      console.log('[Greedy Test] Executing Macro 2-8 (Face 16 Buffer Exchange)');
-
-      // 座標定義: Face 2の右下 (2-8) -> r7, c1
-      // 座標定義: Face 16の右下 (16-8) -> r7, c7 (バッファとして利用)
-      const target = { r: 7, c: 1, lbl: '2H' };
-      const buffer = { r: 7, c: 7 };
-
-      // --- 1. 判定フェーズ (静止状態で計測) ---
-      const curTileId = curB[target.r][target.c].tileId;
-      const targetTileId = goalGrid[target.r][target.c];
-
-      if (curTileId === targetTileId) {
-        console.log(`${target.lbl}＝OK`);
-        break;
-      }
-
-      // 逆引き判定 (Face 7由来か Face 8由来か)
-      let sourceFace = 'Unknown';
-      for (let gr = 0; gr < 8; gr++) {
-        for (let gc = 0; gc < 8; gc++) {
-          if (goalGrid[gr][gc] === curTileId) {
-            // gc 0-3: 左半分(Face 7等) / gc 4-7: 右半分(Face 8等) 
-            sourceFace = (gc <= 3) ? 'Face7' : 'Face8';
-            break;
-          }
-        }
-      }
-      console.log(`${target.lbl}＝${sourceFace}`);
-
-      // --- 2. 実行フェーズ ---
-      // [A] セットアップ
-      // 2列目(c1)と8列目(c7)を、マクロ可動域へ一時的にシフト
-      // (ここでは第2・第16ユニットの行関係を維持したままセットアップ)
-
-      // [B] 3点交換 (Face 2 - Face 16 循環)
-      if (sourceFace === 'Face7') {
-        // Face 7由来: 垂直移動(列)を先行
-        // 2-8を一度Face 16へ逃がし、正解を呼び出す
-        apply(3, true, false, 1);    // 4列目(index3) D1
-        apply(target.r, false, false, 1); // H段(index7) R1
-        apply(3, true, true, 1);     // 4列目 U1
-        apply(target.r, false, true, 1);  // H段 L1
-      } else {
-        // Face 8由来: 水平移動(行)を先行
-        apply(target.r, false, false, 1); // H段 R1
-        apply(4, true, false, 1);    // 5列目(index4) D1
-        apply(target.r, false, true, 1);  // H段 L1
-        apply(4, true, true, 1);     // 5列目 U1
-      }
-
-      // [C] セットアップ戻し
-      // ※不整合（パリティ）は Face 16 側に蓄積され、最後に Face 16 を解く際に解消されます
 
       break;
     default:
   }
 
-  console.log('[Greedy Test] Result Sequence:', path.join(','));
+  // console.log('[Greedy Test] Result Sequence:', path.join(','));
+
   setOut(path.join(','));
+
+  // Greedy解析結果をログ保存
+  saveSystemLog_CPU();
   setMsg(path.length > 0 ? `Greedy: OK (${path.length} moves)` : "Greedy: No moves needed.");
 }
