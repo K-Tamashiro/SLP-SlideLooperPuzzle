@@ -923,3 +923,131 @@ async function testGreedySolver() {
   saveSystemLog_CPU();
   setMsg(path.length > 0 ? `Greedy: OK (${path.length} moves)` : "Greedy: No moves needed.");
 }
+
+/**
+ * ログ文字列パースヘルパー
+ */
+function parseMoveStep(step) {
+  var match = step.match(/^([a-z0-9]+)-([LRUD])(\d+)$/i);
+  if (!match) return null;
+  var label = match[1];
+  var dir = match[2].toUpperCase();
+  var dist = parseInt(match[3], 10);
+  var isDigit = /^\d+$/.test(label);
+  var isV = isDigit;
+  var idx = isV ? (parseInt(label, 10) - 1) : (label.toLowerCase().charCodeAt(0) - 97);
+  return { isV: isV, idx: idx, dir: dir, dist: dist, lineIndices: [idx], originalStr: step };
+}
+
+/**
+ * プレイバック状態の初期化（CTRL押下時）
+ */
+window.initPlaybackState = function () {
+  if (window._pbState) return;
+
+  var logArea = document.getElementById('solve-log');
+  var currentLogVal = logArea ? logArea.value.trim() : '';
+  var steps = currentLogVal ? currentLogVal.split(',').map(s => s.trim()).filter(s => s !== "") : [];
+
+  // バックアップは不要。現在の論理位置のみ管理する。
+  window._pbState = {
+    logicalIndex: steps.length, // 現在の論理的な手順位置（末尾）
+    redoStack: []               // Next用のスタック
+  };
+
+  updatePlaybackButtons();
+};
+
+/**
+ * プレイバック状態の破棄（CTRL離脱時）
+ * 盤面・ログ・カウントは「戻さない」（操作を確定させる）
+ * 内部状態のみをリセットする。
+ */
+window.clearPlaybackState = function () {
+  window._pbState = null;
+};
+
+/**
+ * ボタン状態の更新
+ */
+function updatePlaybackButtons() {
+  const btnPrev = document.querySelector('button[title*="Prev Step"]');
+  const btnNext = document.querySelector('button[title*="Next Step"]');
+  const pbState = window._pbState;
+
+  if (!pbState) return;
+
+  if (btnPrev) {
+    // ログが空でなければ戻れる
+    btnPrev.disabled = (pbState.logicalIndex <= 0);
+  }
+  if (btnNext) {
+    // スタックがあれば進める
+    btnNext.disabled = (pbState.redoStack.length === 0);
+  }
+}
+
+/**
+ * サイドパネル用プレイバック機能
+ */
+async function AnalyzePlayBack(direction) {
+  if (window.isAnimating) return;
+
+  if (!window._pbState) {
+    window.initPlaybackState();
+  }
+  const state = window._pbState;
+
+  var logArea = document.getElementById('solve-log');
+  var scrambleInput = document.getElementById('scramble-input');
+  var currentLogVal = logArea ? logArea.value.trim() : '';
+  var steps = currentLogVal ? currentLogVal.split(',').map(s => s.trim()).filter(s => s !== "") : [];
+
+  var nextMoveStr = null;
+
+  if (direction === 'Back') {
+    // Back: 現在位置の1つ手前の手順の「逆」を実行して追記
+    if (state.logicalIndex > 0) {
+      const targetStep = steps[state.logicalIndex - 1];
+      const invStep = invertMoveStr(targetStep); // 逆手
+
+      if (invStep) {
+        nextMoveStr = invStep;
+        state.redoStack.push(targetStep);
+        state.logicalIndex--;
+      }
+    }
+  } else if (direction === 'Next') {
+    // Next: スタックから取り出して追記
+    if (state.redoStack.length > 0) {
+      const redoStep = state.redoStack.pop();
+      if (redoStep) {
+        nextMoveStr = redoStep;
+        state.logicalIndex++;
+      }
+    }
+  }
+
+  if (nextMoveStr) {
+    // 1. ログ追記
+    steps.push(nextMoveStr);
+    const newLog = steps.join(',');
+    if (logArea) logArea.value = newLog;
+    if (scrambleInput) scrambleInput.value = newLog;
+
+    // 2. カウントアップ（確定）
+    if (typeof moveCount !== 'undefined') {
+      moveCount++;
+      const countEl = document.getElementById('counter-display');
+      if (countEl) countEl.innerText = moveCount;
+    }
+
+    // 3. アニメーション実行
+    const moveData = parseMoveStep(nextMoveStr);
+    if (moveData && typeof animateAnalyzeMove === 'function') {
+      await animateAnalyzeMove(moveData, false);
+    }
+
+    updatePlaybackButtons();
+  }
+}

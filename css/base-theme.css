@@ -8,22 +8,25 @@ body {
     font-family: sans-serif;
     margin: 0;
     padding: 10px;
-    -webkit-user-select: none; /* Safari, iOS用警告解消 */
-    user-select: none;         /* 標準 */
+    -webkit-user-select: none;
+    /* Safari, iOS用警告解消 */
+    user-select: none;
+    /* 標準 */
     touch-action: none;
     overflow-x: hidden;
 }
 
 /* タイトル要素の余白をリセット */
 .title-text {
-    font-family: 'Segoe UI', sans-serif; /* あるいは近未来的なフォント */
+    font-family: 'Segoe UI', sans-serif;
+    /* あるいは近未来的なフォント */
     font-weight: bold;
     color: #00ff41;
     text-transform: uppercase;
     letter-spacing: 1px;
 
     /* ネオン発光：色の層を重ねる */
-    text-shadow: 
+    text-shadow:
         0 0 5px #00ff41,
         0 0 10px #00ff41,
         0 0 20px #00ff41;
@@ -32,38 +35,106 @@ body {
 .title-text {
     display: block;
     overflow: hidden;
-    text-overflow: ellipsis; /* 幅を超えた場合に「...」にする */
-    font-size: 16px; /* 364px内で収まりやすいサイズ */
+    text-overflow: ellipsis;
+    /* 幅を超えた場合に「...」にする */
+    font-size: 16px;
+    /* 364px内で収まりやすいサイズ */
     color: #00ff41;
     text-shadow: 0 0 8px #00ff41;
 }
 
 p[onclick] {
     margin: 0;
-    padding: 10px 0;/* 必要に応じてタイトル周りのみの余白を調整 */
+    padding: 10px 0;
+    /* 必要に応じてタイトル周りのみの余白を調整 */
 }
 
 /* --- 16 Colors for Advance Mode --- */
-.c0 { background: #FFD700; } /* Gold */
-.c1 { background: #1E90FF; } /* DodgerBlue */
-.c2 { background: #800080; } /* Purple */
-.c3 { background: #FF8C00; } /* DarkOrange */
-.c4 { background: #FFFFFF; } /* White */
-.c5 { background: #FF0000; } /* Red */
-.c6 { background: #00CED1; } /* DarkTurquoise */
-.c7 { background: #008000; } /* Green */
-.c8 { background: #FF69B4; } /* HotPink */
-.c9 { background: #4D4D4D; } /* 暗いグレー (背景#121212に紛れない設定) */
-.c10 { background: #CCFF00; } /* ネオンライム (Neon Lime) */
-.c11 { background: #E28B5E; } /* 小麦色 (濃い肌色) */
-.c12 { background: #A52A2A; } /* 赤茶色 (Brown) */
-.c13 { background: #32CD32; } /* ライム (Lime / 指定順序に基づき調整) */
-.c14 { background: #FF1493; } /* ネオンピンク (Deep Pink) */
-.c15 { background: #000080; } /* 紺色 (Navy) */
-#timer-display, #counter-display {
-	color: #0f0;
-	font-size: 16px;
-	font-weight: bold;
+.c0 {
+    background: #FFD700;
+}
+
+/* Gold */
+.c1 {
+    background: #1E90FF;
+}
+
+/* DodgerBlue */
+.c2 {
+    background: #800080;
+}
+
+/* Purple */
+.c3 {
+    background: #FF8C00;
+}
+
+/* DarkOrange */
+.c4 {
+    background: #FFFFFF;
+}
+
+/* White */
+.c5 {
+    background: #FF0000;
+}
+
+/* Red */
+.c6 {
+    background: #00CED1;
+}
+
+/* DarkTurquoise */
+.c7 {
+    background: #008000;
+}
+
+/* Green */
+.c8 {
+    background: #FF69B4;
+}
+
+/* HotPink */
+.c9 {
+    background: #4D4D4D;
+}
+
+/* 暗いグレー (背景#121212に紛れない設定) */
+.c10 {
+    background: #CCFF00;
+}
+
+/* ネオンライム (Neon Lime) */
+.c11 {
+    background: #E28B5E;
+}
+
+/* 小麦色 (濃い肌色) */
+.c12 {
+    background: #A52A2A;
+}
+
+/* 赤茶色 (Brown) */
+.c13 {
+    background: #32CD32;
+}
+
+/* ライム (Lime / 指定順序に基づき調整) */
+.c14 {
+    background: #FF1493;
+}
+
+/* ネオンピンク (Deep Pink) */
+.c15 {
+    background: #000080;
+}
+
+/* 紺色 (Navy) */
+#timer-display,
+#counter-display {
+    color: #0f0;
+    font-size: 16px;
+    font-weight: bold;
 }
 
 #log-current-mode {
@@ -73,10 +144,12 @@ p[onclick] {
     text-transform: uppercase;
 }
 
-#timer-display, #counter-display {
-	color: #0f0;/* 緑色のデジタル文字 */
-	font-size: 18px;
-	font-weight: bold;
+#timer-display,
+#counter-display {
+    color: #0f0;
+    /* 緑色のデジタル文字 */
+    font-size: 18px;
+    font-weight: bold;
 }
 
 .key-indicator {
@@ -87,18 +160,22 @@ p[onclick] {
     color: #888;
     font-size: 0.9em;
     margin: 0 2px;
-    transition: all 0.1s ease; /* 反応速度を優先 */
+    transition: all 0.1s ease;
+    /* 反応速度を優先 */
     border: 1px solid transparent;
 }
 
 /* キー押下時の点灯スタイル */
 .key-indicator.key-active {
-    background: #008800; /* 濃い緑 */
-    color: #0f0;         /* ネオングリーン */
+    background: #008800;
+    /* 濃い緑 */
+    color: #0f0;
+    /* ネオングリーン */
     border-color: #0f0;
     box-shadow: 0 0 10px #0f0;
     transform: translateY(-1px);
 }
+
 /* --- ZEROエラー維持用の隠し設定 --- */
 .v-hidden {
     position: absolute !important;
@@ -116,4 +193,51 @@ p[onclick] {
 #current-v2-mode {
     color: #00ffcc;
     font-weight: bold;
+}
+
+/* サイドパネル用ネオンイエローボタンのスタイル定義 (icon-btnをベースに色のみ上書き) */
+/* 詳細度を上げて .icon-btn の緑色スタイルに打ち勝つ */
+button.icon-btn.neon-yellow-btn {
+    /* ベースの形状は .icon-btn に任せ、ここでは色と発光のみ定義 */
+    /* 緑色のスタイルを黄色で強制上書き (!importantを使用) */
+    border: 2px solid #ffea00 !important;
+    border-image: none !important;
+    /* border-imageがある場合の対策 */
+    color: #ffea00 !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+    box-shadow: 0 0 8px #ffea00, inset 0 0 5px rgba(255, 234, 0, 0.3) !important;
+
+    /* デフォルトは非表示（Ctrl連動でJSが表示切り替え） */
+    display: none;
+}
+
+/* ボタン内のSVGの色を強制的に黄色にする */
+button.icon-btn.neon-yellow-btn svg {
+    stroke: #ffea00 !important;
+    filter: drop-shadow(0 0 3px #ffea00);
+}
+
+button.icon-btn.neon-yellow-btn:active {
+    background: rgba(255, 234, 0, 0.2) !important;
+    box-shadow: 0 0 15px #ffea00, inset 0 0 15px #ffea00 !important;
+    transform: scale(0.95);
+}
+
+/* 非活性（disabled）時のスタイルを強制適用 */
+button.icon-btn.neon-yellow-btn:disabled {
+    border-color: #555 !important;
+    color: #777 !important;
+    background: rgba(0, 0, 0, 0.3) !important;
+    box-shadow: none !important;
+    filter: none !important;
+
+    /* 物理的にクリックを無効化 */
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+
+/* 非活性時はアイコンの発光も消す */
+button.icon-btn.neon-yellow-btn:disabled svg {
+    stroke: #777 !important;
+    filter: none !important;
 }

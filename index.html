@@ -325,6 +325,21 @@
 							<line x1="17" y1="17" x2="17" y2="21"></line>
 						</svg>
 					</button>
+					<!-- サイドパネル用ナビゲーションボタン (Ctrl連動) -->
+					<button class="icon-btn neon-yellow-btn" title="Prev Step (Hold Ctrl)"
+						onclick="AnalyzePlayBack('Back')">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+							stroke-linecap="round" stroke-linejoin="round">
+							<polyline points="15 18 9 12 15 6"></polyline>
+						</svg>
+					</button>
+					<button class="icon-btn neon-yellow-btn" title="Next Step (Hold Ctrl)"
+						onclick="AnalyzePlayBack('Next')">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+							stroke-linecap="round" stroke-linejoin="round">
+							<polyline points="9 18 15 12 9 6"></polyline>
+						</svg>
+					</button>
 				</div>
 			</div>
 		</div>
@@ -333,7 +348,7 @@
 	<div class="hint">
 		Mobile: Drag (Std) / <b>Long Press</b> (Frame)<br>
 		PC: Drag (Std) / <span class="key-indicator">Shift</span> (Frame) / <span class="key-indicator">Ctrl</span>
-		(1-Cell)
+		(Play Back)
 	</div>
 
 	<script src="js/main.js?v=1.0.1"></script>

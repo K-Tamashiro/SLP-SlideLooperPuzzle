@@ -23,7 +23,7 @@ window.addEventListener('DOMContentLoaded', () => {
             if (e.target.files[0] && window.mediaManager) {
                 await window.mediaManager.setupMedia(e.target.files[0]);
                 // ★連続選択を可能にするためのリセット
-                e.target.value = ''; 
+                e.target.value = '';
             }
         });
     }
@@ -41,12 +41,79 @@ window.addEventListener('DOMContentLoaded', () => {
 
 /**
  * キーボードショートカットのフィードバック
+ * Ctrlキーによるサイドパネルナビゲーションボタンの連動表示を追加
  */
-window.addEventListener('keydown', (e) => updateKeyIndicator(e, true));
-window.addEventListener('keyup', (e) => updateKeyIndicator(e, false));
+window.addEventListener('keydown', (e) => {
+    updateKeyIndicator(e, true);
+    if (e.key === 'Control') {
+        toggleSideNavByKey(true);
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    updateKeyIndicator(e, false);
+    if (e.key === 'Control') {
+        toggleSideNavByKey(false);
+    }
+});
+
 window.addEventListener('blur', () => {
     document.querySelectorAll('.key-indicator').forEach(el => el.classList.remove('key-active'));
+    // フォーカスが外れたら連動表示も解除
+    toggleSideNavByKey(false);
 });
+
+/**
+ * キー押下によるサイドナビ（プレイバックボタン等）の表示切替
+ * PCでの操作性を考慮し、Ctrlキー押下中のみボタンを表示する機能
+ */
+/**
+/**
+ * キー押下によるサイドナビ（プレイバックボタン等）の表示切替
+ */
+function toggleSideNavByKey(show) {
+    const btns = document.querySelectorAll('.neon-yellow-btn');
+
+    // CTRL押下/離脱時の状態管理
+    if (show) {
+        if (typeof window.initPlaybackState === 'function') {
+            window.initPlaybackState();
+        }
+    } else {
+        if (typeof window.clearPlaybackState === 'function') {
+            window.clearPlaybackState();
+        }
+    }
+
+    btns.forEach(btn => {
+        btn.style.display = show ? 'flex' : 'none';
+
+        if (show) {
+            const title = btn.getAttribute('title') || '';
+            const pbState = window._pbState;
+
+            // 状態がまだない場合のフォールバック（通常はinitで生成済み）
+            if (!pbState) {
+                const logElement = document.getElementById('solve-log');
+                const hasLog = logElement && logElement.value.trim().length > 0;
+
+                if (title.indexOf('Next') !== -1) btn.disabled = true;
+                if (title.indexOf('Prev') !== -1) btn.disabled = !hasLog;
+                return;
+            }
+
+            // Nextボタン制御
+            if (title.indexOf('Next') !== -1) {
+                btn.disabled = (pbState.redoStack.length === 0);
+            }
+
+            // Prevボタン制御
+            if (title.indexOf('Prev') !== -1) {
+                btn.disabled = (pbState.logicalIndex <= 0);
+            }
+        }
+    });
+}
 
 function updateKeyIndicator(e, isActive) {
     const indicators = document.querySelectorAll('.key-indicator');
@@ -97,7 +164,7 @@ window.ontouchmove = (e) => {
     if (touches.length >= 2) {
         // --- 2本指以上の時：スポットライト移動のみ ---
         if (e.cancelable) e.preventDefault();
-        
+
         // パズルのドラッグ計算をスキップし、サーチライト座標のみ更新
         updateSearchlight(curX, curY);
     } else {
@@ -122,7 +189,7 @@ const backBtn = mBtns[0];
 const nextBtn = mBtns[2];
 
 // Ensure stopContinuousStep is globally available
-window.stopContinuousStep = function() {
+window.stopContinuousStep = function () {
     if (autoStepInterval) {
         clearTimeout(autoStepInterval);
         clearInterval(autoStepInterval);
@@ -153,7 +220,7 @@ window.isFlashMode = false;
 /**
  * カラーモードへの完全リセット
  */
-window.resetToColorMode = function() {
+window.resetToColorMode = function () {
     if (!window.mediaManager) return;
 
     // 1. ループとモードを即座に遮断
@@ -162,12 +229,12 @@ window.resetToColorMode = function() {
 
     // 2. DOMから古いメディア要素を物理的に全削除
     const board = document.getElementById('board');
-    if (board) board.innerHTML = ''; 
+    if (board) board.innerHTML = '';
 
     // 3. URL参照を「描画命令の前」に物理的に断つ
     const oldUrl = window.mediaManager.mediaSrc;
     window.mediaManager.mediaSrc = null;
-    
+
     if (window.mediaManager.mediaElement instanceof HTMLVideoElement) {
         window.mediaManager.mediaElement.pause();
         window.mediaManager.mediaElement.src = "";
@@ -195,7 +262,7 @@ window.resetToColorMode = function() {
     // 6. 最後に安全にURLを解放
     if (oldUrl) {
         setTimeout(() => {
-            try { URL.revokeObjectURL(oldUrl); } catch(e) {}
+            try { URL.revokeObjectURL(oldUrl); } catch (e) { }
         }, 500);
     }
 };
@@ -253,7 +320,7 @@ function importCSV(event) {
             // Remove newlines and extra spaces
             const content = e.target.result.replace(/[^A-Za-z0-9,\-]/g, "");
             scrambleInput.value = content;
-            
+
             if (typeof addLog === 'function') {
                 addLog("Scramble pattern imported from file.");
             }
@@ -288,31 +355,31 @@ function restoreHistory(event) {
             if (!Array.isArray(importedData)) return;
 
             const currentHistory = JSON.parse(localStorage.getItem('slp_history') || '[]');
-            
+
             // --- 重複排除：timestamp文字列をそのままキーにする ---
             const historyMap = new Map();
             // 1. 既存データをいれる
-            currentHistory.forEach(item => { if(item.timestamp) historyMap.set(item.timestamp, item); });
+            currentHistory.forEach(item => { if (item.timestamp) historyMap.set(item.timestamp, item); });
             // 2. インポートデータを上書き（または追加）
-            importedData.forEach(item => { if(item.timestamp) historyMap.set(item.timestamp, item); });
+            importedData.forEach(item => { if (item.timestamp) historyMap.set(item.timestamp, item); });
 
             // 3. 配列に戻す（日付ソートせず、一旦そのまま保存）
             const combinedHistory = Array.from(historyMap.values());
-            
+
             // 文字列比較で降順（新しい順）に並べ替え（"2024/..." なら文字列比較でいける）
             combinedHistory.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
             const limitedHistory = combinedHistory.slice(0, 400);
-            
+
             localStorage.setItem('slp_history', JSON.stringify(limitedHistory));
-            
+
             // リスト更新を強制実行
             refreshHistoryList();
 
         } catch (err) {
             console.error("Restore failed:", err);
         } finally {
-            event.target.value = ''; 
+            event.target.value = '';
         }
     };
     reader.readAsText(file);
@@ -333,7 +400,7 @@ function toggleLogSwitch() {
     isLogEnabled = !isLogEnabled;
     const btn = document.getElementById('log-switch-btn');
     const icon = document.getElementById('log-check-icon');
-    
+
     if (isLogEnabled) {
         btn.classList.add('active-rec');
         icon.innerText = "☑"; // チェックあり
@@ -358,7 +425,7 @@ function setLogState(isEnabled) {
 
     // 状態を更新
     isLogEnabled = isEnabled;
-    
+
     const btn = document.getElementById('log-switch-btn');
     const icon = document.getElementById('log-check-icon');
 
@@ -383,13 +450,13 @@ function setLogState(isEnabled) {
  */
 function copyCurrentToTarget() {
     if (!board) return;
-    
+
     // 現在の盤面（board）の値をターゲット（targetBoard）に完全に同期
     targetBoard = JSON.parse(JSON.stringify(board));
-    
+
     // 同期した値をプレビューに即座に反映
     renderPreview();
-    
+
     // 判定を実行
     skipCompleteOnce = true;
     checkComplete();
@@ -402,8 +469,8 @@ function copyTargetToCurrent() {
     // 存在しない、またはサイズが現在の設定(totalSize)と合っていない場合に作り直す
     if (!window.initialBoard || window.initialBoard.length !== totalSize || (window.initialBoard[0] && window.initialBoard[0].length !== totalSize)) {
         console.log("Re-creating initialBoard for new size/mode...");
-        window.initialBoard = Array.from({length: totalSize}, (_, r) => 
-            Array.from({length: totalSize}, (_, c) => ({
+        window.initialBoard = Array.from({ length: totalSize }, (_, r) =>
+            Array.from({ length: totalSize }, (_, c) => ({
                 value: Math.floor(r / subSize) * gridNum + Math.floor(c / subSize),
                 tileId: r * totalSize + c,
                 direction: 0
@@ -488,7 +555,7 @@ function handleModeChange(mode) {
 }
 function changeMode(sSize, gNum) {
     hideCompleteDisplay(); // 表示を消す
-    subSize = sSize; 
+    subSize = sSize;
     gridNum = gNum;
     initBoard(true);
 }
@@ -498,14 +565,14 @@ function changeMode(sSize, gNum) {
  */
 function toggleNumberView() {
     window.viewNumber = !window.viewNumber;
-    
+
     const btn = document.getElementById('number-trigger');
     if (btn) {
         btn.classList.toggle('active-toggle', window.viewNumber);
     }
-    
+
     // 状態をログに記録（任意）
     if (typeof addLog === 'function') addLog(`Number View: ${window.viewNumber}`);
-    
+
     render();
 }

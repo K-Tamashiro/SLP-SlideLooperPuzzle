@@ -1,15 +1,15 @@
 // --- グローバル変数 ---
-let subSize = 2;    
-let gridNum = 3;    
+let subSize = 2;
+let gridNum = 3;
 let board = [];
 let targetBoard = null;
 let solveHistory = [];
 
-let cellSizePixel = 42; 
-let GAP_FACE = 10; 
-const GAP_CELL = 2;  
+let cellSizePixel = 42;
+let GAP_FACE = 10;
+const GAP_CELL = 2;
 
-let startX = 0, startY = 0, isDragging = false, moveMode = 'standard'; 
+let startX = 0, startY = 0, isDragging = false, moveMode = 'standard';
 let activeRow = -1, activeCol = -1, dragAxis = null, currentTranslate = 0;
 let ghostStrips = [];
 let longPressTimer = null;
@@ -19,7 +19,7 @@ let moveCount = 0;
 let startTime = 0;
 let timerId = null;
 let rotateTimerId = null;
-let isLogEnabled = true; 
+let isLogEnabled = true;
 let skipCompleteOnce = false;
 let rotationManager = null; // ローテーションマネージャー
 let completeTimerId = null;
@@ -36,7 +36,7 @@ window.debugmode = false;// true=debug false=Release
  */
 function initBoard(resetTarget = false) {
     if (timerId) {
-        toggleTimer(false); 
+        toggleTimer(false);
     } else {
         setInterfaceLock(false);
     }
@@ -52,8 +52,8 @@ function initBoard(resetTarget = false) {
     }
     // 1. マスターデータ(initialBoard)の生成
     // カラー・画像どちらのモードでも、1つの「枠(Face)」の中は同じ value に統一する
-    window.initialBoard = Array.from({length: totalSize}, (_, r) => 
-        Array.from({length: totalSize}, (_, c) => {
+    window.initialBoard = Array.from({ length: totalSize }, (_, r) =>
+        Array.from({ length: totalSize }, (_, c) => {
             // 常に「どの枠(Face)に属するか」を計算 (0, 1, 2...)
             const faceVal = Math.floor(r / subSize) * gridNum + Math.floor(c / subSize);
 
@@ -71,15 +71,15 @@ function initBoard(resetTarget = false) {
     if (!rotationManager) {
         rotationManager = new RotationManager(window.mediaManager ? window.mediaManager.mode : 'color');
     }
-    resetStats(); 
+    resetStats();
     clearSolveLog();
     if (window.mediaManager.mode === "color") {
-        shuffleTargetOnly(); 
+        shuffleTargetOnly();
     }
     window.isTargetScrambled = false;
 
     render();
-    renderPreview(); 
+    renderPreview();
     renderCoordinates();
     window.initialAnalyzeBoard = null;
 }
@@ -90,12 +90,12 @@ function initBoard(resetTarget = false) {
 function calculateLayout() {
     const isMobile = window.innerWidth < 600;
     const totalSize = subSize * gridNum; // 2x2なら4、3x3なら9
-    const containerWidth = isMobile 
+    const containerWidth = isMobile
         ? Math.min(window.innerWidth, document.documentElement.clientWidth) - 40 // 余白を少し詰める
         : 500;
 
     // 1. 隙間（GAP）の動的設定
-    GAP_FACE = (gridNum <= 2) ? 8 : 4; 
+    GAP_FACE = (gridNum <= 2) ? 8 : 4;
     const totalFaceGaps = (gridNum - 1) * GAP_FACE;
     const totalCellGaps = (totalSize - gridNum) * GAP_CELL;
 
@@ -106,7 +106,7 @@ function calculateLayout() {
     if (isMobile) {
         switch (totalSize) {
             case 4:  // Easy: 2x2 (sub:2, grid:2)
-                maxCell = 85; 
+                maxCell = 85;
                 break;
             case 6:  // Mid: 2x3 (sub:2, grid:3)  diff 3x2(2x2)
                 maxCell = 55;
@@ -123,23 +123,23 @@ function calculateLayout() {
         cellSizePixel = Math.max(30, Math.min(maxCell, cellSizePixel));
     } else {
         // デスクトップ版の制限緩和
-            switch (totalSize) {
-                case 4:
-                    maxCell = 130;
-                    break;
-                case 6:
-                    maxCell = 90;
-                    break;
-                case 8:
-                    maxCell = 90;
-                    break;
-                case 9:
-                    maxCell = 90;
-                    break;
-                default:
-                    maxCell = 90;
-            }
-            cellSizePixel = Math.max(40, Math.min(maxCell, cellSizePixel));
+        switch (totalSize) {
+            case 4:
+                maxCell = 130;
+                break;
+            case 6:
+                maxCell = 90;
+                break;
+            case 8:
+                maxCell = 90;
+                break;
+            case 9:
+                maxCell = 90;
+                break;
+            default:
+                maxCell = 90;
+        }
+        cellSizePixel = Math.max(40, Math.min(maxCell, cellSizePixel));
     }
     window.initialBoardSnapshot = null;
     window.currentSessionId = null;
@@ -155,9 +155,9 @@ function moveLogic(idx, isV, isRev) {
     const t = subSize * gridNum;
     if (isV) {
         if (isRev) {
-            let temp = board[0][idx]; for (let i = 0; i < t - 1; i++) board[i][idx] = board[i+1][idx]; board[t-1][idx] = temp;
+            let temp = board[0][idx]; for (let i = 0; i < t - 1; i++) board[i][idx] = board[i + 1][idx]; board[t - 1][idx] = temp;
         } else {
-            let temp = board[t-1][idx]; for (let i = t-1; i > 0; i--) board[i][idx] = board[i-1][idx]; board[0][idx] = temp;
+            let temp = board[t - 1][idx]; for (let i = t - 1; i > 0; i--) board[i][idx] = board[i - 1][idx]; board[0][idx] = temp;
         }
     } else {
         if (isRev) board[idx].push(board[idx].shift()); else board[idx].unshift(board[idx].pop());
@@ -186,7 +186,7 @@ function shuffle() {
 
         // 準備完了フラグを立てる
         window.isTargetScrambled = true;
-    } 
+    }
 
     for (let i = 0; i < count; i++) {
         const isV = Math.random() > 0.5;
@@ -197,7 +197,7 @@ function shuffle() {
         }
     }
 
-    render(); 
+    render();
     checkComplete();
     // Scramble後を開始状態として保存
     window.initialAnalyzeBoard = JSON.parse(JSON.stringify(board));
@@ -216,12 +216,12 @@ function shuffleTargetOnly() {
     let faces = Array.from({ length: totalFaces }, (_, i) => i);
 
     // 2. フェース配列をシャッフル（整合性を担保）
-    const shuffleCount = 20; 
+    const shuffleCount = 20;
     for (let i = 0; i < shuffleCount; i++) {
         const isVertical = Math.random() > 0.5;
         const isReverse = Math.random() > 0.5;
         const line = Math.floor(Math.random() * gridNum);
-        
+
         let idxs = [];
         if (isVertical) {
             for (let g = 0; g < gridNum; g++) idxs.push(g * gridNum + line);
@@ -259,10 +259,10 @@ function shuffleTargetOnly() {
 function checkComplete() {
     // --- 1. 解析モード中、またはログ無効時は一切の判定を行わない（追加） ---
     if (window.isReplayMode || !isLogEnabled) {
-        return; 
+        return;
     }
 
-    if (!board || !targetBoard) return; 
+    if (!board || !targetBoard) return;
     const mm = window.mediaManager;
     const totalSize = subSize * gridNum;
 
@@ -279,7 +279,7 @@ function checkComplete() {
             if (!p) return;
             currentIds.push((typeof p === 'object') ? p.tileId : p);
             currentValues.push((typeof p === 'object') ? p.value : p);
-            
+
             if ((typeof p === 'object') && (p.direction % 4) !== baseDir) {
                 isDirectionUnified = false;
             }
@@ -292,7 +292,7 @@ function checkComplete() {
         const currentStr = currentValues.join(',');
         const targetStr = targetBoard.flat().map(t => (typeof t === 'object' ? t.value : t)).join(',');
         isComplete = (currentStr === targetStr);
-        
+
     } else {
         if (isDirectionUnified) {
             const currentIdStr = currentIds.join(',');
@@ -312,11 +312,11 @@ function checkComplete() {
         if (window.rotateTimerId && typeof startRotateCountdown === 'function') {
             startRotateCountdown();
         }
-        if (typeof saveSystemLog === 'function') saveSystemLog(true); 
-        
+        if (typeof saveSystemLog === 'function') saveSystemLog(true);
+
         if (typeof updateHistoryList === 'function') {
             setTimeout(() => {
-                updateHistoryList(); 
+                updateHistoryList();
             }, 100);
         }
 
@@ -377,8 +377,8 @@ function resetColorTargetView() {
     const mm = window.mediaManager;
     const isMediaMode = mm && mm.mode !== 'color';
 
-    targetBoard = Array.from({length: totalSize}, (_, r) => 
-        Array.from({length: totalSize}, (_, c) => {
+    targetBoard = Array.from({ length: totalSize }, (_, r) =>
+        Array.from({ length: totalSize }, (_, c) => {
             if (isMediaMode) {
                 // 画像・動画モード：0, 1, 2... の連番
                 return r * totalSize + c;
@@ -418,9 +418,9 @@ function getTargetIndices(dir) {
  */
 function resetStats() {
     // 1. タイマーの停止
-    if (timerId) { 
-        clearInterval(timerId); 
-        timerId = null; 
+    if (timerId) {
+        clearInterval(timerId);
+        timerId = null;
     }
     window.elapsedTime = 0;
     stopRotateIntervalOnly();
@@ -446,7 +446,7 @@ function resetStats() {
     const counterEl = document.getElementById('counter-display');
     if (timerEl) timerEl.textContent = "00:00.000";
     if (counterEl) counterEl.textContent = "0000";
-    
+
     // 6. タイマーボタンの光を消す
     const timerBtn = document.querySelector('button[onclick="toggleTimer()"]');
     if (timerBtn) timerBtn.classList.remove('active-toggle');
@@ -459,11 +459,11 @@ function resetStats() {
 function syncBoardFromDOM() {
     const totalSize = subSize * gridNum;
     const cells = document.querySelectorAll('.cell');
-    
+
     cells.forEach(cell => {
         const r = parseInt(cell.dataset.row);
         const c = parseInt(cell.dataset.col);
-        
+
         // cell.piece またはそれに準ずるプロパティからオブジェクトを取得
         // 取得できない場合は、現在の cell の状態からオブジェクトを再構成
         if (cell.piece) {
@@ -488,7 +488,7 @@ function restorationBord() {
         if (!item.is_complete) return;
         if (!item.solve_history) return;
 
-        const gNum  = Number(item.grid_size);
+        const gNum = Number(item.grid_size);
         const sSize = Number(item.sub_size);
         const N = gNum * sSize;
 
@@ -538,10 +538,10 @@ function restorationBord() {
         for (const step of steps) {
             const dashIdx = step.lastIndexOf('-');
             if (dashIdx === -1) continue;
-            
+
             const label = step.substring(0, dashIdx);
             const act = step.substring(dashIdx + 1);
-            
+
             const dir = act[0].toUpperCase();
             const dist = parseInt(act.slice(1), 10);
             if (!dist) continue;
