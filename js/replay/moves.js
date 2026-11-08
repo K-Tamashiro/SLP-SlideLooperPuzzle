@@ -1,46 +1,111 @@
+/** replay/moves.js — responsibility described in docs/architecture.md. */
+
 /**
- * SLP Rotation Manager
- * ピースの回転状態管理と描画を担当
+ * media-system.js
+ * ブロック単位の移動（* subSize）を維持
  */
-class RotationManager {
-    constructor(mode) {
-        this.mode = mode; // COLOR, IMAGE, MOVIE
-        this.buffers = new Map(); // IMAGEモード用バッファ
+function executeSingleMove(moveStr, isReverseAction, isSilent = false) {
+    const cmd = moveStr.trim().toLowerCase();
+    if (!cmd.includes('-')) return;
+
+    const [label, action] = cmd.split('-');
+    // ラベルが数字なら縦列（1,2,3...）、アルファベットなら横行（a,b,c...）
+    let lineIdx = isNaN(label) ? label.charCodeAt(0) - 97 : parseInt(label) - 1;
+    let isV = !isNaN(label);
+    let dir = action[0].toUpperCase();
+
+    // ブロック単位の移動距離
+    let steps = parseInt(action.substring(1)) * subSize;
+
+    // --- 方向判定の修正 ---
+    let isRev;
+    if (isV) {
+        // 縦移動：D(Down)は正方向(false)、U(Up)は逆方向(true)
+        isRev = (dir === 'U'); 
+    } else {
+        // 横移動：R(Right)は正方向(false)、L(Left)は逆方向(true)
+        isRev = (dir === 'L');
     }
 
-    /**
-     * ピースに回転角（0-3）をセット
-     */
-    initPiece(piece) {
-        piece.direction = 0; // 0:0, 1:90, 2:180, 3:270
+    // ログ戻し（undo）などの場合は、判定した方向をさらに反転させる
+    if (isReverseAction) {
+        isRev = !isRev;
     }
 
-    /**
-     * 時計回りに90度回転
-     */
-    rotate(piece) {
-        piece.direction = (piece.direction + 1) % 4;
+    // 物理移動の実行
+    for (let i = 0; i < steps; i++) {
+        moveLogic(lineIdx, isV, isRev);
     }
 
-    /**
-     * 回転を考慮した描画実行
-     */
-    render(ctx, piece, source, x, y, w, h, sx, sy, sw, sh) {
-        const angle = piece.direction * 90; //
-        
-        ctx.save();
-        ctx.translate(x + w / 2, y + h / 2);
-        ctx.rotate((angle * Math.PI) / 180);
+    if (!isSilent) {
+        render();
+    }
+}
 
-        if (sx !== undefined && sy !== undefined) {
-            // 部分切り出し描画
-            ctx.drawImage(source, sx, sy, sw, sh, -w / 2, -h / 2, w, h);
-        } else {
-            // 全体描画
-            ctx.drawImage(source, -w / 2, -h / 2, w, h);
+/**
+ * 通常移動／枠移動を吸収する唯一の実行入口
+ */
+function executeMove(moveStr, isReverse, isSilent = false) {
+    // 枠移動ログ判定（例: A2-R1 / 2-D1 など）
+    if (moveStr.includes(':')) {
+        // 例: G1:A-R1
+        const [group, move] = moveStr.split(':');
+        const groupIdx = parseInt(group.substring(1)); // G1 → 1
+        const base = groupIdx * subSize;
+
+        const isV = !isNaN(move[0]);
+
+        for (let i = 0; i < subSize; i++) {
+            const label = isV
+                ? (base + i + 1)
+                : String.fromCharCode(97 + base + i);
+
+            const dirCount = move.split('-')[1]; // ★ 正規化
+            executeSingleMove(`${label}-${dirCount}`, isReverse, true);
         }
-        ctx.restore();
+
+
+        if (!isSilent) render();
+        return;
     }
+
+    // 通常移動
+    executeSingleMove(moveStr, isReverse, isSilent);
+}
+
+/**
+ * moveTable 用 実行エンジン
+ */
+function executeGroupedMove(move, isReverseAction, isSilent = false) {
+    if (move.dist <= 0) return;
+
+    const isRev = getIsRev(move.isV, move.dir, isReverseAction);
+    const steps = move.dist * subSize;
+
+    if (move.type === 'SINGLE') {
+        for (let i = 0; i < steps; i++) {
+            moveLogic(move.lineIndices[0], move.isV, isRev);
+        }
+    } else { // FRAME
+        for (let i = 0; i < steps; i++) {
+            for (const lineIdx of move.lineIndices) {
+                moveLogic(lineIdx, move.isV, isRev);
+            }
+        }
+    }
+
+    if (!isSilent) render();
+}
+
+function getIsRev(isV, dir, isReverseAction) {
+    let isRev;
+    if (isV) {
+        isRev = (dir === 'U');
+    } else {
+        isRev = (dir === 'L');
+    }
+    if (isReverseAction) isRev = !isRev;
+    return isRev;
 }
 
 /**
@@ -155,56 +220,6 @@ function staticShowGrouping() {
     }
 }
 
-/**
- * 表示更新（左:0=崩れ ～ 右:Max=完成）forward版
- */
-function updateReplayDisplayForward() {
-  const idxEl = document.getElementById('replay-index');
-  const totalEl = document.getElementById('replay-total');
-  const moveEl = document.getElementById('current-move-display');
-  const slider = document.getElementById('analyze-slider');
-  const boardCounter = document.getElementById('move-count') || document.getElementById('counter-display');
-
-  const totalSteps = window.moveTable?.length || 0;
-  const cur = window.currentReplayIdx || 0;
-
-  if (idxEl) idxEl.innerText = cur;
-  if (totalEl) totalEl.innerText = totalSteps;
-  if (slider) { slider.max = totalSteps; slider.value = cur; }
-  if (boardCounter) boardCounter.innerText = cur.toString().padStart(4, '0');
-
-  if (moveEl) {
-    const displayIdx = (cur <= 0) ? 0 : cur - 1;
-    const m = (window.originalLogSteps?.[displayIdx]) || "---";
-    if (cur >= totalSteps) moveEl.innerText = `COMPLETE[${m}]`;
-    else if (cur <= 0) moveEl.innerText = `Start[${m}]`;
-    else moveEl.innerText = `[${m}]`;
-  }
-
-  const nextBtn = document.querySelector('button[onclick="replayStepNext()"]');
-  const backBtn = document.querySelector('button[onclick="replayStepBack()"]');
-  if (nextBtn) nextBtn.disabled = (cur >= totalSteps);
-  if (backBtn) backBtn.disabled = (cur <= 0);
-
-  if (typeof hideCompleteDisplay === 'function') hideCompleteDisplay();
-  document.getElementById('status-board')?.classList.remove('show');
-}
-
-// 方向→isRev（executeSingleMove と同じ規約、反転はしない）
-function dirToIsRev(isV, dir){
-  dir = (dir||"").toUpperCase();
-  return isV ? (dir === 'U') : (dir === 'L');
-}
-
-// moveTable 1件を「物理移動」として実行（reverseは“戻し距離”として使う）
-function execTableMove(m, useReverseDist, silent=true){
-  const blocks = useReverseDist ? m.reverse : m.dist;         // ★reverseは距離のみ
-  const steps  = blocks * subSize;                            // ★コマ数へ展開
-  const isRev  = dirToIsRev(m.isV, m.dir);                    // ★方向は固定
-  for(let s=0; s<steps; s++) for(const li of m.lineIndices) moveLogic(li, m.isV, isRev);
-  if(!silent) render();
-}
-
 function playTableMove(m, useReverse, silent=true){
     const blocks = useReverse ? m.reverse : m.dist; // ← tableの値をそのまま使う
     if (blocks <= 0) return;
@@ -220,5 +235,20 @@ function playTableMove(m, useReverse, silent=true){
     }
     if (!silent) render();
 }
-// グローバルまたはモジュールとしてエクスポート
-window.RotationManager = RotationManager;
+
+/**
+ * ログ文字列パースヘルパー
+ */
+function parseMoveStep(step) {
+  if (!step) return null;
+  var match = step.match(/^([a-z0-9]+)-([LRUD])(\d+)$/i);
+  if (!match) return null;
+  var label = match[1];
+  var dir = match[2].toUpperCase();
+  var dist = parseInt(match[3], 10);
+  var isDigit = /^\d+$/.test(label);
+  var isV = isDigit;
+  var idx = isV ? (parseInt(label, 10) - 1) : (label.toLowerCase().charCodeAt(0) - 97);
+  return { isV: isV, idx: idx, dir: dir, dist: dist, lineIndices: [idx], originalStr: step };
+}
+

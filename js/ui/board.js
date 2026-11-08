@@ -1,3 +1,119 @@
+/** ui/board.js — responsibility described in docs/architecture.md. */
+
+/**
+ * 補助ユーティリティ
+ */
+/**
+ * メニューパネルの開閉制御
+ * @param {boolean|null} forceState - trueなら開く、falseなら閉じる、nullなら反転
+ */
+function toggleMenu(forceState = null) {
+    const panel = document.querySelector('.menu-panel');
+    if (!panel) return;
+
+    if (forceState === true) {
+        panel.classList.add('open');
+    } else if (forceState === false) {
+        panel.classList.remove('open');
+    } else {
+        // 引数がない場合は、これまでの通り反転(toggle)させる
+        panel.classList.toggle('open');
+    }
+}
+
+/**
+ * ナンバー表示モードの切り替え
+ */
+function toggleNumberView() {
+    window.viewNumber = !window.viewNumber;
+
+    const btn = document.getElementById('number-trigger');
+    if (btn) {
+        btn.classList.toggle('active-toggle', window.viewNumber);
+    }
+
+    // 状態をログに記録（任意）
+    if (typeof addLog === 'function') addLog(`Number View: ${window.viewNumber}`);
+
+    render();
+}
+
+/**
+ * レイアウト計算（ブロック数に応じた動的スケーリング版）
+ */
+function calculateLayout() {
+    const isMobile = window.innerWidth < 600;
+    const totalSize = subSize * gridNum; // 2x2なら4、3x3なら9
+    const containerWidth = isMobile
+        ? Math.min(window.innerWidth, document.documentElement.clientWidth) - 40 // 余白を少し詰める
+        : 500;
+
+    // 1. 隙間（GAP）の動的設定
+    GAP_FACE = (gridNum <= 2) ? 8 : 4;
+    const totalFaceGaps = (gridNum - 1) * GAP_FACE;
+    const totalCellGaps = (totalSize - gridNum) * GAP_CELL;
+
+    // 2. 利用可能な幅から1セルあたりの基本サイズを算出
+    cellSizePixel = Math.floor((containerWidth - totalFaceGaps - totalCellGaps) / totalSize);
+
+    // 3. ★重要：ブロック数に応じたサイズ制限の緩和
+    let maxCell;
+    if (isMobile) {
+        switch (totalSize) {
+            case 4:  // Easy: 2x2 (sub:2, grid:2)
+                maxCell = 85;
+                break;
+            case 6:  // Mid: 2x3 (sub:2, grid:3)  diff 3x2(2x2)
+                maxCell = 55;
+                break;
+            case 8:  // Advance: 2x4 (sub:2, grid:4)
+                maxCell = 40;
+                break;
+            case 9:  // Hard: 3x3 (sub:3, grid:3)
+                maxCell = 35;
+                break;
+            default: // その他特殊設定時
+                maxCell = 40;
+        }
+        cellSizePixel = Math.max(30, Math.min(maxCell, cellSizePixel));
+    } else {
+        // デスクトップ版の制限緩和
+        switch (totalSize) {
+            case 4:
+                maxCell = 130;
+                break;
+            case 6:
+                maxCell = 90;
+                break;
+            case 8:
+                maxCell = 90;
+                break;
+            case 9:
+                maxCell = 90;
+                break;
+            default:
+                maxCell = 90;
+        }
+        cellSizePixel = Math.max(40, Math.min(maxCell, cellSizePixel));
+    }
+    window.initialBoardSnapshot = null;
+    window.currentSessionId = null;
+    moveCount = 0;
+    window.elapsedTime = 0;
+}
+
+/**
+ * コンプリート表示を強制的に閉じる
+ */
+function hideCompleteDisplay() {
+    document.getElementById('status-board')?.classList.remove('show');
+    document.getElementById('status-preview')?.classList.remove('show');
+    if (completeTimerId) {
+        clearTimeout(completeTimerId);
+        completeTimerId = null;
+    }
+}
+
 /**
  * メイン盤面描画（画像・動画・カラー完全統合版）
  * ターゲットビューの配置に基づいた、各枠(Face)内での連続性を考慮したナンバリング表示
@@ -168,7 +284,6 @@ function render() {
                     const touch = e.touches[0];
                     startAction(touch.clientX, touch.clientY, 'touch', e);
                 }, { passive: true });
-                cell.addEventListener('mousedown', (e) => startAction(e.clientX, e.clientY, 'mouse', e));
                 cell.oncontextmenu = (e) => {
                     e.preventDefault();
                     render();
@@ -311,16 +426,6 @@ function setInterfaceLock(isLocked) {
     });
 }
 
-function toggleFlashMode() {
-    window.isFlashMode = !window.isFlashMode;
-    const btn = document.getElementById('flash-toggle-btn');
-    if (btn) {
-        btn.classList.toggle('active', window.isFlashMode);
-    }
-    // 状態をログに記録（任意）
-    if (typeof addLog === 'function') addLog(`Flash Mode: ${window.isFlashMode}`);
-}
-
 /**
  * コンプリートオーバーレイ隠蔽
  */
@@ -331,152 +436,3 @@ function hideCompleteOverlays() {
     if (sp) sp.classList.remove('show');
 }
 
-/**
- * ターゲット配色データから極小のHTMLプレビューアイコンを生成
- * 数値配列とオブジェクト配列の両方に対応し、色の配置を正確に再現する
- */
-function createMiniPreview(state) {
-    if (!state || !Array.isArray(state)) return '';
-    
-    const size = state.length;
-    const cellSize = 3; // アイコン内の1セルのpxサイズ
-    
-    // グリッドレイアウトでターゲットの配色を再現
-    let html = `<div style="display:grid; grid-template-columns:repeat(${size}, ${cellSize}px); gap:1px; background:#444; padding:1px; border-radius:1px;">`;
-    
-    for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-            const entry = state[r][c];
-            let val;
-
-            // データの型を厳密に評価
-            if (entry !== null && typeof entry === 'object') {
-                // オブジェクト形式 {value: n, ...} の場合
-                val = entry.value;
-            } else {
-                // 数値単体の場合
-                val = entry;
-            }
-
-            // 抽出した数値に基づき、既存のCSSクラス(c0, c1...)を適用
-            // 数値が未定義の場合は透明または背景色
-            const colorClass = (val !== undefined && val !== null) ? `c${val}` : '';
-            html += `<div class="${colorClass}" style="width:${cellSize}px; height:${cellSize}px;"></div>`;
-        }
-    }
-    html += `</div>`;
-    return html;
-}
-
-/**
- * 渡されたコンテナに、指定された状態(state)を描画する
- * 既存の drawColorGrid のロジックをそのまま流用
- */
-function drawStateToContainer(container, state) {
-    if (!container || !state) return;
-    container.innerHTML = '';
-    
-    const size = gridNum; 
-    // アイコンなので小さく。30pxの枠なら 30/gridNum
-    const cellSize = Math.floor(30 / size); 
-
-    container.style.display = 'grid';
-    container.style.gridTemplateColumns = `repeat(${size}, ${cellSize}px)`;
-    container.style.gap = '0';
-
-    // stateを1次元にしてループ
-    const flat = Array.isArray(state[0]) ? state.flat() : state;
-
-    flat.forEach(colorIdx => {
-        const cell = document.createElement('div');
-        cell.className = `c${colorIdx}`;
-        cell.style.width = `${cellSize}px`;
-        cell.style.height = `${cellSize}px`;
-        container.appendChild(cell);
-    });
-}
-
-/**
- * V2メディアパネルの表示/非表示を切り替え
- */
-function toggleV2Panel() {
-    const panel = document.getElementById('v2-media-uploader');
-    const toggleBtn = document.getElementById('v2-panel-toggle');
-    const rotateBtn = document.getElementById('rotate-btn'); 
-    
-    if (!panel || !toggleBtn) return;
-
-    // 現在のパネルの表示/非表示を判定
-    const isHidden = (panel.style.display === 'none' || panel.style.display === '');
-
-    if (isHidden) {
-        // 画像パネルを開く
-        panel.style.display = 'block';
-        toggleBtn.classList.add('active');
-
-    } else {
-        // 画像パネルを閉じる
-        panel.style.display = 'none';
-        toggleBtn.classList.remove('active');
-    }
-    resetColorTargetView();
-
-}
-let autoStepInterval = null;
-const LONG_PRESS_DELAY = 300; // 長押しと判定するまでの待ち時間(ms)
-const STEP_SPEED = 150;       // 連続進行の速さ(ms)
-
-function startContinuousStep(direction) {
-    if (autoStepInterval) return;
-
-    // 少し待ってから連続実行を開始（1回クリックとの誤爆防止）
-    autoStepInterval = setTimeout(() => {
-        autoStepInterval = setInterval(() => {
-            if (direction === 'next') {
-                if (window.currentReplayIdx >= window.moveTable.length) return stopContinuousStep();
-                replayStepNext();
-            } else {
-                if (window.currentReplayIdx <= 0) return stopContinuousStep();
-                replayStepBack();
-            }
-        }, STEP_SPEED);
-    }, LONG_PRESS_DELAY);
-}
-
-function stopContinuousStep() {
-    if (autoStepInterval) {
-        clearTimeout(autoStepInterval);
-        clearInterval(autoStepInterval);
-        autoStepInterval = null;
-    }
-}
-
-/**
- * 履歴のインデックスからデータをロード（JSONエスケープエラー回避用）
- */
-function loadHistoryByIndex(index) {
-    if (!window.currentFilteredHistory || !window.currentFilteredHistory[index]) {
-        console.error("History data not found for index:", index);
-        return;
-    }
-    
-    const data = window.currentFilteredHistory[index];
-    
-    // 既存の履歴ロード関数（loadFilteredHistory）を呼び出す
-    if (typeof loadFilteredHistory === 'function') {
-        loadFilteredHistory(data);
-    } else {
-        console.warn("loadFilteredHistory is not defined.");
-    }
-
-    const timerDisplay = document.getElementById('timer-display');
-    if (timerDisplay) {
-        timerDisplay.innerText = data.solve_time || "00:00.000";
-    }
-
-    const solveTimeEl = document.getElementById('solve-time');
-    if (solveTimeEl) {
-        solveTimeEl.innerText = data.solve_time || "00:00.000";
-    }
-    // ----------------------------------------------------
-}

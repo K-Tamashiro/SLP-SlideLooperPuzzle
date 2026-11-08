@@ -1,3 +1,5 @@
+/* Final UI overrides. Load AFTER gimmick-effects.css; do not move media queries here. See docs/architecture.md. */
+
 .header {
     display: flex;
     align-items: center;
@@ -7,26 +9,21 @@
     justify-content: center;
 }
 
-/* --- ヘッダー：PC版でタイトルを中央、メニューを右端へ --- */
-/* ヘッダー全体の高さを確保し、基準位置（relative）にする */
 .main-header {
     position: relative;
     display: flex;
     align-items: center;
-    justify-content: center; /* 基本は中央 */
+    justify-content: center;
     width: 100%;
-    height: 50px; /* 必要に応じて調整 */
+    height: 50px;
     padding: 0 10px;
 }
 
-/* タイトルコンテナを画面の絶対的な中央に配置 */
 .title-container {
     position: absolute;
     left: 50%;
-    transform: translateX(-50%); /* 自身の幅の半分戻して真ん中に */
-    white-space: nowrap;
+    transform: translateX(-50%);
     z-index: 1;
-    cursor: pointer;
 }
 
 .title-text {
@@ -35,38 +32,24 @@
     text-align: center;
 }
 
-/* 右側のボタンエリアは右端に固定 */
 .header-side-right {
     position: absolute;
     right: 15px;
     top: 50%;
     transform: translateY(-50%);
-    z-index: 2; /* タイトルの上に重ならないように */
+    z-index: 2;
 }
 
-/* 三点リーダーのボタンサイズ調整（必要であれば） */
 #menu-dots {
-    background: transparent;
-    border: none;
-    color: #0f0;
-    font-size: 24px;
-    cursor: pointer;
-    padding: 5px;
-}
-#menu-dots {
-    background: transparent;
-    border: 1px solid #00ff41;
-    color: #00ff41;
     border-radius: 4px;
     width: 32px;
     height: 32px;
-    font-size: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     box-shadow: 0 0 5px #00ff41;
-    cursor: pointer;
 }
+
 #menu-dots {
     background: none;
     border: none;
@@ -78,21 +61,20 @@
 
 #menu-toggle-btn {
     position: absolute !important;
-    right: 10px; /* 右端に固定 */
+    right: 10px;
     top: 50%;
     transform: translateY(-50%);
     z-index: 1001;
 }
 
-/* クリック時のインタラクション（タイトルクリックでメニューを開くため） */
 .title-container:active .title-text {
     text-shadow: 0 0 30px #00ff41;
     opacity: 0.8;
 }
 
 .title-container {
-    flex: 1; /* 利用可能なスペースを占有 */
-    min-width: 0; /* 省略処理（ellipsis）を有効にするために必要 */
+    flex: 1;
+    min-width: 0;
     cursor: pointer;
     overflow: hidden;
     white-space: nowrap;
@@ -107,8 +89,8 @@
     font-size: 14px;
     min-width: 80px;
     max-width: 50px;
-    background-color: #001400; /* プルダウン展開時の背景 */
-    color: #00ff41;            /* プルダウン展開時の文字色 */
+    background-color: #001400;
+    color: #00ff41;
     outline: none;
 }
 
@@ -122,7 +104,6 @@
     align-items: center;
 }
 
-/* 数値入力ボックスのスタイル調整 */
 #scramble-count {
     width: 45px;
     background: #333;
@@ -165,10 +146,8 @@ button {
     border-radius: 5px;
 }
 
-
-/* リセットボタンの強調（新規） */
 #reset-btn {
-    background: #c0392b !important; /* 濃い赤 */
+    background: #c0392b !important;
     font-weight: bold;
 }
 
@@ -177,102 +156,100 @@ button {
 }
 
 .overlay {
-	display: none;
-	position: fixed;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	background: rgba(0,0,0,0.8);
-	z-index: 9000;
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 9000;
 }
 
 .log-panel {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	background: #222;
-	padding: 20px;
-	width: 90%;
-	max-width: 500px;
-	border-radius: 8px;
-	border: 1px solid #444;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #222;
+    padding: 20px;
+    width: 90%;
+    max-width: 500px;
+    border-radius: 8px;
+    border: 1px solid #444;
 }
 
 .log-section {
-	margin-bottom: 20px;
+    margin-bottom: 20px;
 }
 
 .log-section input {
-	width: 100%;
-	padding: 10px;
-	margin: 8px 0;
-	background: #000;
-	border: 1px solid #555;
-	color: #fff;
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    background: #000;
+    border: 1px solid #555;
+    color: #fff;
 }
 
 .log-controls {
-	display: flex;
-	gap: 5px;
-	flex-wrap: wrap;
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
 }
 
-/* 解析 オーバーレイダイアログ */
 .media-overlay-top {
     position: absolute;
-    top: 20px; /* さらに上へ移動し、タイトルとほぼ同高度に配置 */
+    top: 20px;
     left: 50%;
     transform: translateX(-50%);
-    width: auto; /* 幅を自動にしてコンパクトに */
+    width: auto;
     min-width: 280px;
     background: rgba(10, 10, 10, 0.98);
-    border: 1px solid #0f0; /* 枠線を細く */
+    border: 1px solid #0f0;
     border-radius: 4px;
-    padding: 4px 8px; /* 余白を最小限に */
+    padding: 4px 8px;
     display: none;
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    z-index: 1000; /* ヘッダーより前面に */
+    z-index: 1000;
     box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
     transition: all 0.3s ease;
 }
+
 .media-overlay-top .m-group {
     display: flex !important;
-    justify-content: center !important; /* 横方向の中央寄せ */
-    align-items: center !important;     /* 縦方向の中央寄せ */
-    gap: 10px !important;              /* ボタン同士の隙間 */
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 10px !important;
     width: 100% !important;
-    margin: 5px 0 10px 0 !important;   /* 上下の余白調整 */
+    margin: 5px 0 10px 0 !important;
 }
 
 .media-overlay-top.active {
     display: flex !important;
 }
-/* ログパネル（ダイアログ）のオーバーレイ */
+
 #log-overlay {
-    z-index: 2000; /* メディアコントロールより確実に前面へ */
+    z-index: 2000;
 }
 
-/* コンプリート時の通知なども必要に応じて調整 */
 #status-board {
     z-index: 2000;
 }
 
 .history-container {
-    max-height: 250px; /* 表示領域を少し拡大 */
+    max-height: 250px;
     overflow-y: auto;
     background: #111;
     border: 1px solid #444;
     margin-bottom: 5px;
-    /* スムーズなスクロール */
     -webkit-overflow-scrolling: touch;
 }
 
 .history-item:active {
-    background: #333; /* 選択時のフィードバック */
+    background: #333;
 }
 
 .history-item button:hover {
@@ -280,16 +257,6 @@ button {
     color: #ff0000 !important;
 }
 
-/* ログスイッチボタンの基本スタイル */
-.log-switch-btn {
-    padding: 8px 10px;
-    font-size: 14px;
-    background: #333;
-    border: 1px solid #444;
-    transition: all 0.2s;
-}
-
-/* 無効時 */
 .log-disabled {
     background: #444 !important;
     opacity: 0.6;
@@ -311,7 +278,6 @@ button {
     gap: 6px;
 }
 
-/* 有効時（REC中）の発光 */
 .log-switch-btn.active-rec {
     color: #ff0000;
     border-color: #ff0000;
@@ -323,7 +289,6 @@ button {
     font-size: 16px;
 }
 
-/* V2用アップロードパネルのスタイル */
 .v2-upload-panel {
     margin: 10px 0;
     padding: 10px;
@@ -351,7 +316,6 @@ button {
     color: #888;
 }
 
-/* 動画パネルを画面中央に配置 */
 #v2-video-uploader {
     position: fixed;
     top: 10px;
@@ -364,13 +328,13 @@ button {
     box-shadow: 0 5px 25px rgba(0, 0, 0, 1);
     z-index: 3000;
     padding: 15px 20px;
-    -webkit-backdrop-filter: blur(15px); /* Safari用警告解消 */
-    backdrop-filter: blur(15px);         /* 標準 */
+    -webkit-backdrop-filter: blur(15px);
+    backdrop-filter: blur(15px);
 }
 
 #v2-video-uploader .v2-panel-header {
     font-size: 10px;
-    color: #00ffcc; /* ネオンカラー */
+    color: #00ffcc;
     text-transform: uppercase;
     letter-spacing: 3px;
     margin-bottom: 20px;
@@ -401,24 +365,21 @@ button {
     text-align: center;
 }
 
-
-/* 統合されたコンテナ */
 .scramble-composite-box {
     display: flex;
     align-items: center;
-    gap: 4px; /* 入力欄とボタンの間の隙間 */
+    gap: 4px;
     background: rgba(0, 0, 0, 0.6);
-    border: 1px solid #0f0; /* 緑のボーダー */
+    border: 1px solid #0f0;
     border-radius: 4px;
     padding: 2px;
     box-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
 }
 
-/* スピナー（数値入力フィールド）のネオン調スタイル */
 .scramble-number-field {
-    background: #000 !important; /* 灰色を廃止し黒に */
-    color: #0f0 !important; /* 文字をネオン緑に */
-    border: none !important; /* 親ボックスで線を描くため消す */
+    background: #000 !important;
+    color: #0f0 !important;
+    border: none !important;
     outline: none;
     width: 45px;
     text-align: center;
@@ -427,14 +388,12 @@ button {
     font-size: 14px;
 }
 
-/* Chrome/Safariなどのスピンボタン（上下矢印）を少し見やすく調整 */
 .scramble-number-field::-webkit-inner-spin-button,
 .scramble-number-field::-webkit-outer-spin-button {
-    filter: invert(1) hue-rotate(90deg) brightness(1.5); /* 矢印を緑っぽく調整 */
+    filter: invert(1) hue-rotate(90deg) brightness(1.5);
     cursor: pointer;
 }
 
-/* セレクトボックスや他のボタンもネオン感を統一 */
 .neon-select, .icon-btn, .log-switch-btn {
     border: 1px solid #0f0;
     background: #000;
@@ -442,11 +401,11 @@ button {
     box-shadow: 0 0 5px rgba(0, 255, 0, 0.2);
     transition: all 0.2s ease;
 }
-/* スクランブル実行ボタン自体の色をネオン調に固定 */
+
 .scramble-exec-btn {
-    background: transparent !important; /* 親の背景を活かす、または #000 */
-    border: none !important;            /* 親の枠線を使うのでボタン自身の枠は消す */
-    color: #0f0 !important;             /* アイコンの色をネオン緑に */
+    background: transparent !important;
+    border: none !important;
+    color: #0f0 !important;
     padding: 4px 8px;
     cursor: pointer;
     display: flex;
@@ -455,49 +414,39 @@ button {
     transition: all 0.2s ease;
 }
 
-/* ボタンの中のSVGアイコンのサイズ調整（必要に応じて） */
 .scramble-exec-btn svg {
     width: 18px;
     height: 18px;
-    filter: drop-shadow(0 0 2px rgba(0, 255, 0, 0.8)); /* アイコン自体を発光させる */
+    filter: drop-shadow(0 0 2px rgba(0, 255, 0, 0.8));
 }
 
-/* ホバー時の演出：発光を強くする */
 .scramble-exec-btn:hover {
     background: rgba(0, 255, 0, 0.2) !important;
     box-shadow: inset 0 0 5px rgba(0, 255, 0, 0.5);
 }
 
-/* アクティブ（クリック中）の演出 */
 .scramble-exec-btn:active {
     transform: scale(0.9);
     filter: brightness(1.5);
 }
+
 .neon-select:focus, .icon-btn:hover {
     box-shadow: 0 0 10px rgba(0, 255, 0, 0.6);
     background: rgba(0, 40, 0, 0.4);
 }
 
-
 .menu-panel {
     z-index: 10000 !important;
-    position: relative; /* z-indexを有効にするために必須 */
-    /* オーバーレイのための絶対配置 */
     position: absolute;
     top: 65px;
     left: 50%;
     transform: translateX(-50%);
-
-    /* 非表示状態 */
     display: none;
-
-    /* ネオン調の装飾 */
-    background: rgba(0, 20, 0, 0.95); /* 深い緑の背景 */
-    border: 2px solid #00ff41;       /* ネオン看板のような境界線 */
+    background: rgba(0, 20, 0, 0.95);
+    border: 2px solid #00ff41;
     border-radius: 12px;
-    box-shadow: 0 0 15px #00ff41,    /* 外側の光 */
-                inset 0 0 10px #00ff41; /* 内側の光 */
-    
+    box-shadow: 0 0 15px #00ff41,
+                inset 0 0 10px #00ff41;
     padding: 5px 10px;
     width: 90%;
     max-width: 400px;
@@ -506,12 +455,11 @@ button {
     align-items: center;
 }
 
-/* 表示時の制御 */
 .menu-panel.open {
     display: flex;
 }
 
-.analyze-slider-container{
+.analyze-slider-container {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -522,7 +470,6 @@ button {
 }
 
 #analyze-slider {
-    width: 100%;
     max-width: 800px;
 }
 
@@ -628,12 +575,12 @@ button {
     box-shadow: 0 0 6px rgba(255,60,60,0.9), 0 0 18px rgba(255,60,60,0.6), inset 0 0 8px rgba(255,60,60,0.4);
 }
 
-/* --- History List Styles --- */
 .history-empty {
     color: #666;
     padding: 20px;
     text-align: center;
 }
+
 .history-item {
     display: flex;
     align-items: center;
@@ -642,6 +589,7 @@ button {
     border-bottom: 1px solid #333;
     cursor: pointer;
 }
+
 .history-icon-box {
     font-size: 20px;
     width: 30px;
@@ -652,28 +600,35 @@ button {
     background: #1a1a1a;
     border-radius: 4px;
 }
+
 .history-status {
     font-size: 14px;
     flex-shrink: 0;
 }
+
 .history-info {
     flex-grow: 1;
     font-size: 12px;
 }
+
 .history-date {
     color: #aaa;
 }
+
 .history-stats {
     display: flex;
     justify-content: space-between;
 }
+
 .history-time {
     color: #00ffcc;
     font-weight: bold;
 }
+
 .history-steps {
     color: #888;
 }
+
 .history-delete-btn {
     background: none;
     border: none;
@@ -682,23 +637,19 @@ button {
     font-size: 16px;
     transition: transform 0.2s;
 }
+
 .history-delete-btn:hover {
     transform: scale(1.2);
 }
 
-/* data-label の中身（LやS）を疑似要素として描画 */
 .icon-btn[data-label]::after {
     content: attr(data-label) !important;
     position: absolute !important;
-    
-    /* 真ん中に配置するための設定 */
     color: #000000;
     top: 50% !important;
     left: 50% !important;
     transform: translate(-50%, -50%) !important;
-    
-    /* 見た目：どーんと大きく、かつアイコンも見えるように */
-    font-size: 30px !important; /* ボタンサイズに合わせて調整 */
+    font-size: 30px !important;
     font-family: "Arial Black", sans-serif !important;
     font-weight: 900 !important;
 }

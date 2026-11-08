@@ -1,0 +1,13 @@
+/* #board is the position and clipping root. See js/ui/ghosts.js. */
+.ghost-strip {
+    position: absolute;
+    display: flex;
+    gap: 0;
+    z-index: 100;
+    pointer-events: none;
+    will-change: transform;
+}
+
+.ghost-strip.analyze-ghost {
+    transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+}

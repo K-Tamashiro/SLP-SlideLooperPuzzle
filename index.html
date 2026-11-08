@@ -7,19 +7,13 @@
 	<meta name="copyright" content="© 2025 Tamayan / ZebraSoft">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="icon" href="favicon.ico">
-	<title>SLP-SlideLooperPuzzle2</title>
-	<link rel="stylesheet" href="css/base-theme.css?v=1.0.0">
-	<link rel="stylesheet" href="css/board-layout.css?v=1.0.0">
-	<link rel="stylesheet" href="css/gimmick-effects.css?v=1.0.0">
-	<link rel="stylesheet" href="css/ui-components.css?v=1.0.0">
+	<title>SLP - Slide Looper Puzzle</title>
+	<link rel="stylesheet" href="css/base-theme.css">
+	<link rel="stylesheet" href="css/board-layout.css">
+	<link rel="stylesheet" href="css/ghosts.css">
+	<link rel="stylesheet" href="css/gimmick-effects.css">
+	<link rel="stylesheet" href="css/ui-components.css">
 	<link rel="manifest" href="./manifest.json">
-	<script>
-		if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-			navigator.serviceWorker.register('./sw.js')
-				.then(reg => console.log('SW registered'))
-				.catch(err => console.error('SW failed', err));
-		}
-	</script>
 </head>
 
 <body>
@@ -210,7 +204,7 @@
 				<div class="log-controls">
 					<button onclick="saveBackupCSV()" title="Backup History">📤 Backup</button>
 					<button onclick="triggerRestore()" title="Restore History CSV">📥 Restore</button>
-					<button onclick="restorationBord()" title="Maintenance / Restoration"
+					<button onclick="restorationBoard()" title="Maintenance / Restoration"
 						style="display: flex; align-items: center; gap: 4px;">
 						<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
 							stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -351,21 +345,26 @@
 		(Play Back)
 	</div>
 
-	<script src="js/main.js?v=1.0.1"></script>
-	<script src="js/core.js?v=1.0.0"></script>
-	<script src="js/ui-render.js?v=1.0.0"></script>
-	<script src="js/interaction.js?v=1.0.1"></script>
-	<script src="js/media-system.js?v=1.0.0"></script>
-	<script src="js/RotationManager.js?v=1.0.0"></script>
-	<script src="js/analyze-system.js?v=1.0.0"></script>
-	<script>
-		if (location.protocol.startsWith('http')) {
-			const link = document.createElement('link');
-			link.rel = 'manifest';
-			link.href = './manifest.json';
-			document.head.appendChild(link);
-		}
-	</script>
+	<script src="js/state.js"></script>
+	<script src="js/media/rotation.js"></script>
+	<script src="js/game/board.js"></script>
+	<script src="js/game/session.js"></script>
+	<script src="js/game/gimmicks.js"></script>
+	<script src="js/ui/board.js"></script>
+	<script src="js/ui/ghosts.js"></script>
+	<script src="js/history/store.js"></script>
+	<script src="js/history/ui.js"></script>
+	<script src="js/history/import-export.js"></script>
+	<script src="js/replay/moves.js"></script>
+	<script src="js/replay/replay.js"></script>
+	<script src="js/replay/playback.js"></script>
+	<script src="js/media/media.js"></script>
+	<script src="js/solver/search.js"></script>
+	<script src="js/solver/greedy.js"></script>
+	<script src="js/solver/controller.js"></script>
+	<script src="js/input/drag.js"></script>
+	<script src="js/input/events.js"></script>
+	<script src="js/main.js"></script>
 </body>
 
 </html>

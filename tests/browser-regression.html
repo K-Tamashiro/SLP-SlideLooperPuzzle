@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<title>SLP レイアウト・ゴースト回帰テスト</title>
+<style>
+body { font: 14px sans-serif; margin: 16px; }
+button { padding: 10px 20px; } pre { white-space: pre-wrap; }
+iframe { display: block; border: 0; height: 950px; margin: 12px 0; }
+</style>
+<h1>公開版と整理後の比較</h1>
+<p>tools/serve.js --baseline で指定した公開版と比較します。テスト用フレーム内の盤面・履歴を初期化します。</p>
+<button id="run">比較テストを実行</button>
+<pre id="result">待機中</pre>
+<h2>公開版</h2><iframe id="baseline" title="公開版" src="/baseline/index.html"></iframe>
+<h2>整理後</h2><iframe id="current" title="整理後" src="/index.html"></iframe>
+<script src="browser-regression.js"></script>
+</html>
